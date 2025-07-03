@@ -1,7 +1,7 @@
 {
   "name": "@ultrathink/contracts",
-  "version": "0.1.0",
-  "description": "Smart contracts for Futarchy platform",
+  "version": "1.0.0",
+  "description": "Smart contracts for Futarchy platform - deployed to Polygon Amoy",
   "main": "index.js",
   "scripts": {
     "build": "hardhat compile",

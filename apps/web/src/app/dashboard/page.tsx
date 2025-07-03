@@ -1,38 +1,20 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 
-// Play Token Contract ABI (simplified for claim and balance functions)
-const PLAY_TOKEN_ABI = [
-  {
-    inputs: [],
-    name: 'claim',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [{ internalType: 'address', name: 'account', type: 'address' }],
-    name: 'balanceOf',
-    outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [{ internalType: 'address', name: '', type: 'address' }],
-    name: 'hasClaimed',
-    outputs: [{ internalType: 'bool', name: '', type: 'bool' }],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [],
-    name: 'getAirdropAmount',
-    outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
-    stateMutability: 'view',
-    type: 'function',
-  },
-] as const;
+// Extend Window interface for ethereum
+declare global {
+  interface Window {
+    ethereum?: {
+      request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+      isMetaMask?: boolean;
+    };
+  }
+}
+
+// Play Token Contract function selectors
+const CLAIM_FUNCTION_SELECTOR = '0x4e71d92d';
 
 const PLAY_TOKEN_ADDRESS = process.env.NEXT_PUBLIC_PLAY_TOKEN_ADDRESS as `0x${string}`;
 
@@ -59,15 +41,15 @@ function DashboardPage() {
     if (typeof window !== 'undefined' && window.ethereum) {
       try {
         // Try to switch to Polygon Amoy
-        await window.ethereum.request({
+        await window.ethereum?.request({
           method: 'wallet_switchEthereumChain',
           params: [{ chainId: '0x13882' }], // 80002 in hex
         });
-      } catch (switchError: any) {
+      } catch (switchError: unknown) {
         // If the network doesn't exist, add it
-        if (switchError.code === 4902) {
+        if ((switchError as { code?: number }).code === 4902) {
           try {
-            await window.ethereum.request({
+            await window.ethereum?.request({
               method: 'wallet_addEthereumChain',
               params: [
                 {
@@ -97,16 +79,16 @@ function DashboardPage() {
   const connectWallet = async () => {
     if (typeof window !== 'undefined' && window.ethereum) {
       try {
-        const accounts = await window.ethereum.request({
+        const accounts = await window.ethereum?.request({
           method: 'eth_requestAccounts',
         });
-        setAccount(accounts[0]);
+        setAccount((accounts as string[])[0]);
         
         // Get chain ID
-        const chainId = await window.ethereum.request({
+        const chainId = await window.ethereum?.request({
           method: 'eth_chainId',
         });
-        setChainId(parseInt(chainId, 16));
+        setChainId(parseInt(chainId as string, 16));
       } catch (error) {
         console.error('Failed to connect wallet:', error);
       }
@@ -116,22 +98,141 @@ function DashboardPage() {
   // Check if already connected and load balance
   useEffect(() => {
     if (typeof window !== 'undefined' && window.ethereum && mounted) {
-      window.ethereum.request({ method: 'eth_accounts' })
-        .then((accounts: string[]) => {
-          if (accounts.length > 0) {
-            setAccount(accounts[0]);
+      window.ethereum?.request({ method: 'eth_accounts' })
+        .then((accounts) => {
+          const accountsArray = accounts as string[];
+          if (accountsArray.length > 0) {
+            setAccount(accountsArray[0]);
             
             // Get chain ID
-            return window.ethereum.request({ method: 'eth_chainId' });
+            return window.ethereum?.request({ method: 'eth_chainId' });
           }
         })
-        .then((chainId: string) => {
+        .then((chainId) => {
           if (chainId) {
-            setChainId(parseInt(chainId, 16));
+            setChainId(parseInt(chainId as string, 16));
           }
         });
     }
   }, [mounted]);
+
+  // This useEffect will be moved after function declarations
+
+  // Update cooldown timer
+  useEffect(() => {
+    if (lastTransactionAttempt > 0) {
+      const interval = setInterval(() => {
+        const remaining = Math.max(0, 5000 - (Date.now() - lastTransactionAttempt));
+        setCooldownTime(remaining);
+        if (remaining <= 0) {
+          clearInterval(interval);
+        }
+      }, 100);
+
+      return () => clearInterval(interval);
+    }
+  }, [lastTransactionAttempt]);
+
+  // Function selectors are pre-calculated
+
+  // Check balance with improved error handling
+  const loadBalance = useCallback(async () => {
+    if (!account || !PLAY_TOKEN_ADDRESS) return;
+    
+    try {
+      // balanceOf(address) selector: 0x70a08231
+      const paddedAddress = account.slice(2).padStart(64, '0');
+      const balance = await window.ethereum?.request({
+        method: 'eth_call',
+        params: [
+          {
+            to: PLAY_TOKEN_ADDRESS,
+            data: '0x70a08231' + paddedAddress,
+          },
+          'latest'
+        ],
+      });
+      
+      if (balance && balance !== '0x' && balance !== '0x0') {
+        // Convert from wei to PT (assuming 18 decimals)
+        const balanceInPT = parseInt(balance as string, 16) / Math.pow(10, 18);
+        const balanceStr = balanceInPT.toFixed(0);
+        console.log('Balance loaded successfully:', { raw: balance, parsed: balanceStr });
+        setBalance(balanceStr);
+      } else {
+        console.log('Balance is zero or empty');
+        setBalance('0');
+      }
+    } catch (error) {
+      console.log('Balance loading error (non-critical):', (error as { message?: string }).message);
+      setBalance('0');
+    }
+  }, [account]);
+
+  // Check if already claimed - with improved error handling
+  const checkClaimStatus = useCallback(async () => {
+    if (!account || !PLAY_TOKEN_ADDRESS) return;
+    
+    try {
+      const paddedAddress = account.slice(2).padStart(64, '0');
+      
+      // Try hasClaimed(address) function first - correct selector: 0x73b2e80e
+      try {
+        const result = await window.ethereum?.request({
+          method: 'eth_call',
+          params: [
+            {
+              to: PLAY_TOKEN_ADDRESS,
+              data: '0x73b2e80e' + paddedAddress, // hasClaimed(address) - correct selector
+            },
+            'latest'
+          ],
+        });
+        
+        // Parse boolean result
+        const claimed = result === '0x0000000000000000000000000000000000000000000000000000000000000001';
+        console.log('Claim status check successful:', { result, claimed });
+        setHasClaimed(claimed);
+        return;
+      } catch {
+        console.log('hasClaimed function failed, trying fallback approach...');
+      }
+      
+      // Fallback: Try claimed mapping directly - correct selector: 0xc884ef83
+      try {
+        const result = await window.ethereum?.request({
+          method: 'eth_call',
+          params: [
+            {
+              to: PLAY_TOKEN_ADDRESS,
+              data: '0xc884ef83' + paddedAddress, // claimed(address) mapping
+            },
+            'latest'
+          ],
+        });
+        
+        const claimed = result === '0x0000000000000000000000000000000000000000000000000000000000000001';
+        console.log('Mapping check successful:', { result, claimed });
+        setHasClaimed(claimed);
+        return;
+      } catch {
+        console.log('Mapping check failed, using balance fallback...');
+      }
+      
+      // Final fallback: if balance > 0, likely claimed
+      if (balance && parseInt(balance) > 0) {
+        console.log('Using balance fallback - balance > 0, assuming claimed');
+        setHasClaimed(true);
+      } else {
+        console.log('All checks failed, defaulting to not claimed');
+        setHasClaimed(false);
+      }
+      
+    } catch (error) {
+      console.log('Claim status check error (non-critical):', (error as { message?: string }).message);
+      setHasClaimed(false);
+    }
+  }, [account, balance]);
 
   // Load balance and claim status when account and chainId are available - with delay
   useEffect(() => {
@@ -153,133 +254,7 @@ function DashboardPage() {
         setIsLoadingData(false);
       };
     }
-  }, [account, chainId, mounted]);
-
-  // Update cooldown timer
-  useEffect(() => {
-    if (lastTransactionAttempt > 0) {
-      const interval = setInterval(() => {
-        const remaining = Math.max(0, 5000 - (Date.now() - lastTransactionAttempt));
-        setCooldownTime(remaining);
-        if (remaining <= 0) {
-          clearInterval(interval);
-        }
-      }, 100);
-
-      return () => clearInterval(interval);
-    }
-  }, [lastTransactionAttempt]);
-
-  // Generate function selector from signature
-  const getFunctionSelector = (signature: string): string => {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(signature);
-    return crypto.subtle.digest('SHA-256', data).then(hashBuffer => {
-      const hashArray = new Uint8Array(hashBuffer);
-      return '0x' + Array.from(hashArray.slice(0, 4))
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
-    });
-  };
-
-  // Check balance with improved error handling
-  const loadBalance = async () => {
-    if (!account || !PLAY_TOKEN_ADDRESS) return;
-    
-    try {
-      // balanceOf(address) selector: 0x70a08231
-      const paddedAddress = account.slice(2).padStart(64, '0');
-      const balance = await window.ethereum.request({
-        method: 'eth_call',
-        params: [
-          {
-            to: PLAY_TOKEN_ADDRESS,
-            data: '0x70a08231' + paddedAddress,
-          },
-          'latest'
-        ],
-      });
-      
-      if (balance && balance !== '0x' && balance !== '0x0') {
-        // Convert from wei to PT (assuming 18 decimals)
-        const balanceInPT = parseInt(balance, 16) / Math.pow(10, 18);
-        const balanceStr = balanceInPT.toFixed(0);
-        console.log('Balance loaded successfully:', { raw: balance, parsed: balanceStr });
-        setBalance(balanceStr);
-      } else {
-        console.log('Balance is zero or empty');
-        setBalance('0');
-      }
-    } catch (error) {
-      console.log('Balance loading error (non-critical):', error.message);
-      setBalance('0');
-    }
-  };
-
-  // Check if already claimed - with improved error handling
-  const checkClaimStatus = async () => {
-    if (!account || !PLAY_TOKEN_ADDRESS) return;
-    
-    try {
-      const paddedAddress = account.slice(2).padStart(64, '0');
-      
-      // Try hasClaimed(address) function first - correct selector: 0x73b2e80e
-      try {
-        const result = await window.ethereum.request({
-          method: 'eth_call',
-          params: [
-            {
-              to: PLAY_TOKEN_ADDRESS,
-              data: '0x73b2e80e' + paddedAddress, // hasClaimed(address) - correct selector
-            },
-            'latest'
-          ],
-        });
-        
-        // Parse boolean result
-        const claimed = result === '0x0000000000000000000000000000000000000000000000000000000000000001';
-        console.log('Claim status check successful:', { result, claimed });
-        setHasClaimed(claimed);
-        return;
-      } catch (error) {
-        console.log('hasClaimed function failed, trying fallback approach...');
-      }
-      
-      // Fallback: Try claimed mapping directly - correct selector: 0xc884ef83
-      try {
-        const result = await window.ethereum.request({
-          method: 'eth_call',
-          params: [
-            {
-              to: PLAY_TOKEN_ADDRESS,
-              data: '0xc884ef83' + paddedAddress, // claimed(address) mapping
-            },
-            'latest'
-          ],
-        });
-        
-        const claimed = result === '0x0000000000000000000000000000000000000000000000000000000000000001';
-        console.log('Mapping check successful:', { result, claimed });
-        setHasClaimed(claimed);
-        return;
-      } catch (error) {
-        console.log('Mapping check failed, using balance fallback...');
-      }
-      
-      // Final fallback: if balance > 0, likely claimed
-      if (balance && parseInt(balance) > 0) {
-        console.log('Using balance fallback - balance > 0, assuming claimed');
-        setHasClaimed(true);
-      } else {
-        console.log('All checks failed, defaulting to not claimed');
-        setHasClaimed(false);
-      }
-      
-    } catch (error) {
-      console.log('Claim status check error (non-critical):', error.message);
-      setHasClaimed(false);
-    }
-  };
+  }, [account, chainId, mounted, loadBalance, checkClaimStatus]);
   
   // Prevent hydration mismatch
   if (!mounted) {
@@ -309,13 +284,13 @@ function DashboardPage() {
     
     while (attempts < maxAttempts) {
       try {
-        const receipt = await window.ethereum.request({
+        const receipt = await window.ethereum?.request({
           method: 'eth_getTransactionReceipt',
           params: [txHash],
         });
         
         if (receipt) {
-          if (receipt.status === '0x1') {
+          if ((receipt as { status?: string }).status === '0x1') {
             setTxStatus('success');
             console.log('Transaction confirmed successfully!');
             // Reload balance and claim status
@@ -330,9 +305,10 @@ function DashboardPage() {
             return false;
           }
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         // Handle specific RPC errors
-        if (error.code === -32603 || error.code === -32000) {
+        const err = error as { code?: number };
+        if (err.code === -32603 || err.code === -32000) {
           console.log('Block not found yet, transaction still pending...');
         } else {
           console.error('Error checking transaction:', error);
@@ -348,12 +324,12 @@ function DashboardPage() {
     
     // One final check
     try {
-      const receipt = await window.ethereum.request({
+      const receipt = await window.ethereum?.request({
         method: 'eth_getTransactionReceipt',
         params: [txHash],
       });
       
-      if (receipt && receipt.status === '0x1') {
+      if (receipt && (receipt as { status?: string }).status === '0x1') {
         setTxStatus('success');
         setTimeout(() => {
           loadBalance();
@@ -371,19 +347,7 @@ function DashboardPage() {
     return false;
   };
 
-  // Check if transaction exists on blockchain
-  const checkTransactionExists = async (txHash: string): Promise<boolean> => {
-    try {
-      const tx = await window.ethereum.request({
-        method: 'eth_getTransactionByHash',
-        params: [txHash],
-      });
-      return tx !== null;
-    } catch (error) {
-      console.error('Error checking transaction existence:', error);
-      return false;
-    }
-  };
+  // Transaction checking handled by monitoring
 
   // Add PlayToken to MetaMask
   const addTokenToMetaMask = async () => {
@@ -393,9 +357,9 @@ function DashboardPage() {
     }
 
     try {
-      const wasAdded = await window.ethereum.request({
+      const wasAdded = await window.ethereum?.request({
         method: 'wallet_watchAsset',
-        params: {
+        params: [{
           type: 'ERC20',
           options: {
             address: process.env.NEXT_PUBLIC_PLAY_TOKEN_ADDRESS,
@@ -403,7 +367,7 @@ function DashboardPage() {
             decimals: 18,
             image: '', // You can add a token image URL here
           },
-        },
+        }],
       });
 
       if (wasAdded) {
@@ -444,31 +408,31 @@ function DashboardPage() {
       console.log('Starting claim transaction...');
       
       // Get fresh nonce to avoid conflicts
-      const nonce = await window.ethereum.request({
+      const nonce = await window.ethereum?.request({
         method: 'eth_getTransactionCount',
         params: [account, 'latest'], // Use 'latest' to avoid pending conflicts
       });
       
       // Get current gas price and add buffer
-      const gasPrice = await window.ethereum.request({
+      const gasPrice = await window.ethereum?.request({
         method: 'eth_gasPrice',
       });
-      const bufferedGasPrice = '0x' + Math.floor(parseInt(gasPrice, 16) * 2).toString(16); // Increased to 2x
+      const bufferedGasPrice = '0x' + Math.floor(parseInt(gasPrice as string, 16) * 2).toString(16); // Increased to 2x
       
       console.log('Transaction parameters:', {
-        nonce: parseInt(nonce, 16),
+        nonce: parseInt(nonce as string, 16),
         gasPrice: parseInt(bufferedGasPrice, 16).toLocaleString(),
         from: account,
         to: process.env.NEXT_PUBLIC_PLAY_TOKEN_ADDRESS
       });
       
       // Send transaction with explicit parameters to prevent duplicates
-      const txHash = await window.ethereum.request({
+      const txHash = await window.ethereum?.request({
         method: 'eth_sendTransaction',
         params: [{
           from: account,
           to: process.env.NEXT_PUBLIC_PLAY_TOKEN_ADDRESS,
-          data: '0x4e71d92d', // claim() function signature
+          data: CLAIM_FUNCTION_SELECTOR, // claim() function signature
           gas: '0x1adb0', // 110000 gas limit
           gasPrice: bufferedGasPrice,
           nonce: nonce,
@@ -476,42 +440,43 @@ function DashboardPage() {
       });
       
       console.log('Transaction submitted successfully:', txHash);
-      setLastTxHash(txHash);
+      setLastTxHash(txHash as string);
       setHasClaimed(true); // Optimistically set to true
       
       // Start monitoring transaction
-      waitForTransaction(txHash);
+      waitForTransaction(txHash as string);
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Improved error logging
+      const err = error as { code?: number; message?: string };
       console.error('Claim transaction error:', {
-        code: error.code,
-        message: error.message,
-        data: error.data
+        code: err.code,
+        message: err.message,
+        data: (error as { data?: unknown }).data
       });
       
       setTxStatus('failed');
       setHasClaimed(false); // Reset on error
       
       // Handle specific error cases
-      if (error.code === -4001) {
+      if (err.code === -4001) {
         alert('トランザクションがユーザーによって拒否されました。');
-      } else if (error.code === -32000) {
-        if (error.message && error.message.includes('already known')) {
+      } else if (err.code === -32000) {
+        if (err.message && err.message.includes('already known')) {
           alert('同じトランザクションが既に送信されています。少し待ってから確認してください。');
           // Don't reset hasClaimed in this case
           setHasClaimed(true);
-        } else if (error.message && error.message.includes('insufficient funds')) {
+        } else if (err.message && err.message.includes('insufficient funds')) {
           alert('ガス代が不足しています。POLトークンを取得してください。');
-        } else if (error.message && error.message.includes('nonce')) {
+        } else if (err.message && err.message.includes('nonce')) {
           alert('ノンスエラーが発生しました。しばらく待ってから再試行してください。');
         } else {
           alert('トランザクションが拒否されました。ガス価格を上げて再試行してください。');
         }
-      } else if (error.code === -32603) {
+      } else if (err.code === -32603) {
         alert('トランザクションが失敗しました。既にトークンを受け取っている可能性があります。');
       } else {
-        const errorMsg = error.message || error.toString() || 'Unknown error';
+        const errorMsg = err.message || String(error) || 'Unknown error';
         alert(`トークンの取得に失敗しました: ${errorMsg}`);
       }
     } finally {
@@ -791,9 +756,9 @@ function DashboardPage() {
             <div className="ml-3">
               <h3 className="text-sm font-medium text-gray-900">予測市場に参加</h3>
               <p className="text-sm text-gray-500">
-                <a href="/" className="text-blue-600 hover:text-blue-500 underline">
+                <Link href="/" className="text-blue-600 hover:text-blue-500 underline">
                   ホームページ
-                </a>
+                </Link>
                 から市場を選んで予測投資を行います
               </p>
             </div>

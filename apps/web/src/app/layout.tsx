@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import Link from "next/link";
 import "./globals.css";
 import { Providers } from "./providers";
 
@@ -32,15 +33,15 @@ export default function RootLayout({
                     </span>
                   </div>
                   <nav className="flex space-x-8">
-                    <a href="/" className="text-gray-900 hover:text-blue-600">
+                    <Link href="/" className="text-gray-900 hover:text-blue-600">
                       市場一覧
-                    </a>
-                    <a href="/dashboard" className="text-gray-700 hover:text-blue-600">
+                    </Link>
+                    <Link href="/dashboard" className="text-gray-700 hover:text-blue-600">
                       マイページ
-                    </a>
-                    <a href="/admin" className="text-gray-700 hover:text-blue-600">
+                    </Link>
+                    <Link href="/admin" className="text-gray-700 hover:text-blue-600">
                       管理者
-                    </a>
+                    </Link>
                   </nav>
                 </div>
               </div>

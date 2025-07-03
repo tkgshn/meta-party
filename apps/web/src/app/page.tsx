@@ -2,6 +2,16 @@
 
 import { useState, useEffect } from 'react';
 
+// Extend Window interface for ethereum
+declare global {
+  interface Window {
+    ethereum?: {
+      request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+      isMetaMask?: boolean;
+    };
+  }
+}
+
 // Mock data for development
 const mockMarkets = [
   {
@@ -54,7 +64,7 @@ export default function HomePage() {
         const accounts = await window.ethereum.request({
           method: 'eth_requestAccounts',
         });
-        setAccount(accounts[0]);
+        setAccount((accounts as string[])[0]);
       } catch (error) {
         console.error('Failed to connect wallet:', error);
       }
@@ -67,9 +77,10 @@ export default function HomePage() {
   useEffect(() => {
     if (typeof window !== 'undefined' && window.ethereum) {
       window.ethereum.request({ method: 'eth_accounts' })
-        .then((accounts: string[]) => {
-          if (accounts.length > 0) {
-            setAccount(accounts[0]);
+        .then((accounts) => {
+          const accountsArray = accounts as string[];
+          if (accountsArray.length > 0) {
+            setAccount(accountsArray[0]);
           }
         });
     }

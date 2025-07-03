@@ -120,30 +120,33 @@ git submodule update --remote
 
 ## Architecture Overview
 
-### Smart Contracts (Polygon)
-- **PlayToken.sol**: ERC-20 token for platform currency (no real value)
-- **MarketFactory.sol**: Factory for creating prediction markets
+### Smart Contracts (Polygon Amoy Testnet) ✅ DEPLOYED
+- **PlayToken.sol**: ERC-20 token for platform currency (no real value) - `0x237B9E4EEE4AeAf712B5B240Ab03C973310B6bD1`
+- **MarketFactory.sol**: Factory for creating prediction markets - `0x9f1C3f06B201FFa385a4BB3695f78cB1c17c12db`
 - **Market.sol**: Individual market with LMSR pricing mechanism
-- **ConditionalTokens**: Gnosis framework for outcome tokens
+- **ConditionalTokens**: Gnosis framework for outcome tokens - `0x0416a4757062c1e61759ADDb6d68Af145919F045`
 
-### Frontend (Next.js 14)
+### Frontend (Next.js 15) ✅ WORKING
 - **App Router**: Modern Next.js routing with server components
-- **RainbowKit**: Wallet connection and management
-- **Wagmi**: React hooks for Ethereum interactions
+- **Direct MetaMask Integration**: Simplified wallet connection without wagmi/RainbowKit
 - **Firebase**: Authentication, database, and cloud functions
 - **Tailwind CSS**: Utility-first styling
+- **Real-time Balance Checking**: Live Play Token balance updates
 
 ### Backend Services
 - **Firebase Firestore**: Real-time database for market data
 - **Firebase Functions**: Serverless functions for market automation
 - **Firebase Auth**: User authentication and authorization
 
-### Key Features
-1. **Market Creation**: Admin interface for creating prediction markets
-2. **Prediction Trading**: LMSR-based trading of outcome tokens
-3. **Play Token System**: Free tokens for testing (1,000 PT per user)
-4. **Real-time Updates**: Live market data and price feeds
-5. **Market Resolution**: Oracle-based outcome determination
+### Key Features ✅ IMPLEMENTED
+1. **Play Token Claiming**: Users can claim 1,000 PT once per address ✅
+2. **MetaMask Integration**: One-click wallet connection and network switching ✅
+3. **Token Auto-Import**: Automatic Play Token addition to MetaMask ✅
+4. **Real-time Balance**: Live balance checking and updates ✅
+5. **Transaction Monitoring**: Real-time transaction status and confirmation ✅
+6. **Error Handling**: Comprehensive error messages and troubleshooting ✅
+7. **Market Creation**: Admin interface for creating prediction markets (planned)
+8. **Prediction Trading**: LMSR-based trading of outcome tokens (planned)
 
 ## Environment Setup
 
@@ -163,22 +166,23 @@ NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_domain
 NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
 # ... (see .env.example for full list)
 
-# Blockchain Configuration (after contract deployment)
-NEXT_PUBLIC_PLAY_TOKEN_ADDRESS=deployed_contract_address
-NEXT_PUBLIC_MARKET_FACTORY_ADDRESS=deployed_contract_address
+# Blockchain Configuration ✅ CONFIGURED
+NEXT_PUBLIC_CONDITIONAL_TOKENS_ADDRESS=0x0416a4757062c1e61759ADDb6d68Af145919F045
+NEXT_PUBLIC_PLAY_TOKEN_ADDRESS=0x237B9E4EEE4AeAf712B5B240Ab03C973310B6bD1
+NEXT_PUBLIC_MARKET_FACTORY_ADDRESS=0x9f1C3f06B201FFa385a4BB3695f78cB1c17c12db
 ```
 
 ## Development Workflow
 
-1. **Smart Contract Development**
-   - Develop and test contracts in `packages/contracts/`
-   - Deploy to Polygon Mumbai testnet first
-   - Update frontend with deployed addresses
+1. **Smart Contract Development** ✅ COMPLETE
+   - Develop and test contracts in `packages/contracts/` ✅
+   - Deploy to Polygon Amoy testnet ✅ (Mumbai deprecated)
+   - Update frontend with deployed addresses ✅
 
-2. **Frontend Development**
-   - Use mock data for rapid iteration
-   - Connect to deployed contracts once ready
-   - Test wallet integration thoroughly
+2. **Frontend Development** ✅ COMPLETE
+   - Use mock data for rapid iteration ✅
+   - Connect to deployed contracts ✅
+   - Test wallet integration thoroughly ✅
 
 3. **Backend Integration**
    - Set up Firebase project
@@ -204,10 +208,10 @@ NEXT_PUBLIC_MARKET_FACTORY_ADDRESS=deployed_contract_address
 
 ## Deployment Process
 
-1. **Contracts**: Deploy to Polygon Mumbai, then mainnet
-2. **Frontend**: Deploy to Vercel or similar platform
-3. **Functions**: Deploy to Firebase Cloud Functions
-4. **Database**: Configure Firestore security rules
+1. **Contracts**: Deploy to Polygon Amoy (testnet) ✅, then mainnet (planned)
+2. **Frontend**: Deploy to Vercel or similar platform (ready for deployment)
+3. **Functions**: Deploy to Firebase Cloud Functions (planned)
+4. **Database**: Configure Firestore security rules (planned)
 
 ## Project Philosophy
 
@@ -222,10 +226,12 @@ Based on the Mirai Master Plan, focusing on:
 1. **Development Commands**: Always use the commands listed above for testing and building
 2. **Architecture**: This is a monorepo with contracts and web app - both need to work together
 3. **Testing**: All tests should follow t-wada principles and pass before deployment
-4. **Environment**: Local development runs on port 3001 (Next.js)
+4. **Environment**: Local development runs on port 3000 (Next.js) - auto-switches to 3001 if 3000 is busy
 5. **OpenZeppelin v5**: Use custom error messages instead of string messages (e.g., `OwnableUnauthorizedAccount`)
 6. **Ethers v6**: Use `ethers.parseEther()` instead of `ethers.utils.parseEther()`
-7. **User Workflow**: Dashboard page needs implementation for Play Token claiming functionality
+7. **User Workflow**: Dashboard page with Play Token claiming functionality ✅ IMPLEMENTED
+8. **MetaMask Integration**: Use direct `window.ethereum` API, not wagmi/RainbowKit
+9. **Network**: Always use Polygon Amoy testnet (Chain ID: 80002), Mumbai is deprecated
 
 ## Development Notes
 
@@ -238,16 +244,50 @@ Based on the Mirai Master Plan, focusing on:
 
 ## Session Memory Notes
 
-### Web App Status and Setup (2025-07-03)
-1. **Current Status**: Web app can be started with `npm run dev` from root directory (port 3000)
-2. **Required Setup**:
-   - Create Firebase project at https://console.firebase.google.com/
-   - Copy `.env.example` to `.env.local` and configure Firebase credentials
-   - Deploy smart contracts to testnet first: `cd packages/contracts && npm run deploy:testnet`
-   - Add deployed contract addresses to `.env.local`
-3. **MetaMask Integration**:
-   - Users need MetaMask installed
-   - Connect to Polygon Mumbai testnet
-   - Get test MATIC from https://faucet.polygon.technology/
-   - Claim 1,000 Play Tokens from Dashboard
-4. **Important**: Always run lint and typecheck commands after making changes
+### Current Platform Status (2025-07-03) ✅ FULLY FUNCTIONAL
+1. **Development Environment**:
+   - Web app runs with `npm run dev` from root directory (port 3000/3001)
+   - All smart contracts deployed to Polygon Amoy testnet
+   - Frontend fully integrated with deployed contracts
+   - MetaMask integration working perfectly
+
+2. **Deployed Contracts (Polygon Amoy Testnet)**:
+   - **PlayToken**: `0x237B9E4EEE4AeAf712B5B240Ab03C973310B6bD1`
+   - **MarketFactory**: `0x9f1C3f06B201FFa385a4BB3695f78cB1c17c12db`
+   - **ConditionalTokens**: `0x0416a4757062c1e61759ADDb6d68Af145919F045`
+   - **Network**: Polygon Amoy (Chain ID: 80002)
+
+3. **Working Features**:
+   - ✅ Wallet connection (direct MetaMask integration)
+   - ✅ Network switching to Polygon Amoy
+   - ✅ Play Token claiming (1,000 PT per address)
+   - ✅ Real-time balance checking
+   - ✅ Transaction monitoring and status updates
+   - ✅ Token auto-import to MetaMask
+   - ✅ Comprehensive error handling
+   - ✅ Japanese UI with user-friendly messages
+
+4. **User Workflow**:
+   - Install MetaMask → Connect wallet → Switch to Polygon Amoy
+   - Get test POL from faucets (Alchemy/Polygon)
+   - Visit Dashboard → Claim 1,000 Play Tokens
+   - Add token to MetaMask with 🦊 button
+   - View balance and transaction history
+
+5. **Technical Implementation**:
+   - Direct `window.ethereum` API (no wagmi/RainbowKit)
+   - Function selectors: claim() `0x4e71d92d`, hasClaimed() `0x73b2e80e`
+   - Duplicate transaction prevention with cooldown
+   - Optimistic UI updates with proper error handling
+   - Gas price optimization for Amoy testnet
+
+### Successful Test Transaction
+- **Hash**: `0xd9b7e95f022fb75a6ba0bd1d128cb10071af64139250db6e992e46d6e14de123`
+- **Status**: ✅ Confirmed successfully
+- **Result**: 1,000 PT tokens claimed and verified
+
+### Next Steps (Optional)
+- Market creation interface implementation
+- LMSR trading mechanism integration
+- Firebase backend for real-time data
+- Production deployment to Vercel

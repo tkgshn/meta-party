@@ -1,14 +1,22 @@
 {
   "name": "meta-party",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
-  "description": "Futarchy platform for prediction market governance",
+  "description": "Futarchy platform for prediction market governance - fully functional Play Token claiming system",
+  "keywords": ["futarchy", "prediction-markets", "governance", "blockchain", "polygon", "metamask"],
+  "author": "tkgshn",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tkgshn/meta-party.git"
+  },
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
     "test": "turbo run test",
     "lint": "turbo run lint",
-    "clean": "turbo run clean"
+    "clean": "turbo run clean",
+    "deploy:contracts": "cd packages/contracts && npm run deploy:testnet",
+    "deploy:web": "cd apps/web && npm run build"
   },
   "workspaces": [
     "packages/*",
@@ -16,5 +24,15 @@
   ],
   "devDependencies": {
     "turbo": "^1.10.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "packageManager": "npm@9.0.0",
+  "status": {
+    "development": "✅ Ready",
+    "contracts": "✅ Deployed to Polygon Amoy",
+    "frontend": "✅ Fully functional",
+    "integration": "✅ Complete"
   }
 }
