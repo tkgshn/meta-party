@@ -46,6 +46,8 @@ function DashboardPage() {
   const [lastTxHash, setLastTxHash] = useState<string | null>(null);
   const [txStatus, setTxStatus] = useState<'pending' | 'success' | 'failed' | null>(null);
   const [isLoadingData, setIsLoadingData] = useState(false);
+  const [lastTransactionAttempt, setLastTransactionAttempt] = useState<number>(0);
+  const [cooldownTime, setCooldownTime] = useState<number>(0);
   
   // Fix hydration by ensuring component is mounted on client
   useEffect(() => {
@@ -152,6 +154,21 @@ function DashboardPage() {
       };
     }
   }, [account, chainId, mounted]);
+
+  // Update cooldown timer
+  useEffect(() => {
+    if (lastTransactionAttempt > 0) {
+      const interval = setInterval(() => {
+        const remaining = Math.max(0, 5000 - (Date.now() - lastTransactionAttempt));
+        setCooldownTime(remaining);
+        if (remaining <= 0) {
+          clearInterval(interval);
+        }
+      }, 100);
+
+      return () => clearInterval(interval);
+    }
+  }, [lastTransactionAttempt]);
 
   // Generate function selector from signature
   const getFunctionSelector = (signature: string): string => {
@@ -368,7 +385,7 @@ function DashboardPage() {
     }
   };
 
-  // Claim Play Tokens with improved reliability
+  // Claim Play Tokens with duplicate prevention
   const claimPlayTokens = async () => {
     if (!account || chainId !== 80002) {
       alert('Please connect to Polygon Amoy network');
@@ -380,78 +397,90 @@ function DashboardPage() {
       return;
     }
     
+    // Prevent rapid clicking (5 second cooldown)
+    const now = Date.now();
+    if (now - lastTransactionAttempt < 5000) {
+      alert('Please wait 5 seconds between transaction attempts.');
+      return;
+    }
+    setLastTransactionAttempt(now);
+    
     setIsLoading(true);
     setTxStatus(null);
     
     try {
-      // Get current nonce
+      console.log('Starting claim transaction...');
+      
+      // Get fresh nonce to avoid conflicts
       const nonce = await window.ethereum.request({
         method: 'eth_getTransactionCount',
-        params: [account, 'pending'],
+        params: [account, 'latest'], // Use 'latest' to avoid pending conflicts
       });
       
-      // Get current gas price and add 50% buffer for Amoy testnet
+      // Get current gas price and add buffer
       const gasPrice = await window.ethereum.request({
         method: 'eth_gasPrice',
       });
-      const bufferedGasPrice = '0x' + Math.floor(parseInt(gasPrice, 16) * 1.5).toString(16);
+      const bufferedGasPrice = '0x' + Math.floor(parseInt(gasPrice, 16) * 2).toString(16); // Increased to 2x
       
-      console.log('Sending transaction with:', {
-        nonce,
-        gasPrice: bufferedGasPrice,
+      console.log('Transaction parameters:', {
+        nonce: parseInt(nonce, 16),
+        gasPrice: parseInt(bufferedGasPrice, 16).toLocaleString(),
         from: account,
         to: process.env.NEXT_PUBLIC_PLAY_TOKEN_ADDRESS
       });
       
-      // Send transaction with explicit nonce and higher gas price
+      // Send transaction with explicit parameters to prevent duplicates
       const txHash = await window.ethereum.request({
         method: 'eth_sendTransaction',
         params: [{
           from: account,
           to: process.env.NEXT_PUBLIC_PLAY_TOKEN_ADDRESS,
           data: '0x4e71d92d', // claim() function signature
-          gas: '0x1adb0', // 110000 gas limit (increased)
+          gas: '0x1adb0', // 110000 gas limit
           gasPrice: bufferedGasPrice,
           nonce: nonce,
         }],
       });
       
-      console.log('Transaction sent:', txHash);
+      console.log('Transaction submitted successfully:', txHash);
       setLastTxHash(txHash);
+      setHasClaimed(true); // Optimistically set to true
       
-      // Wait a few seconds then check if transaction exists on blockchain
-      setTimeout(async () => {
-        const exists = await checkTransactionExists(txHash);
-        if (!exists) {
-          console.warn('Transaction not found on blockchain, may have been dropped');
-          alert('Transaction may have been dropped. Please try again with a higher gas price.');
-          setTxStatus('failed');
-          return;
-        }
-        
-        console.log('Transaction confirmed to exist on blockchain');
-        setHasClaimed(true);
-        
-        // Wait for transaction confirmation
-        waitForTransaction(txHash);
-      }, 5000);
+      // Start monitoring transaction
+      waitForTransaction(txHash);
       
     } catch (error: any) {
-      console.error('Error claiming tokens:', error);
-      setTxStatus('failed');
+      // Improved error logging
+      console.error('Claim transaction error:', {
+        code: error.code,
+        message: error.message,
+        data: error.data
+      });
       
+      setTxStatus('failed');
+      setHasClaimed(false); // Reset on error
+      
+      // Handle specific error cases
       if (error.code === -4001) {
-        alert('Transaction rejected by user.');
-      } else if (error.code === -32603) {
-        alert('Transaction failed. You may have already claimed your tokens.');
+        alert('トランザクションがユーザーによって拒否されました。');
       } else if (error.code === -32000) {
-        if (error.message.includes('already known')) {
-          alert('Transaction already submitted. Please wait for confirmation.');
+        if (error.message && error.message.includes('already known')) {
+          alert('同じトランザクションが既に送信されています。少し待ってから確認してください。');
+          // Don't reset hasClaimed in this case
+          setHasClaimed(true);
+        } else if (error.message && error.message.includes('insufficient funds')) {
+          alert('ガス代が不足しています。POLトークンを取得してください。');
+        } else if (error.message && error.message.includes('nonce')) {
+          alert('ノンスエラーが発生しました。しばらく待ってから再試行してください。');
         } else {
-          alert('Transaction rejected. Please try again with a higher gas price.');
+          alert('トランザクションが拒否されました。ガス価格を上げて再試行してください。');
         }
+      } else if (error.code === -32603) {
+        alert('トランザクションが失敗しました。既にトークンを受け取っている可能性があります。');
       } else {
-        alert('Failed to claim tokens: ' + (error.message || 'Unknown error'));
+        const errorMsg = error.message || error.toString() || 'Unknown error';
+        alert(`トークンの取得に失敗しました: ${errorMsg}`);
       }
     } finally {
       setIsLoading(false);
@@ -651,7 +680,7 @@ function DashboardPage() {
             ) : (
               <button
                 onClick={claimPlayTokens}
-                disabled={isLoading}
+                disabled={isLoading || cooldownTime > 0}
                 className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-2 px-4 rounded-lg transition-colors"
               >
                 {isLoading ? (
@@ -662,6 +691,8 @@ function DashboardPage() {
                     </svg>
                     送信中...
                   </span>
+                ) : cooldownTime > 0 ? (
+                  `待機中... (${Math.ceil(cooldownTime / 1000)}秒)`
                 ) : (
                   '1,000 PT を受け取る'
                 )}
