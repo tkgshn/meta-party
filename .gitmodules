@@ -1,0 +1,3 @@
+[submodule "ref/futarchy"]
+	path = ref/futarchy
+	url = https://github.com/tkgshn/futarchy
