@@ -10,6 +10,11 @@ META PARTYは「Futarchy（フューターキー）」という予測市場ベ�
 
 つまり、「みんなの予測を使って、より良い意思決定をする仕組み」を作るプロジェクトです。
 
+## 🌐 **本番サイト** ✅ **公開中**
+**本番URL**: https://web-nqr7kd4vi-taka-shunsuke-takagis-projects.vercel.app
+
+誰でもアクセス可能！ MetaMaskで即座にPlay Tokenを取得できます。
+
 ## 🏗️ プロジェクトの構成
 
 ```
