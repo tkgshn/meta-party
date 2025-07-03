@@ -1,0 +1,53 @@
+# Build outputs
+dist/
+build/
+.next/
+out/
+lib/
+
+# Dependencies
+node_modules/
+
+# Generated files
+coverage/
+.turbo/
+*.tsbuildinfo
+
+# Cache directories
+.cache/
+.parcel-cache/
+
+# Hardhat artifacts
+artifacts/
+cache/
+typechain-types/
+
+# Firebase
+.firebase/
+
+# Environment files
+.env*
+
+# Lock files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Logs
+*.log
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+
+# Specific files to ignore
+CHANGELOG.md
+LICENSE

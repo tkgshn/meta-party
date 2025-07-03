@@ -1,0 +1,20 @@
+{
+  "name": "meta-party",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Futarchy platform for prediction market governance",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "clean": "turbo run clean"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "devDependencies": {
+    "turbo": "^1.10.0"
+  }
+}
