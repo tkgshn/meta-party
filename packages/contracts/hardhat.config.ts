@@ -3,6 +3,9 @@ import "@nomicfoundation/hardhat-toolbox";
 import "@typechain/hardhat";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
+import * as dotenv from "dotenv";
+
+dotenv.config();
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -31,9 +34,10 @@ const config: HardhatUserConfig = {
     hardhat: {
       chainId: 1337
     },
-    "polygon-mumbai": {
-      url: process.env.POLYGON_MUMBAI_URL || "",
-      accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : []
+    "polygon-amoy": {
+      url: process.env.POLYGON_AMOY_URL || "",
+      accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+      chainId: 80002
     },
     polygon: {
       url: process.env.POLYGON_URL || "",

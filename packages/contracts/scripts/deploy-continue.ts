@@ -1,8 +1,7 @@
 import { ethers } from "hardhat";
-import { Contract } from "ethers";
 
 async function main() {
-  console.log("Starting deployment...");
+  console.log("Continuing deployment...");
   
   // Get the deployer account
   const [deployer] = await ethers.getSigners();
@@ -12,30 +11,29 @@ async function main() {
   const balance = await ethers.provider.getBalance(deployer.address);
   console.log("Account balance:", ethers.formatEther(balance), "ETH");
   
-  // Deploy ConditionalTokens (using Gnosis implementation or mock)
-  console.log("\nDeploying ConditionalTokens...");
-  const ConditionalTokens = await ethers.getContractFactory("ConditionalTokens");
-  const conditionalTokens = await ConditionalTokens.deploy();
-  await conditionalTokens.waitForDeployment();
-  console.log("ConditionalTokens deployed to:", await conditionalTokens.getAddress());
+  // Use already deployed ConditionalTokens
+  const conditionalTokensAddress = "0x0416a4757062c1e61759ADDb6d68Af145919F045";
+  console.log("Using existing ConditionalTokens:", conditionalTokensAddress);
   
   // Deploy PlayToken
   console.log("\nDeploying PlayToken...");
   const PlayToken = await ethers.getContractFactory("PlayToken");
   const playToken = await PlayToken.deploy();
   await playToken.waitForDeployment();
-  console.log("PlayToken deployed to:", await playToken.getAddress());
+  const playTokenAddress = await playToken.getAddress();
+  console.log("PlayToken deployed to:", playTokenAddress);
   
   // Deploy MarketFactory
   console.log("\nDeploying MarketFactory...");
   const MarketFactory = await ethers.getContractFactory("MarketFactory");
   const marketFactory = await MarketFactory.deploy(
-    await playToken.getAddress(),
+    playTokenAddress,
     deployer.address, // Oracle address (using deployer for testing)
-    await conditionalTokens.getAddress()
+    conditionalTokensAddress
   );
   await marketFactory.waitForDeployment();
-  console.log("MarketFactory deployed to:", await marketFactory.getAddress());
+  const marketFactoryAddress = await marketFactory.getAddress();
+  console.log("MarketFactory deployed to:", marketFactoryAddress);
   
   // Verify deployment
   console.log("\nVerifying deployment...");
@@ -90,9 +88,9 @@ async function main() {
   console.log("\n=== DEPLOYMENT SUMMARY ===");
   console.log("Network:", (await ethers.provider.getNetwork()).name);
   console.log("Deployer:", deployer.address);
-  console.log("PlayToken:", await playToken.getAddress());
-  console.log("ConditionalTokens:", await conditionalTokens.getAddress());
-  console.log("MarketFactory:", await marketFactory.getAddress());
+  console.log("PlayToken:", playTokenAddress);
+  console.log("ConditionalTokens:", conditionalTokensAddress);
+  console.log("MarketFactory:", marketFactoryAddress);
   console.log("Test Market:", marketAddress);
   console.log("==========================");
   
@@ -100,9 +98,9 @@ async function main() {
   const addresses = {
     network: (await ethers.provider.getNetwork()).name,
     deployer: deployer.address,
-    playToken: await playToken.getAddress(),
-    conditionalTokens: await conditionalTokens.getAddress(),
-    marketFactory: await marketFactory.getAddress(),
+    playToken: playTokenAddress,
+    conditionalTokens: conditionalTokensAddress,
+    marketFactory: marketFactoryAddress,
     testMarket: marketAddress
   };
   

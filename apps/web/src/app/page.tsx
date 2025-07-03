@@ -1,10 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { useAccount } from 'wagmi';
-import MarketCard from '@/components/MarketCard';
-import CategoryTab from '@/components/CategoryTab';
+import { useState, useEffect } from 'react';
 
 // Mock data for development
 const mockMarkets = [
@@ -48,8 +44,36 @@ const categories = [
 ];
 
 export default function HomePage() {
-  const { address, isConnected } = useAccount();
+  const [account, setAccount] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState('all');
+
+  // Simple MetaMask connection
+  const connectWallet = async () => {
+    if (typeof window !== 'undefined' && window.ethereum) {
+      try {
+        const accounts = await window.ethereum.request({
+          method: 'eth_requestAccounts',
+        });
+        setAccount(accounts[0]);
+      } catch (error) {
+        console.error('Failed to connect wallet:', error);
+      }
+    } else {
+      alert('MetaMask not found. Please install MetaMask.');
+    }
+  };
+
+  // Check if already connected
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.ethereum) {
+      window.ethereum.request({ method: 'eth_accounts' })
+        .then((accounts: string[]) => {
+          if (accounts.length > 0) {
+            setAccount(accounts[0]);
+          }
+        });
+    }
+  }, []);
 
   const filteredMarkets = selectedCategory === 'all' 
     ? mockMarkets 
@@ -72,11 +96,30 @@ export default function HomePage() {
             社会課題の解決策に投資して、より良い未来を予測しましょう
           </p>
         </div>
-        <ConnectButton />
+        {account ? (
+          <div className="flex items-center space-x-4">
+            <span className="text-sm text-gray-600">
+              {account.slice(0, 6)}...{account.slice(-4)}
+            </span>
+            <button
+              onClick={() => setAccount(null)}
+              className="px-4 py-2 text-sm bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+            >
+              Disconnect
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={connectWallet}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Connect Wallet
+          </button>
+        )}
       </div>
 
       {/* Welcome Message for New Users */}
-      {isConnected && (
+      {account && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <div className="flex items-center">
             <div className="flex-shrink-0">
@@ -104,17 +147,67 @@ export default function HomePage() {
 
       {/* Category Tabs */}
       <div className="border-b border-gray-200">
-        <CategoryTab 
-          categories={categories}
-          selectedCategory={selectedCategory}
-          onCategoryChange={setSelectedCategory}
-        />
+        <nav className="flex space-x-8">
+          {categories.map((category) => (
+            <button
+              key={category.id}
+              onClick={() => setSelectedCategory(category.id)}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                selectedCategory === category.id
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              {category.name}
+              <span className="ml-2 py-0.5 px-2 text-xs rounded-full bg-gray-100 text-gray-900">
+                {category.count}
+              </span>
+            </button>
+          ))}
+        </nav>
       </div>
 
       {/* Market Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredMarkets.map((market) => (
-          <MarketCard key={market.id} market={market} />
+          <div key={market.id} className="bg-white rounded-lg shadow hover:shadow-md transition-shadow">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                  market.status === 'TRADING' 
+                    ? 'bg-green-100 text-green-800' 
+                    : 'bg-gray-100 text-gray-800'
+                }`}>
+                  {market.status === 'TRADING' ? '取引中' : '終了'}
+                </span>
+                <span className="text-sm text-gray-500">
+                  {market.deadline.toLocaleDateString('ja-JP')}
+                </span>
+              </div>
+              
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                {market.title}
+              </h3>
+              
+              <p className="text-sm text-gray-600 mb-4">
+                {market.kpiDescription}
+              </p>
+              
+              <div className="flex items-center justify-between text-sm text-gray-500">
+                <span>出来高: {market.totalVolume}</span>
+                <span>提案数: {market.numProposals}</span>
+              </div>
+              
+              <div className="mt-4 flex items-center justify-between">
+                <span className="text-lg font-semibold text-blue-600">
+                  {(market.topPrice * 100).toFixed(0)}%
+                </span>
+                <button className="px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">
+                  詳細を見る
+                </button>
+              </div>
+            </div>
+          </div>
         ))}
       </div>
 
@@ -130,7 +223,7 @@ export default function HomePage() {
       )}
 
       {/* Getting Started Section */}
-      {!isConnected && (
+      {!account && (
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-lg font-medium text-gray-900 mb-4">
             Futarchy プラットフォームへようこそ
