@@ -127,7 +127,7 @@ describe("PlayToken", function () {
       }
       
       // Assert: Total supply should be 10 * AIRDROP_AMOUNT
-      const expectedTotalSupply = AIRDROP_AMOUNT.mul(10);
+      const expectedTotalSupply = AIRDROP_AMOUNT * 10n;
       expect(await playToken.totalSupply()).to.equal(expectedTotalSupply);
       
       // Assert: All users should have claimed status
@@ -159,7 +159,7 @@ describe("PlayToken", function () {
       
       // Act & Assert
       await expect(playToken.connect(user1).adminMint(user1Address, mintAmount))
-        .to.be.revertedWith("Ownable: caller is not the owner");
+        .to.be.revertedWithCustomError(playToken, "OwnableUnauthorizedAccount");
     });
 
     it("ミント時にAdminMintイベントが正しいパラメータで発行される", async function () {
@@ -243,7 +243,7 @@ describe("PlayToken", function () {
       
       // Act & Assert
       await expect(playToken.connect(user1).transfer(user2Address, excessiveAmount))
-        .to.be.revertedWith("ERC20: transfer amount exceeds balance");
+        .to.be.revertedWithCustomError(playToken, "ERC20InsufficientBalance");
     });
 
     it("承認機能が正常に動作する", async function () {
@@ -280,7 +280,7 @@ describe("PlayToken", function () {
       
       // Act & Assert
       await expect(playToken.connect(user2).transferFrom(user1Address, user2Address, excessiveAmount))
-        .to.be.revertedWith("ERC20: insufficient allowance");
+        .to.be.revertedWithCustomError(playToken, "ERC20InsufficientAllowance");
     });
 
     it("ゼロアドレスへの転送は失敗する", async function () {
@@ -289,7 +289,7 @@ describe("PlayToken", function () {
       
       // Act & Assert
       await expect(playToken.connect(user1).transfer(ZERO_ADDRESS, transferAmount))
-        .to.be.revertedWith("ERC20: transfer to the zero address");
+        .to.be.revertedWithCustomError(playToken, "ERC20InvalidReceiver");
     });
   });
 
