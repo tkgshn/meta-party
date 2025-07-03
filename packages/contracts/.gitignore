@@ -1,0 +1,56 @@
+# Hardhat files
+cache/
+artifacts/
+typechain-types/
+
+# Hardhat Ignition default folder for deployments against a local node
+ignition/deployments/chain-31337
+
+# Coverage reports
+coverage*
+
+# Typescript
+*.tsbuildinfo
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Deployed addresses
+deployed-addresses.json
+
+# Gas reporter
+gas-report.txt
+
+# Hardhat Network Fork Cache
+cache_hardhat_*
+
+# Foundry
+out/
+cache_forge/
+
+# Dependencies
+node_modules/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs
+dist/
+build/
+lib/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
