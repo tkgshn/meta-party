@@ -92,8 +92,8 @@ export default function HomePage() {
         searchQuery={searchQuery}
         showSearch={true}
       />
-      <div className="space-y-8">
-      {/* Header Section
+      <div className="space-y-8 mt-8">
+        {/* Header Section
       // <div className="flex justify-between items-center">
       //   <div>
       //     <h1 className="text-3xl font-bold text-gray-900">
@@ -105,113 +105,110 @@ export default function HomePage() {
       //   </div>
       // </div> */}
 
-      {/* Search and Filters */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-          {/* Search */}
-          <div className="flex-1 max-w-lg">
-            <div className="relative">
-              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="市場を検索..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-          </div>
-
-          {/* Sort and View Controls */}
-          <div className="flex items-center space-x-4">
-            {/* Sort Dropdown */}
-            <div className="relative">
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="trending">トレンド順</option>
-                <option value="newest">新着順</option>
-                <option value="volume">取引量順</option>
-                <option value="ending">終了間近順</option>
-              </select>
-              <ChevronDownIcon className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+        {/* Search and Filters */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+            {/* Search */}
+            <div className="flex-1 max-w-lg">
+              <div className="relative">
+                <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="市場を検索..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
             </div>
 
-            {/* Filter Toggle */}
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className={`inline-flex items-center px-3 py-2 border rounded-lg text-sm font-medium ${
-                showFilters
-                  ? 'border-blue-500 text-blue-600 bg-blue-50'
-                  : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
-              }`}
-            >
-              <FunnelIcon className="w-4 h-4 mr-2" />
-              フィルター
-            </button>
-          </div>
-        </div>
-
-        {/* Expanded Filters */}
-        {showFilters && (
-          <div className="mt-4 pt-4 border-t border-gray-200">
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-              {categories.map((category) => (
-                <button
-                  key={category.id}
-                  onClick={() => setSelectedCategory(category.id)}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    selectedCategory === category.id
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
+            {/* Sort and View Controls */}
+            <div className="flex items-center space-x-4">
+              {/* Sort Dropdown */}
+              <div className="relative">
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as any)}
+                  className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
-                  {category.name}
-                  <span className="ml-2 text-xs opacity-75">
-                    {category.count}
-                  </span>
-                </button>
-              ))}
+                  <option value="trending">トレンド順</option>
+                  <option value="newest">新着順</option>
+                  <option value="volume">取引量順</option>
+                  <option value="ending">終了間近順</option>
+                </select>
+                <ChevronDownIcon className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              </div>
+
+              {/* Filter Toggle */}
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className={`inline-flex items-center px-3 py-2 border rounded-lg text-sm font-medium ${showFilters
+                    ? 'border-blue-500 text-blue-600 bg-blue-50'
+                    : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
+                  }`}
+              >
+                <FunnelIcon className="w-4 h-4 mr-2" />
+                フィルター
+              </button>
             </div>
           </div>
-        )}
-      </div>
 
-
-      {/* Results Summary */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <h2 className="text-lg font-medium text-gray-900">
-            {selectedCategory === 'all' ? 'すべての市場' : categories.find(c => c.id === selectedCategory)?.name}
-          </h2>
-          <span className="text-sm text-gray-500">
-            {filteredAndSortedMarkets.length}件の市場
-          </span>
+          {/* Expanded Filters */}
+          {showFilters && (
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                {categories.map((category) => (
+                  <button
+                    key={category.id}
+                    onClick={() => setSelectedCategory(category.id)}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${selectedCategory === category.id
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                  >
+                    {category.name}
+                    <span className="ml-2 text-xs opacity-75">
+                      {category.count}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
-        {searchQuery && (
-          <button
-            onClick={() => setSearchQuery('')}
-            className="text-sm text-gray-500 hover:text-gray-700"
-          >
-            検索をクリア
-          </button>
-        )}
-      </div>
 
-      {/* Market Grid */}
-      <div className={`grid gap-6 ${
-        viewMode === 'grid'
-          ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
-          : 'grid-cols-1'
-      }`}>
-        {filteredAndSortedMarkets.map((market) => (
-          <Link key={market.id} href={`/market/${market.id}`}>
-            <div className="bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border border-gray-200">
-              <div className="p-6">
-                {/* <div className="flex items-start justify-between mb-4">
+        {/* Results Summary */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <h2 className="text-lg font-medium text-gray-900">
+              {selectedCategory === 'all' ? 'すべての市場' : categories.find(c => c.id === selectedCategory)?.name}
+            </h2>
+            <span className="text-sm text-gray-500">
+              {filteredAndSortedMarkets.length}件の市場
+            </span>
+          </div>
+
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="text-sm text-gray-500 hover:text-gray-700"
+            >
+              検索をクリア
+            </button>
+          )}
+        </div>
+
+        {/* Market Grid */}
+        <div className={`grid gap-6 ${viewMode === 'grid'
+            ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
+            : 'grid-cols-1'
+          }`}>
+          {filteredAndSortedMarkets.map((market) => (
+            <Link key={market.id} href={`/market/${market.id}`}>
+              <div className="bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border border-gray-200">
+                <div className="p-6">
+                  {/* <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center space-x-2">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                       market.status === 'TRADING'
@@ -243,74 +240,74 @@ export default function HomePage() {
                     </div>
                   </div>
                 </div> */}
-                {/* Stats */}
-                <div className="flex items-center justify-end text-sm text-gray-500 mb-4">
-                  <ClockIcon className="w-4 h-4 mr-1" />
-                  <span>{format(market.deadline, 'MM/dd', { locale: ja })} 終了</span>
-                </div>
+                  {/* Stats */}
+                  <div className="flex items-center justify-end text-sm text-gray-500 mb-4">
+                    <ClockIcon className="w-4 h-4 mr-1" />
+                    <span>{format(market.deadline, 'MM/dd', { locale: ja })} 終了</span>
+                  </div>
 
-                <h3 className="text-lg font-medium text-gray-900 mb-2 line-clamp-2">
-                  {market.title}
-                </h3>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2 line-clamp-2">
+                    {market.title}
+                  </h3>
 
-                <p className="text-sm text-gray-600 mb-3 line-clamp-3">
-                  {market.kpiDescription}
-                </p>
+                  <p className="text-sm text-gray-600 mb-3 line-clamp-3">
+                    {market.kpiDescription}
+                  </p>
 
-{/* Proposals Preview or YES/NO */}
-                {market.proposals && market.proposals.length > 0 ? (
-                  <div className="mb-4">
-                    <div className="max-h-48 overflow-y-auto space-y-2 pr-2">
-                      {market.proposals.map((proposal, index) => {
-                        const colors = [
-                          { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700', price: 'text-blue-600' },
-                          { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700', price: 'text-green-600' },
-                          { bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700', price: 'text-purple-600' },
-                          { bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700', price: 'text-orange-600' },
-                          { bg: 'bg-pink-50', border: 'border-pink-200', text: 'text-pink-700', price: 'text-pink-600' }
-                        ];
-                        const color = colors[index % 5];
+                  {/* Proposals Preview or YES/NO */}
+                  {market.proposals && market.proposals.length > 0 ? (
+                    <div className="mb-4">
+                      <div className="max-h-48 overflow-y-auto space-y-2 pr-2">
+                        {market.proposals.map((proposal, index) => {
+                          const colors = [
+                            { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700', price: 'text-blue-600' },
+                            { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700', price: 'text-green-600' },
+                            { bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700', price: 'text-purple-600' },
+                            { bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700', price: 'text-orange-600' },
+                            { bg: 'bg-pink-50', border: 'border-pink-200', text: 'text-pink-700', price: 'text-pink-600' }
+                          ];
+                          const color = colors[index % 5];
 
-                        return (
-                          <div key={proposal.id} className={`${color.bg} rounded-lg p-3 border ${color.border}`}>
-                            <div className="flex items-center justify-between">
-                              <div className="flex-1">
-                                <h4 className={`font-medium text-sm ${color.text}`}>
-                                  {proposal.name}
-                                </h4>
-                              </div>
-                              <div className="text-right ml-3 flex-shrink-0">
-                                <div className={`text-lg font-bold ${color.price}`}>
-                                  {(proposal.price * 100).toFixed(0)}%
+                          return (
+                            <div key={proposal.id} className={`${color.bg} rounded-lg p-3 border ${color.border}`}>
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1">
+                                  <h4 className={`font-medium text-sm ${color.text}`}>
+                                    {proposal.name}
+                                  </h4>
+                                </div>
+                                <div className="text-right ml-3 flex-shrink-0">
+                                  <div className={`text-lg font-bold ${color.price}`}>
+                                    {(proposal.price * 100).toFixed(0)}%
+                                  </div>
                                 </div>
                               </div>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                ) : (
-                  /* Price Chart Preview for simple markets */
-                  <div className="h-16 mb-4 bg-gray-50 rounded-lg p-2">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={market.priceHistory}>
-                        <XAxis dataKey="time" hide />
-                        <YAxis domain={[0, 1]} hide />
-                        <Line
-                          type="monotone"
-                          dataKey="price"
-                          stroke={market.change24h >= 0 ? '#10b981' : '#ef4444'}
-                          strokeWidth={2}
-                          dot={false}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
+                  ) : (
+                    /* Price Chart Preview for simple markets */
+                    <div className="h-16 mb-4 bg-gray-50 rounded-lg p-2">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={market.priceHistory}>
+                          <XAxis dataKey="time" hide />
+                          <YAxis domain={[0, 1]} hide />
+                          <Line
+                            type="monotone"
+                            dataKey="price"
+                            stroke={market.change24h >= 0 ? '#10b981' : '#ef4444'}
+                            strokeWidth={2}
+                            dot={false}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
 
-                {/* Tags */}
-                {/* <div className="flex flex-wrap gap-1 mb-4">
+                  {/* Tags */}
+                  {/* <div className="flex flex-wrap gap-1 mb-4">
                   {market.tags.slice(0, 3).map((tag) => (
                     <span
                       key={tag}
@@ -326,8 +323,8 @@ export default function HomePage() {
                   )}
                 </div> */}
 
-                {/* Stats */}
-                {/* <div className="grid grid-cols-3 gap-4 mb-4 text-center">
+                  {/* Stats */}
+                  {/* <div className="grid grid-cols-3 gap-4 mb-4 text-center">
                   <div>
                     <div className="flex items-center justify-center text-gray-400 mb-1">
                       <BanknotesIcon className="w-4 h-4" />
@@ -357,46 +354,46 @@ export default function HomePage() {
                   </div>
                 </div> */}
 
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-500">
-                    流動性: {market.liquidity.toLocaleString()} PT
-                  </span>
-                  <button className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors">
-                    取引する
-                  </button>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-500">
+                      流動性: {market.liquidity.toLocaleString()} PT
+                    </span>
+                    <button className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors">
+                      取引する
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          </Link>
-        ))}
-      </div>
-
-      {/* Empty State */}
-      {filteredAndSortedMarkets.length === 0 && (
-        <div className="text-center py-12 bg-white rounded-lg shadow-sm border border-gray-200">
-          <MagnifyingGlassIcon className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-4 text-lg font-medium text-gray-900">
-            {searchQuery ? '検索結果が見つかりません' : '市場がありません'}
-          </h3>
-          <p className="mt-2 text-sm text-gray-500">
-            {searchQuery
-              ? `「${searchQuery}」に一致する市場が見つかりませんでした。`
-              : '選択されたカテゴリには市場がありません。'
-            }
-          </p>
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              すべての市場を表示
-            </button>
-          )}
+            </Link>
+          ))}
         </div>
-      )}
 
-      {/* Platform Stats */}
-      {/* <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl p-6 border border-gray-200">
+        {/* Empty State */}
+        {filteredAndSortedMarkets.length === 0 && (
+          <div className="text-center py-12 bg-white rounded-lg shadow-sm border border-gray-200">
+            <MagnifyingGlassIcon className="mx-auto h-12 w-12 text-gray-400" />
+            <h3 className="mt-4 text-lg font-medium text-gray-900">
+              {searchQuery ? '検索結果が見つかりません' : '市場がありません'}
+            </h3>
+            <p className="mt-2 text-sm text-gray-500">
+              {searchQuery
+                ? `「${searchQuery}」に一致する市場が見つかりませんでした。`
+                : '選択されたカテゴリには市場がありません。'
+              }
+            </p>
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                すべての市場を表示
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Platform Stats */}
+        {/* <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl p-6 border border-gray-200">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">プラットフォーム統計</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           <div className="text-center">
@@ -426,8 +423,8 @@ export default function HomePage() {
         </div>
       </div> */}
 
-      {/* Getting Started Section */}
-      {/* <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+        {/* Getting Started Section */}
+        {/* <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
         <div className="text-center mb-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
             Futarchy プラットフォームへようこそ
