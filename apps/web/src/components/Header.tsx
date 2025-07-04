@@ -76,6 +76,14 @@ function AboutModal({ open, onClose, step, setStep, account }: { open: boolean; 
   );
 }
 
+/**
+ * designdoc: ウォレット接続の多重リクエスト防止とユーザー向けエラーハンドリング
+ *
+ * - connectWallet関数は、isConnecting状態で多重リクエストを防止します。
+ * - UIボタンもisConnectingでdisabledとなり、ユーザーの連打を防ぎます。
+ * - それでも非同期的に多重リクエストが発生する場合、関数先頭でガードし、MetaMaskの"Already processing eth_requestAccounts"エラーを回避します。
+ * - エラー発生時は、MetaMaskから返されるエラーメッセージをalertでユーザーに通知し、原因の特定を容易にします。
+ */
 export default function Header({ onSearch, searchQuery = '', showSearch = true }: HeaderProps) {
   const pathname = usePathname();
   const [account, setAccount] = useState<string | null>(null);
@@ -89,8 +97,11 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
   // Use PlayToken hook for real balance
   const { balance: playTokenBalance, refreshBalance } = usePlayToken(account);
 
-  // MetaMask connection logic
+  /**
+   * ウォレット接続処理。多重リクエストを防止し、エラー時はユーザーに分かりやすいメッセージを表示する。
+   */
   const connectWallet = async () => {
+    if (isConnecting) return; // 多重リクエスト防止
     if (typeof window !== 'undefined' && window.ethereum) {
       try {
         setIsConnecting(true);
@@ -120,13 +131,19 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
             });
           }
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Failed to connect wallet:', error);
+        // MetaMaskのエラー内容をユーザーに表示
+        let message = 'ウォレット接続に失敗しました。';
+        if (error && error.message) {
+          message += `\n${error.message}`;
+        }
+        alert(message);
       } finally {
         setIsConnecting(false);
       }
     } else {
-      alert('MetaMask not found. Please install MetaMask.');
+      alert('MetaMaskが見つかりません。MetaMaskをインストールしてください。');
     }
   };
 
@@ -180,11 +197,8 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
           <div className="flex items-center">
             <Link href="/" className="flex items-center">
               <h1 className="text-2xl font-bold text-gray-900">
-                futarchy demo
+                demo
               </h1>
-              {/* <span className="ml-2 text-sm text-gray-500">
-                Futarchy Platform
-              </span> */}
             </Link>
 
             {/* Search Bar */}
@@ -222,17 +236,17 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
               <div className="flex items-center space-x-4">
                 {/* Portfolio Value */}
                 <div className="hidden lg:flex items-center space-x-4 text-sm">
-                  <Link href="/portfolio" className="flex items-center space-x-1">
+                  <Link href="/portfolio" className="flex items-center space-x-1 px-2 py-1 rounded hover:bg-blue-50 transition-colors cursor-pointer group">
                     <ChartBarIcon className="h-4 w-4 text-blue-600" />
-                    <span className="text-gray-600">ポートフォリオ:</span>
-                    <span className="font-semibold text-gray-900">
+                    <span className="text-gray-600 group-hover:text-blue-700">ポートフォリオ:</span>
+                    <span className="font-semibold text-gray-900 group-hover:text-blue-700">
                       {portfolioValue.toLocaleString()} PT
                     </span>
                   </Link>
-                  <Link href="/portfolio" className="flex items-center space-x-1">
+                  <Link href="/portfolio" className="flex items-center space-x-1 px-2 py-1 rounded hover:bg-blue-50 transition-colors cursor-pointer group">
                     <CurrencyDollarIcon className="h-4 w-4 text-green-600" />
-                    <span className="text-gray-600">キャッシュ:</span>
-                    <span className="font-semibold text-gray-900">
+                    <span className="text-gray-600 group-hover:text-blue-700">キャッシュ:</span>
+                    <span className="font-semibold text-gray-900 group-hover:text-blue-700">
                       {Number(playTokenBalance).toLocaleString()} PT
                     </span>
                   </Link>
@@ -277,7 +291,7 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                           </div>
                         </div>
 
-                        <div className="px-4 py-2 text-sm text-gray-700 bg-gray-50">
+                        {/* <div className="px-4 py-2 text-sm text-gray-700 bg-gray-50">
                           <Link href="/portfolio" className="flex justify-between">
                             <span>ポートフォリオ:</span>
                             <span className="font-semibold">{portfolioValue.toLocaleString()} PT</span>
@@ -286,7 +300,18 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                             <span>キャッシュ:</span>
                             <span className="font-semibold">{Number(playTokenBalance).toLocaleString()} PT</span>
                           </Link>
-                        </div>
+                        </div> */}
+
+                        <Link
+                          href={`/${account}`}
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                          onClick={() => setShowUserMenu(false)}
+                        >
+                          <div className="flex items-center">
+                            <UserIcon className="h-4 w-4 mr-2" />
+                            マイページ
+                          </div>
+                        </Link>
 
                         <Link
                           href="/portfolio"
@@ -299,16 +324,7 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                           </div>
                         </Link>
 
-                        <Link
-                          href={`/${account}`}
-                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                          onClick={() => setShowUserMenu(false)}
-                        >
-                          <div className="flex items-center">
-                            <UserIcon className="h-4 w-4 mr-2" />
-                            マイページ
-                          </div>
-                        </Link>
+
 
                         <button
                           className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"

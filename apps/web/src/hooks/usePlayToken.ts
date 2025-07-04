@@ -44,13 +44,15 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
   const [lastClaimTxHash, setLastClaimTxHash] = useState<string | null>(null);
   const [claimHistory, setClaimHistory] = useState<string[]>([]);
 
-  // Get PT balance using batch request for faster performance
+  /**
+   * PlayToken残高を取得し、状態を更新する。失敗時はユーザーにエラー内容をalertで通知する。
+   */
   const refreshBalance = useCallback(async () => {
     if (!account || !PLAY_TOKEN_ADDRESS || !window.ethereum) {
       if (DEBUG_MODE) {
-        console.log('Missing dependencies for balance check:', { 
-          account: !!account, 
-          token: !!PLAY_TOKEN_ADDRESS, 
+        console.log('Missing dependencies for balance check:', {
+          account: !!account,
+          token: !!PLAY_TOKEN_ADDRESS,
           ethereum: !!window.ethereum,
           tokenAddress: PLAY_TOKEN_ADDRESS,
           accountAddress: account
@@ -73,7 +75,7 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
       }
 
       const paddedAddress = account.slice(2).padStart(64, '0');
-      
+
       // Batch request for both balance and claim status
       const [balanceResult, claimResult] = await Promise.all([
         window.ethereum.request({
@@ -102,25 +104,25 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
       if (balanceResult && balanceResult !== '0x' && balanceResult !== '0x0') {
         const balanceWei = BigInt(balanceResult as string);
         const balanceInPT = Number(balanceWei) / Math.pow(10, 18);
-        
+
         setBalanceWei(balanceWei);
         setBalance(balanceInPT.toFixed(0));
-        
-        DEBUG_MODE && console.log('Balance updated:', { 
-          wei: balanceWei.toString(), 
-          pt: balanceInPT.toFixed(0) 
+
+        DEBUG_MODE && console.log('Balance updated:', {
+          wei: balanceWei.toString(),
+          pt: balanceInPT.toFixed(0)
         });
       } else {
         setBalanceWei(BigInt(0));
         setBalance('0');
       }
-      
+
       // Process claim status if available
       if (claimResult === '0x0000000000000000000000000000000000000000000000000000000000000001') {
         setHasClaimed(true);
         DEBUG_MODE && console.log('Claim status updated: true');
       }
-      
+
     } catch (error) {
       console.error('Failed to get balance. Raw error:', error);
       const err = error as { code?: number; message?: string };
@@ -133,9 +135,9 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
   // Check if user has claimed tokens - optimized version
   const refreshClaimStatus = useCallback(async () => {
     if (!account || !PLAY_TOKEN_ADDRESS || !window.ethereum) {
-      DEBUG_MODE && console.log('Missing dependencies for claim status check:', { 
-        account: !!account, 
-        token: !!PLAY_TOKEN_ADDRESS, 
+      DEBUG_MODE && console.log('Missing dependencies for claim status check:', {
+        account: !!account,
+        token: !!PLAY_TOKEN_ADDRESS,
         ethereum: !!window.ethereum,
         tokenAddress: PLAY_TOKEN_ADDRESS,
         accountAddress: account
@@ -158,7 +160,7 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
         claimed = true;
         DEBUG_MODE && console.log('Claim status inferred from balance:', balanceWei.toString());
       }
-      
+
       // Verify with contract call only if needed
       if (!claimed) {
         try {
@@ -172,7 +174,7 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
               'latest'
             ],
           });
-          
+
           if (result === '0x0000000000000000000000000000000000000000000000000000000000000001') {
             claimed = true;
             DEBUG_MODE && console.log('Claim status confirmed via hasClaimed function');
@@ -184,7 +186,7 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
 
       setHasClaimed(claimed);
       DEBUG_MODE && console.log('Final claim status:', claimed);
-      
+
     } catch (error) {
       console.error('Failed to check claim status:', error);
       // Default to false on error, but don't prevent claiming
@@ -197,19 +199,19 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
     try {
       // This is a simplified version - in production you might want to use
       // a more robust method like querying events from a block explorer API
-      
+
       // For now, we'll check the last few blocks for transactions
       // This is not perfect but better than no check
-      
+
       const currentBlock = await window.ethereum?.request({
         method: 'eth_blockNumber',
       });
-      
+
       if (!currentBlock) return [];
-      
+
       const blockNumber = parseInt(currentBlock as string, 16);
       const claimTxs: string[] = [];
-      
+
       // Check last 1000 blocks (approximately last ~30 minutes on Polygon)
       for (let i = 0; i < Math.min(1000, blockNumber); i++) {
         const block = blockNumber - i;
@@ -218,15 +220,15 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
             method: 'eth_getBlockByNumber',
             params: [`0x${block.toString(16)}`, true],
           });
-          
+
           if (blockData && (blockData as { transactions: unknown[] }).transactions) {
-            const transactions = (blockData as { transactions: { 
-              from: string; 
-              to: string; 
-              input: string; 
+            const transactions = (blockData as { transactions: {
+              from: string;
+              to: string;
+              input: string;
               hash: string;
             }[] }).transactions;
-            
+
             for (const tx of transactions) {
               if (
                 tx.from?.toLowerCase() === address.toLowerCase() &&
@@ -241,11 +243,11 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
           // Skip this block if there's an error
           continue;
         }
-        
+
         // Stop if we found claim transactions
         if (claimTxs.length > 0) break;
       }
-      
+
       return claimTxs;
     } catch (error) {
       console.error('Error finding claim transactions:', error);
@@ -256,9 +258,9 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
   // Claim tokens with duplicate prevention
   const claimTokens = useCallback(async (): Promise<{ success: boolean; txHash?: string; error?: string }> => {
     if (!account || !PLAY_TOKEN_ADDRESS || !window.ethereum) {
-      DEBUG_MODE && console.log('Missing dependencies for claim tokens:', { 
-        account: !!account, 
-        token: !!PLAY_TOKEN_ADDRESS, 
+      DEBUG_MODE && console.log('Missing dependencies for claim tokens:', {
+        account: !!account,
+        token: !!PLAY_TOKEN_ADDRESS,
         ethereum: !!window.ethereum,
         tokenAddress: PLAY_TOKEN_ADDRESS,
         accountAddress: account
@@ -268,19 +270,19 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
 
     // Quick balance check to prevent double claims
     if (balanceWei && balanceWei >= AIRDROP_AMOUNT) {
-      return { 
-        success: false, 
-        error: '既にトークンを受け取り済みです。1つのアドレスで受け取れるのは1回のみです。' 
+      return {
+        success: false,
+        error: '既にトークンを受け取り済みです。1つのアドレスで受け取れるのは1回のみです。'
       };
     }
-    
+
     // Double-check claim status before attempting
     await refreshClaimStatus();
-    
+
     if (hasClaimed) {
-      return { 
-        success: false, 
-        error: '既にトークンを受け取り済みです。1つのアドレスで受け取れるのは1回のみです。' 
+      return {
+        success: false,
+        error: '既にトークンを受け取り済みです。1つのアドレスで受け取れるのは1回のみです。'
       };
     }
 
@@ -314,15 +316,15 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
 
       DEBUG_MODE && console.log('Claim transaction submitted:', txHash);
       setLastClaimTxHash(txHash as string);
-      
+
       return { success: true, txHash: txHash as string };
 
     } catch (error) {
       console.error('Claim transaction failed:', error);
       const err = error as { code?: number; message?: string };
-      
+
       let errorMessage = 'トークンの受け取りに失敗しました';
-      
+
       if (err.code === 4001) {
         errorMessage = 'トランザクションがユーザーによって拒否されました';
       } else if (err.code === -32603) {
@@ -332,7 +334,7 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
       } else if (err.message?.includes('already claimed')) {
         errorMessage = '既にトークンを受け取り済みです';
       }
-      
+
       return { success: false, error: errorMessage };
     } finally {
       setIsLoading(false);
@@ -353,7 +355,7 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
         const success = (receipt as { status?: string }).status === '0x1';
         return { confirmed: true, success };
       }
-      
+
       return { confirmed: false, success: false };
     } catch (error) {
       console.error('Failed to check transaction status:', error);
@@ -397,7 +399,7 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
           },
         }],
       });
-      
+
       DEBUG_MODE && console.log('Token add result:', wasAdded);
       return Boolean(wasAdded);
     } catch (error) {
@@ -414,7 +416,7 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
         refreshBalance();
         refreshClaimStatus();
       }, 100);
-      
+
       return () => clearTimeout(timeoutId);
     } else {
       setBalance('0');
@@ -440,7 +442,7 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
     isLoading,
     lastClaimTxHash,
     claimHistory,
-    
+
     // Actions
     refreshBalance,
     refreshClaimStatus,
