@@ -10,7 +10,7 @@ import {
   FunnelIcon,
   ChevronDownIcon,
   FireIcon,
-  TrendingUpIcon,
+  ArrowTrendingUpIcon,
   ClockIcon,
   UserGroupIcon,
   BanknotesIcon,
@@ -269,9 +269,9 @@ export default function HomePage() {
                         market.change24h >= 0 ? 'text-green-600' : 'text-red-600'
                       }`}>
                         {market.change24h >= 0 ? (
-                          <TrendingUpIcon className="w-3 h-3 mr-1" />
+                          <ArrowTrendingUpIcon className="w-3 h-3 mr-1" />
                         ) : (
-                          <TrendingUpIcon className="w-3 h-3 mr-1 rotate-180" />
+                          <ArrowTrendingUpIcon className="w-3 h-3 mr-1 rotate-180" />
                         )}
                         {Math.abs(market.change24h * 100).toFixed(1)}%
                       </div>
@@ -445,9 +445,9 @@ export default function HomePage() {
                       market.change24h >= 0 ? 'text-green-600' : 'text-red-600'
                     }`}>
                       {market.change24h >= 0 ? (
-                        <TrendingUpIcon className="w-3 h-3 mr-1" />
+                        <ArrowTrendingUpIcon className="w-3 h-3 mr-1" />
                       ) : (
-                        <TrendingUpIcon className="w-3 h-3 mr-1 rotate-180" />
+                        <ArrowTrendingUpIcon className="w-3 h-3 mr-1 rotate-180" />
                       )}
                       {Math.abs(market.change24h * 100).toFixed(1)}%
                     </div>
