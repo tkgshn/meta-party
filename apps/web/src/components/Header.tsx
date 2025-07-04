@@ -328,15 +328,6 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
 
 
 
-                        <button
-                          className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                          onClick={() => setShowUserMenu(false)}
-                        >
-                          <div className="flex items-center">
-                            <Cog6ToothIcon className="h-4 w-4 mr-2" />
-                            設定
-                          </div>
-                        </button>
 
                         <div className="border-t border-gray-200 mt-1">
                           <button
