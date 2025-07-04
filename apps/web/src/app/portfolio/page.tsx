@@ -139,7 +139,7 @@ export default function PortfolioPage() {
   if (!isConnected) {
     return (
       <>
-        <Header showSearch={false} />
+        <Header/>
         <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
           <div className="text-center py-12">
             <WalletIcon className="mx-auto h-16 w-16 text-gray-400 mb-4" />
@@ -155,7 +155,7 @@ export default function PortfolioPage() {
 
   return (
     <>
-      <Header showSearch={false} />
+      <Header/>
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
         {/* Page Header */}
         <div className="mb-8">
@@ -234,13 +234,13 @@ export default function PortfolioPage() {
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={mockPerformanceData}>
-                <XAxis 
-                  dataKey="date" 
+                <XAxis
+                  dataKey="date"
                   tick={{ fontSize: 12 }}
                   axisLine={false}
                   tickLine={false}
                 />
-                <YAxis 
+                <YAxis
                   tick={{ fontSize: 12 }}
                   axisLine={false}
                   tickLine={false}
@@ -336,8 +336,8 @@ export default function PortfolioPage() {
                           <div className="flex-1">
                             <div className="flex items-center space-x-2">
                               <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                transaction.type === 'BUY' 
-                                  ? 'bg-green-100 text-green-800' 
+                                transaction.type === 'BUY'
+                                  ? 'bg-green-100 text-green-800'
                                   : 'bg-red-100 text-red-800'
                               }`}>
                                 {transaction.type === 'BUY' ? '購入' : '売却'}

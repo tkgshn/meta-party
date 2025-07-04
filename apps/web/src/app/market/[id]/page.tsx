@@ -309,7 +309,7 @@ export default function MarketDetailPage() {
                   <h2 className="text-lg font-semibold text-gray-900 mb-4">取引</h2>
 
                   {/* Deposit Button */}
-                  <button
+                  {/* <button
                     onClick={() => {
                       console.log('Deposit button clicked!');
                       setIsWalletModalOpen(true);
@@ -318,7 +318,7 @@ export default function MarketDetailPage() {
                   >
                     <WalletIcon className="h-4 w-4 mr-2" />
                     デポジット
-                  </button>
+                  </button> */}
 
                   {/* Trade Type Selection */}
                   <div className="mb-4">
@@ -485,7 +485,7 @@ export default function MarketDetailPage() {
           setIsWalletModalOpen(false);
         }}
       />
-      
+
       {/* Debug info */}
       {process.env.NODE_ENV === 'development' && (
         <div className="fixed bottom-4 right-4 bg-black text-white p-2 rounded text-xs">
