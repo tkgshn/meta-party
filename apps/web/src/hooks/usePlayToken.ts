@@ -22,6 +22,14 @@ const PLAY_TOKEN_ADDRESS = process.env.NEXT_PUBLIC_PLAY_TOKEN_ADDRESS;
 const CLAIM_FUNCTION_SELECTOR = '0x4e71d92d';
 const AIRDROP_AMOUNT = BigInt('1000000000000000000000'); // 1000 * 10^18
 
+// Debug log to check environment variables
+console.log('PlayToken Hook Environment Check:', {
+  PLAY_TOKEN_ADDRESS,
+  hasAddress: !!PLAY_TOKEN_ADDRESS,
+  addressLength: PLAY_TOKEN_ADDRESS?.length,
+  isValidAddress: PLAY_TOKEN_ADDRESS?.startsWith('0x') && PLAY_TOKEN_ADDRESS?.length === 42,
+});
+
 export function usePlayToken(account: string | null): PlayTokenState & PlayTokenActions {
   const [balance, setBalance] = useState<string>('0');
   const [balanceWei, setBalanceWei] = useState<bigint | null>(null);
@@ -32,9 +40,24 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
 
   // Get PT balance
   const refreshBalance = useCallback(async () => {
-    if (!account || !PLAY_TOKEN_ADDRESS || !window.ethereum) return;
+    if (!account || !PLAY_TOKEN_ADDRESS || !window.ethereum) {
+      console.log('Missing dependencies for balance check:', { 
+        account: !!account, 
+        token: !!PLAY_TOKEN_ADDRESS, 
+        ethereum: !!window.ethereum,
+        tokenAddress: PLAY_TOKEN_ADDRESS,
+        accountAddress: account
+      });
+      return;
+    }
 
     try {
+      // Validate account format
+      if (!account.startsWith('0x') || account.length !== 42) {
+        console.error('Invalid account format:', account);
+        return;
+      }
+
       const paddedAddress = account.slice(2).padStart(64, '0');
       const result = await window.ethereum.request({
         method: 'eth_call',
@@ -71,9 +94,24 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
 
   // Check if user has claimed tokens using multiple methods
   const refreshClaimStatus = useCallback(async () => {
-    if (!account || !PLAY_TOKEN_ADDRESS || !window.ethereum) return;
+    if (!account || !PLAY_TOKEN_ADDRESS || !window.ethereum) {
+      console.log('Missing dependencies for claim status check:', { 
+        account: !!account, 
+        token: !!PLAY_TOKEN_ADDRESS, 
+        ethereum: !!window.ethereum,
+        tokenAddress: PLAY_TOKEN_ADDRESS,
+        accountAddress: account
+      });
+      return;
+    }
 
     try {
+      // Validate account format
+      if (!account.startsWith('0x') || account.length !== 42) {
+        console.error('Invalid account format for claim check:', account);
+        return;
+      }
+
       const paddedAddress = account.slice(2).padStart(64, '0');
       let claimed = false;
 
@@ -286,9 +324,28 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
 
   // Add PT token to MetaMask
   const addTokenToMetaMask = useCallback(async (): Promise<boolean> => {
-    if (!window.ethereum) return false;
+    if (!window.ethereum) {
+      console.error('MetaMask not available');
+      return false;
+    }
+
+    if (!PLAY_TOKEN_ADDRESS) {
+      console.error('PLAY_TOKEN_ADDRESS not set');
+      return false;
+    }
+
+    if (!PLAY_TOKEN_ADDRESS.startsWith('0x') || PLAY_TOKEN_ADDRESS.length !== 42) {
+      console.error('Invalid PLAY_TOKEN_ADDRESS format:', PLAY_TOKEN_ADDRESS);
+      return false;
+    }
 
     try {
+      console.log('Adding token to MetaMask:', {
+        address: PLAY_TOKEN_ADDRESS,
+        symbol: 'PT',
+        decimals: 18,
+      });
+
       const wasAdded = await window.ethereum.request({
         method: 'wallet_watchAsset',
         params: [{
@@ -302,6 +359,7 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
         }],
       });
       
+      console.log('Token add result:', wasAdded);
       return Boolean(wasAdded);
     } catch (error) {
       console.error('Failed to add token to MetaMask:', error);

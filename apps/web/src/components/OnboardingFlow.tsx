@@ -176,6 +176,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
   // Execute step action
   const executeStep = async (stepId: string) => {
+    console.log('Executing step:', stepId);
     setIsProcessing(true);
     
     try {
@@ -235,17 +236,29 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           : step
       ));
 
-      // Move to next step if successful
-      if (success && currentStepIndex < steps.length - 1) {
-        setCurrentStepIndex(prev => prev + 1);
-        // Auto-start next step for non-manual steps
-        const nextStep = steps[currentStepIndex + 1];
-        if (nextStep && !['get-pol-tokens', 'claim-tokens'].includes(nextStep.id)) {
-          setTimeout(() => executeStep(nextStep.id), 500);
-        }
-      } else if (success && currentStepIndex === steps.length - 1) {
-        // All steps completed
-        setTimeout(onComplete, 1000);
+      // Move to next step if successful - use functional update to avoid stale closure
+      if (success) {
+        console.log('Step completed successfully:', stepId);
+        setCurrentStepIndex(prev => {
+          const nextIndex = prev + 1;
+          console.log('Moving to next step index:', nextIndex, 'of', steps.length);
+          if (nextIndex < steps.length) {
+            // Auto-start next step for non-manual steps
+            const nextStep = steps[nextIndex];
+            console.log('Next step:', nextStep?.id, 'is manual:', ['get-pol-tokens', 'claim-tokens'].includes(nextStep?.id || ''));
+            if (nextStep && !['get-pol-tokens', 'claim-tokens'].includes(nextStep.id)) {
+              setTimeout(() => executeStep(nextStep.id), 500);
+            }
+            return nextIndex;
+          } else {
+            // All steps completed
+            console.log('All steps completed, calling onComplete');
+            setTimeout(onComplete, 1000);
+            return prev;
+          }
+        });
+      } else {
+        console.log('Step failed:', stepId, 'Error:', errorMessage);
       }
 
     } catch (error) {
@@ -263,6 +276,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   // Auto-start first step
   useEffect(() => {
     if (steps[0].status === 'pending') {
+      console.log('Starting onboarding flow with first step:', steps[0].id);
       executeStep(steps[0].id);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
