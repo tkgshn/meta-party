@@ -16,7 +16,7 @@ import {
   BanknotesIcon,
   SparklesIcon
 } from '@heroicons/react/24/outline';
-import { LineChart, Line, XAxis, YAxis, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import '@/types/ethereum';
 import { miraiMarkets, type Market } from '@/data/miraiMarkets';
 import Header from '@/components/Header';
@@ -289,21 +289,83 @@ export default function HomePage() {
                       </div>
                     </div>
                   ) : (
-                    /* Price Chart Preview for simple markets */
-                    <div className="h-16 mb-4 bg-gray-50 rounded-lg p-2">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={market.priceHistory}>
-                          <XAxis dataKey="time" hide />
-                          <YAxis domain={[0, 1]} hide />
-                          <Line
-                            type="monotone"
-                            dataKey="price"
-                            stroke={market.change24h >= 0 ? '#10b981' : '#ef4444'}
-                            strokeWidth={2}
-                            dot={false}
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
+                    /* YES/NO Pie Chart for binary markets */
+                    <div className="flex items-center justify-between mb-4">
+                      {/* Pie Chart */}
+                      <div className="relative w-20 h-20">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={[
+                                { name: 'YES', value: market.topPrice, color: '#10b981' },
+                                { name: 'NO', value: 1 - market.topPrice, color: '#ef4444' }
+                              ]}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={25}
+                              outerRadius={35}
+                              dataKey="value"
+                              startAngle={90}
+                              endAngle={450}
+                            >
+                              <Cell fill="#10b981" />
+                              <Cell fill="#ef4444" />
+                            </Pie>
+                          </PieChart>
+                        </ResponsiveContainer>
+                        {/* Center label */}
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <span className="text-xs font-bold text-gray-700">
+                            {(market.topPrice * 100).toFixed(0)}%
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* YES/NO Labels */}
+                      <div className="flex-1 ml-4 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                            <span className="text-sm font-medium text-gray-900">YES</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <span className="text-sm font-bold text-green-600">
+                              {(market.topPrice * 100).toFixed(0)}%
+                            </span>
+                            <span className={`text-xs flex items-center ${
+                              market.change24h >= 0 ? 'text-green-600' : 'text-red-600'
+                            }`}>
+                              {market.change24h >= 0 ? (
+                                <ArrowTrendingUpIcon className="w-3 h-3 mr-0.5" />
+                              ) : (
+                                <ArrowTrendingUpIcon className="w-3 h-3 mr-0.5 rotate-180" />
+                              )}
+                              {Math.abs(market.change24h * 100).toFixed(1)}%
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                            <span className="text-sm font-medium text-gray-900">NO</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <span className="text-sm font-bold text-red-600">
+                              {((1 - market.topPrice) * 100).toFixed(0)}%
+                            </span>
+                            <span className={`text-xs flex items-center ${
+                              -market.change24h >= 0 ? 'text-green-600' : 'text-red-600'
+                            }`}>
+                              {-market.change24h >= 0 ? (
+                                <ArrowTrendingUpIcon className="w-3 h-3 mr-0.5" />
+                              ) : (
+                                <ArrowTrendingUpIcon className="w-3 h-3 mr-0.5 rotate-180" />
+                              )}
+                              {Math.abs(-market.change24h * 100).toFixed(1)}%
+                            </span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   )}
 

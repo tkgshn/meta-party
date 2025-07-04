@@ -206,7 +206,7 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                 {/* 仕組みについてボタン */}
                 {!account && (
                   <button
-                    className="ml-4 flex items-center text-blue-600 hover:underline text-sm font-medium transition-colors focus:outline-none"
+                    className="ml-4 flex items-center text-blue-600 hover:underline text-sm font-medium transition-colors focus:outline-none whitespace-nowrap"
                     onClick={() => { setAboutStep(0); setAboutOpen(true); }}
                     type="button"
                     style={{ background: 'none', border: 'none', padding: 0 }}
@@ -270,7 +270,7 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
 
                   <button className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
                     <BellIcon className="h-5 w-5" />
-                    <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full"></span>
+                    {/* <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full"></span> */}
                   </button>
 
                   {/* User Menu */}

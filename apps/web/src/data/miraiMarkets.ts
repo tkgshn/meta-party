@@ -156,7 +156,7 @@ export const miraiMarkets = [
   /** ６．社会保障制度の捕捉率向上プロジェクト */
   {
     id: 'mirai-6',
-    title: '社会保障制度の捕捉率を10%上げる',
+    title: '予算1億円で、社会保障制度の捕捉率を10%上げる',
     kpiDescription: '社会保障制度の対象だが、抜け漏れている人たちの捕捉率を10%向上させることができるか？',
     deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     createdAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
@@ -200,6 +200,26 @@ export const miraiMarkets = [
         supporters: 41
       }
     ]
+  },
+
+  /** ７．チームみらい政党要件達成予測市場 */
+  {
+    id: 'mirai-7',
+    title: 'チームみらいが2025年8月31日までに政党要件を満たす',
+    kpiDescription: '「チームみらい」が2025年8月31日までに政治資金規正法第3条に規定する政党要件（所属国会議員5名以上または直近の衆参選挙で全国得票率2%以上）を満たすことができるか？',
+    deadline: new Date('2025-08-31T23:59:59'),
+    createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+    status: 'TRADING' as const,
+    category: 'government',
+    totalVolume: 3420,
+    numProposals: 0, // YES/NO市場なのでproposalsなし
+    participants: 89,
+    topPrice: 0.34, // YES の確率
+    change24h: 0.12,
+    tags: ['政治', '政党', 'チームみらい', '政党要件'],
+    featured: true,
+    liquidity: 6800,
+    priceHistory: generatePriceHistory(0.34, 14) // 2週間分のデータ
   },
 
   // /** ７．デジタル政府サービス効率化 */

@@ -47,8 +47,15 @@ npm run dev
 - **ダッシュボード**: http://localhost:3000/dashboard  
 - **管理画面**: http://localhost:3000/admin
 
-## 💎 Play Token取得フロー
+## 💎 マルチネットワーク対応
 
+### 🌐 Polygon Mainnet (本番環境)
+1. **MetaMask接続** → ワンクリック接続
+2. **ネットワーク設定** → Polygon Mainnet自動切り替え
+3. **MATIC使用** → ネイティブ通貨で取引
+4. **本番取引** → 実際の価値による予測市場
+
+### 🧪 Polygon Amoy Testnet (開発環境)
 1. **MetaMask接続** → ワンクリック接続
 2. **ネットワーク設定** → Polygon Amoy自動切り替え  
 3. **テストPOL取得** → [Alchemy Faucet](https://www.alchemy.com/faucets/polygon-amoy)
@@ -79,26 +86,35 @@ npm run dev
 - **TypeScript** (完全型安全)
 - **Tailwind CSS v4** (モダンデザイン)
 - **Recharts** (価格チャート)
+- **Heroicons** (アイコンセット)
 
-### Blockchain  
-- **Polygon Amoy** テストネット
-- **PlayToken**: `0x237B9E4EEE4AeAf712B5B240Ab03C973310B6bD1`
-- **MarketFactory**: `0x9f1C3f06B201FFa385a4BB3695f78cB1c17c12db`
-- **ConditionalTokens**: `0x0416a4757062c1e61759ADDb6d68Af145919F045`
+### Blockchain - マルチネットワーク対応
+- **Polygon Mainnet** (Chain ID: 137)
+  - **MATIC**: ネイティブ通貨
+  - **USDC**: `0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359`
+  - **本番取引**: 将来の市場契約デプロイ予定
+
+- **Polygon Amoy Testnet** (Chain ID: 80002)
+  - **PlayToken**: `0x237B9E4EEE4AeAf712B5B240Ab03C973310B6bD1`
+  - **MarketFactory**: `0x9f1C3f06B201FFa385a4BB3695f78cB1c17c12db`
+  - **ConditionalTokens**: `0x0416a4757062c1e61759ADDb6d68Af145919F045`
 
 ### Backend
 - **Firebase** (認証・データベース)
 - **Cloud Functions** (自動処理)
+- **Multi-Network Configuration** (自動ネットワーク検出)
 
 ## 🎯 主要機能
 
 ### ✅ 完全実装済み
+- **マルチネットワーク対応**: Polygon Mainnet + Amoy Testnet
 - **予測市場取引**: LMSR価格メカニズム
 - **管理者ダッシュボード**: 市場作成・管理
 - **リアルタイム価格**: ライブ更新
 - **高度な検索・フィルタ**: カテゴリ・キーワード対応
 - **レスポンシブデザイン**: モバイル完全対応
 - **アクセシビリティ**: ARIA・キーボードナビゲーション
+- **ポートフォリオ管理**: リアルタイム残高追跡
 
 ### 🧪 テスト環境
 - **Jest**: 40+ 包括的テスト

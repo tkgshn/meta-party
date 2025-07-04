@@ -1,52 +1,150 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with
-[`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Futarchy Web App - Multi-Network Prediction Market Platform
 
-## Getting Started
+A comprehensive prediction market platform built with Next.js 15, supporting both Polygon Mainnet and Amoy Testnet for futarchy-based governance.
 
-First, run the development server:
+## 🚀 Quick Start
 
 ```bash
+# Development server with Turbopack
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+
+# Build for production
+npm run build
+
+# Start production server
+npm run start
+
+# Run tests
+npm run test
+
+# Lint code
+npm run lint
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the
-result.
+Open [http://localhost:3000](http://localhost:3000) to view the application.
 
-You can start editing the page by modifying `app/page.tsx`. The page
-auto-updates as you edit the file.
+## 🌐 Multi-Network Support
 
-This project uses
-[`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts)
-to automatically optimize and load [Geist](https://vercel.com/font), a new font
-family for Vercel.
+### Polygon Mainnet (Production)
+- **Chain ID**: 137
+- **Currency**: Native MATIC
+- **USDC**: `0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359`
+- **Use Case**: Real-value prediction market trading
 
-## Learn More
+### Polygon Amoy Testnet (Development)
+- **Chain ID**: 80002
+- **Currency**: Play Token (PT)
+- **Contracts**: Fully deployed test environment
+- **Use Case**: Development and testing
 
-To learn more about Next.js, take a look at the following resources:
+## 📊 Key Features
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js
-  features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### ✅ Implemented Features
+- **Multi-Network Support**: Automatic network detection and switching
+- **Prediction Market Trading**: LMSR pricing mechanism
+- **Portfolio Management**: Real-time balance tracking across networks
+- **Admin Dashboard**: Market creation and management
+- **Advanced Search & Filtering**: Category-based market discovery
+- **Responsive Design**: Mobile-optimized interface
+- **Accessibility**: ARIA labels and keyboard navigation
 
-You can check out
-[the Next.js GitHub repository](https://github.com/vercel/next.js) - your
-feedback and contributions are welcome!
+### 🛠️ Technical Stack
+- **Next.js 15**: App Router with server components
+- **TypeScript**: Complete type safety
+- **Tailwind CSS v4**: Modern utility-first styling
+- **Ethers.js**: Blockchain integration
+- **Recharts**: Price visualization
+- **Heroicons**: Icon system
 
-## Deploy on Vercel
+## 🔧 Environment Configuration
 
-The easiest way to deploy your Next.js app is to use the
-[Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme)
-from the creators of Next.js.
+Copy `.env.example` to `.env.local` and configure:
 
-Check out our
-[Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying)
-for more details.
+```bash
+# Multi-Network Configuration
+NEXT_PUBLIC_DEFAULT_NETWORK=polygon
+
+# Polygon Mainnet
+NEXT_PUBLIC_POLYGON_RPC_URL=https://polygon-rpc.com
+NEXT_PUBLIC_POLYGON_USDC_ADDRESS=0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359
+
+# Polygon Amoy Testnet
+NEXT_PUBLIC_POLYGON_AMOY_RPC_URL=https://rpc-amoy.polygon.technology
+NEXT_PUBLIC_PLAY_TOKEN_ADDRESS=0x237B9E4EEE4AeAf712B5B240Ab03C973310B6bD1
+NEXT_PUBLIC_MARKET_FACTORY_ADDRESS=0x9f1C3f06B201FFa385a4BB3695f78cB1c17c12db
+NEXT_PUBLIC_CONDITIONAL_TOKENS_ADDRESS=0x0416a4757062c1e61759ADDb6d68Af145919F045
+
+# Firebase Configuration
+NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_domain
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+# ... (see .env.example for complete list)
+```
+
+## 🧪 Testing
+
+The project includes comprehensive testing:
+
+```bash
+# Run all tests
+npm run test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests with coverage
+npm run test:coverage
+```
+
+- **Jest**: 40+ comprehensive tests
+- **Testing Library**: Component testing
+- **t-wada Principles**: Boundary value testing
+- **Accessibility Testing**: ARIA compliance
+
+## 📁 Project Structure
+
+```
+src/
+├── app/                    # Next.js App Router pages
+├── components/             # Reusable React components
+├── config/                 # Configuration files
+│   └── networks.ts        # Multi-network configuration
+├── data/                  # Sample data and constants
+├── hooks/                 # Custom React hooks
+├── lib/                   # Utility libraries
+├── types/                 # TypeScript type definitions
+└── utils/                 # Utility functions
+```
+
+## 🎯 User Workflows
+
+### Polygon Mainnet Usage
+1. Connect MetaMask wallet
+2. Switch to Polygon Mainnet (automatic)
+3. Trade with native MATIC
+4. Participate in real-value prediction markets
+
+### Amoy Testnet Usage
+1. Connect MetaMask wallet
+2. Switch to Polygon Amoy (automatic)
+3. Get test POL from faucets
+4. Claim 1,000 Play Tokens
+5. Trade and test platform features
+
+## 🔗 Related Documentation
+
+- **[Project README](../../README.md)**: Complete project overview
+- **[CLAUDE.md](../../CLAUDE.md)**: Technical specifications
+- **[Next.js Documentation](https://nextjs.org/docs)**: Framework documentation
+- **[Polygon Documentation](https://polygon.technology/developers)**: Network details
+
+## 📝 Development Notes
+
+- Use TypeScript throughout for type safety
+- Follow existing code patterns and conventions
+- Test thoroughly on both networks before deploying
+- MetaMask integration uses direct `window.ethereum` API
+- Network configurations are centralized in `src/config/networks.ts`
 
 ## ウォレット接続の多重リクエスト防止とエラーハンドリング
 

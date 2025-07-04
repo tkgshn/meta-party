@@ -336,6 +336,92 @@ export default function MarketDetailPage() {
             </div>
 
 
+            {/* YES/NO Market Odds - Only for binary markets */}
+            {!marketData.proposals && (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                <div className="p-6">
+                  <h2 className="text-lg font-semibold text-gray-900 mb-4">市場オッズ</h2>
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* YES Option */}
+                    <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3">
+                            <h3 className="font-semibold text-green-900">YES</h3>
+                            <span className="text-2xl font-bold text-green-600">
+                              {(yesPrice * 100).toFixed(0)}%
+                            </span>
+                            <span className="text-sm text-gray-600">
+                              ({(1 / yesPrice).toFixed(2)}倍)
+                            </span>
+                          </div>
+                          <p className="text-sm mt-1 text-green-900 opacity-80">政党要件を満たす</p>
+                          <div className="flex items-center space-x-4 mt-2 text-xs text-gray-600">
+                            <span>取引量: {Math.floor(marketData.totalVolume * yesPrice).toLocaleString()} PT</span>
+                            <span>支持者: {Math.floor(marketData.participants * 0.6)}人</span>
+                          </div>
+                        </div>
+                        <div className="text-right ml-4">
+                          <p className={`text-sm font-semibold ${marketData.change24h >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {marketData.change24h >= 0 ? (
+                              <span className="flex items-center">
+                                <ArrowTrendingUpIcon className="w-4 h-4 mr-1" />
+                                +{(marketData.change24h * 100).toFixed(1)}%
+                              </span>
+                            ) : (
+                              <span className="flex items-center">
+                                <ArrowTrendingDownIcon className="w-4 h-4 mr-1" />
+                                {(marketData.change24h * 100).toFixed(1)}%
+                              </span>
+                            )}
+                          </p>
+                          <p className="text-xs text-gray-500">24時間変化</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* NO Option */}
+                    <div className="bg-red-50 rounded-lg p-4 border border-red-200">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3">
+                            <h3 className="font-semibold text-red-900">NO</h3>
+                            <span className="text-2xl font-bold text-red-600">
+                              {(noPrice * 100).toFixed(0)}%
+                            </span>
+                            <span className="text-sm text-gray-600">
+                              ({(1 / noPrice).toFixed(2)}倍)
+                            </span>
+                          </div>
+                          <p className="text-sm mt-1 text-red-900 opacity-80">政党要件を満たさない</p>
+                          <div className="flex items-center space-x-4 mt-2 text-xs text-gray-600">
+                            <span>取引量: {Math.floor(marketData.totalVolume * noPrice).toLocaleString()} PT</span>
+                            <span>支持者: {Math.floor(marketData.participants * 0.4)}人</span>
+                          </div>
+                        </div>
+                        <div className="text-right ml-4">
+                          <p className={`text-sm font-semibold ${-marketData.change24h >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {-marketData.change24h >= 0 ? (
+                              <span className="flex items-center">
+                                <ArrowTrendingUpIcon className="w-4 h-4 mr-1" />
+                                +{(-marketData.change24h * 100).toFixed(1)}%
+                              </span>
+                            ) : (
+                              <span className="flex items-center">
+                                <ArrowTrendingDownIcon className="w-4 h-4 mr-1" />
+                                {(-marketData.change24h * 100).toFixed(1)}%
+                              </span>
+                            )}
+                          </p>
+                          <p className="text-xs text-gray-500">24時間変化</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Proposals Odds */}
             {marketData.proposals && (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200">
