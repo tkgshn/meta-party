@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { debugPlayTokenSetup } from '@/utils/debug';
 import '@/types/ethereum';
 
 interface PlayTokenState {
@@ -22,13 +23,18 @@ const PLAY_TOKEN_ADDRESS = process.env.NEXT_PUBLIC_PLAY_TOKEN_ADDRESS;
 const CLAIM_FUNCTION_SELECTOR = '0x4e71d92d';
 const AIRDROP_AMOUNT = BigInt('1000000000000000000000'); // 1000 * 10^18
 
+// Debug flag - set to false in production
+const DEBUG_MODE = process.env.NODE_ENV === 'development';
+
 // Debug log to check environment variables
-console.log('PlayToken Hook Environment Check:', {
-  PLAY_TOKEN_ADDRESS,
-  hasAddress: !!PLAY_TOKEN_ADDRESS,
-  addressLength: PLAY_TOKEN_ADDRESS?.length,
-  isValidAddress: PLAY_TOKEN_ADDRESS?.startsWith('0x') && PLAY_TOKEN_ADDRESS?.length === 42,
-});
+if (DEBUG_MODE) {
+  DEBUG_MODE && console.log('PlayToken Hook Environment Check:', {
+    PLAY_TOKEN_ADDRESS,
+    hasAddress: !!PLAY_TOKEN_ADDRESS,
+    addressLength: PLAY_TOKEN_ADDRESS?.length,
+    isValidAddress: PLAY_TOKEN_ADDRESS?.startsWith('0x') && PLAY_TOKEN_ADDRESS?.length === 42,
+  });
+}
 
 export function usePlayToken(account: string | null): PlayTokenState & PlayTokenActions {
   const [balance, setBalance] = useState<string>('0');
@@ -38,16 +44,18 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
   const [lastClaimTxHash, setLastClaimTxHash] = useState<string | null>(null);
   const [claimHistory, setClaimHistory] = useState<string[]>([]);
 
-  // Get PT balance
+  // Get PT balance using batch request for faster performance
   const refreshBalance = useCallback(async () => {
     if (!account || !PLAY_TOKEN_ADDRESS || !window.ethereum) {
-      console.log('Missing dependencies for balance check:', { 
-        account: !!account, 
-        token: !!PLAY_TOKEN_ADDRESS, 
-        ethereum: !!window.ethereum,
-        tokenAddress: PLAY_TOKEN_ADDRESS,
-        accountAddress: account
-      });
+      if (DEBUG_MODE) {
+        console.log('Missing dependencies for balance check:', { 
+          account: !!account, 
+          token: !!PLAY_TOKEN_ADDRESS, 
+          ethereum: !!window.ethereum,
+          tokenAddress: PLAY_TOKEN_ADDRESS,
+          accountAddress: account
+        });
+      }
       return;
     }
 
@@ -59,25 +67,40 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
       }
 
       const paddedAddress = account.slice(2).padStart(64, '0');
-      const result = await window.ethereum.request({
-        method: 'eth_call',
-        params: [
-          {
-            to: PLAY_TOKEN_ADDRESS,
-            data: '0x70a08231' + paddedAddress, // balanceOf(address)
-          },
-          'latest'
-        ],
-      });
+      
+      // Batch request for both balance and claim status
+      const [balanceResult, claimResult] = await Promise.all([
+        window.ethereum.request({
+          method: 'eth_call',
+          params: [
+            {
+              to: PLAY_TOKEN_ADDRESS,
+              data: '0x70a08231' + paddedAddress, // balanceOf(address)
+            },
+            'latest'
+          ],
+        }),
+        window.ethereum.request({
+          method: 'eth_call',
+          params: [
+            {
+              to: PLAY_TOKEN_ADDRESS,
+              data: '0x73b2e80e' + paddedAddress, // hasClaimed(address)
+            },
+            'latest'
+          ],
+        }).catch(() => null) // Don't fail if hasClaimed doesn't exist
+      ]);
 
-      if (result && result !== '0x' && result !== '0x0') {
-        const balanceWei = BigInt(result as string);
+      // Process balance
+      if (balanceResult && balanceResult !== '0x' && balanceResult !== '0x0') {
+        const balanceWei = BigInt(balanceResult as string);
         const balanceInPT = Number(balanceWei) / Math.pow(10, 18);
         
         setBalanceWei(balanceWei);
         setBalance(balanceInPT.toFixed(0));
         
-        console.log('Balance updated:', { 
+        DEBUG_MODE && console.log('Balance updated:', { 
           wei: balanceWei.toString(), 
           pt: balanceInPT.toFixed(0) 
         });
@@ -85,6 +108,13 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
         setBalanceWei(BigInt(0));
         setBalance('0');
       }
+      
+      // Process claim status if available
+      if (claimResult === '0x0000000000000000000000000000000000000000000000000000000000000001') {
+        setHasClaimed(true);
+        DEBUG_MODE && console.log('Claim status updated: true');
+      }
+      
     } catch (error) {
       console.error('Failed to get balance:', error);
       setBalanceWei(BigInt(0));
@@ -92,10 +122,10 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
     }
   }, [account]);
 
-  // Check if user has claimed tokens using multiple methods
+  // Check if user has claimed tokens - optimized version
   const refreshClaimStatus = useCallback(async () => {
     if (!account || !PLAY_TOKEN_ADDRESS || !window.ethereum) {
-      console.log('Missing dependencies for claim status check:', { 
+      DEBUG_MODE && console.log('Missing dependencies for claim status check:', { 
         account: !!account, 
         token: !!PLAY_TOKEN_ADDRESS, 
         ethereum: !!window.ethereum,
@@ -115,51 +145,37 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
       const paddedAddress = account.slice(2).padStart(64, '0');
       let claimed = false;
 
-      // Method 1: Check hasClaimed(address) function
-      try {
-        const result = await window.ethereum.request({
-          method: 'eth_call',
-          params: [
-            {
-              to: PLAY_TOKEN_ADDRESS,
-              data: '0x73b2e80e' + paddedAddress, // hasClaimed(address)
-            },
-            'latest'
-          ],
-        });
-        
-        if (result === '0x0000000000000000000000000000000000000000000000000000000000000001') {
-          claimed = true;
-          console.log('Claim status confirmed via hasClaimed function');
-        }
-      } catch (error) {
-        console.log('hasClaimed function check failed:', error);
+      // Fast check: If balance >= airdrop amount, likely claimed
+      if (balanceWei && balanceWei >= AIRDROP_AMOUNT) {
+        claimed = true;
+        DEBUG_MODE && console.log('Claim status inferred from balance:', balanceWei.toString());
       }
-
-      // Method 2: Check transaction history for claim events
+      
+      // Verify with contract call only if needed
       if (!claimed) {
         try {
-          // Get recent transactions for this address
-          const claimTxs = await findClaimTransactions(account);
-          if (claimTxs.length > 0) {
+          const result = await window.ethereum.request({
+            method: 'eth_call',
+            params: [
+              {
+                to: PLAY_TOKEN_ADDRESS,
+                data: '0x73b2e80e' + paddedAddress, // hasClaimed(address)
+              },
+              'latest'
+            ],
+          });
+          
+          if (result === '0x0000000000000000000000000000000000000000000000000000000000000001') {
             claimed = true;
-            setClaimHistory(claimTxs);
-            setLastClaimTxHash(claimTxs[0]);
-            console.log('Claim status confirmed via transaction history:', claimTxs);
+            DEBUG_MODE && console.log('Claim status confirmed via hasClaimed function');
           }
         } catch (error) {
-          console.log('Transaction history check failed:', error);
+          DEBUG_MODE && console.log('hasClaimed function check failed:', error);
         }
-      }
-
-      // Method 3: Balance-based fallback (if balance >= airdrop amount)
-      if (!claimed && balanceWei && balanceWei >= AIRDROP_AMOUNT) {
-        claimed = true;
-        console.log('Claim status inferred from balance:', balanceWei.toString());
       }
 
       setHasClaimed(claimed);
-      console.log('Final claim status:', claimed);
+      DEBUG_MODE && console.log('Final claim status:', claimed);
       
     } catch (error) {
       console.error('Failed to check claim status:', error);
@@ -232,9 +248,24 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
   // Claim tokens with duplicate prevention
   const claimTokens = useCallback(async (): Promise<{ success: boolean; txHash?: string; error?: string }> => {
     if (!account || !PLAY_TOKEN_ADDRESS || !window.ethereum) {
+      DEBUG_MODE && console.log('Missing dependencies for claim tokens:', { 
+        account: !!account, 
+        token: !!PLAY_TOKEN_ADDRESS, 
+        ethereum: !!window.ethereum,
+        tokenAddress: PLAY_TOKEN_ADDRESS,
+        accountAddress: account
+      });
       return { success: false, error: 'ウォレットまたはコントラクトアドレスが設定されていません' };
     }
 
+    // Quick balance check to prevent double claims
+    if (balanceWei && balanceWei >= AIRDROP_AMOUNT) {
+      return { 
+        success: false, 
+        error: '既にトークンを受け取り済みです。1つのアドレスで受け取れるのは1回のみです。' 
+      };
+    }
+    
     // Double-check claim status before attempting
     await refreshClaimStatus();
     
@@ -273,7 +304,7 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
         }],
       });
 
-      console.log('Claim transaction submitted:', txHash);
+      DEBUG_MODE && console.log('Claim transaction submitted:', txHash);
       setLastClaimTxHash(txHash as string);
       
       return { success: true, txHash: txHash as string };
@@ -340,7 +371,7 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
     }
 
     try {
-      console.log('Adding token to MetaMask:', {
+      DEBUG_MODE && console.log('Adding token to MetaMask:', {
         address: PLAY_TOKEN_ADDRESS,
         symbol: 'PT',
         decimals: 18,
@@ -359,7 +390,7 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
         }],
       });
       
-      console.log('Token add result:', wasAdded);
+      DEBUG_MODE && console.log('Token add result:', wasAdded);
       return Boolean(wasAdded);
     } catch (error) {
       console.error('Failed to add token to MetaMask:', error);
@@ -367,11 +398,16 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
     }
   }, []);
 
-  // Auto-refresh when account changes
+  // Auto-refresh when account changes with debouncing
   useEffect(() => {
     if (account) {
-      refreshBalance();
-      refreshClaimStatus();
+      // Debounce the refresh to avoid too many calls
+      const timeoutId = setTimeout(() => {
+        refreshBalance();
+        refreshClaimStatus();
+      }, 100);
+      
+      return () => clearTimeout(timeoutId);
     } else {
       setBalance('0');
       setBalanceWei(null);

@@ -16,7 +16,23 @@ import {
   BanknotesIcon,
   SparklesIcon
 } from '@heroicons/react/24/outline';
+import { LineChart, Line, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 import '@/types/ethereum';
+import { miraiMarkets } from '@/data/miraiMarkets';
+
+// Generate mock price history data
+const generatePriceHistory = (currentPrice: number, days: number = 7) => {
+  const history = [];
+  for (let i = days; i >= 0; i--) {
+    const variation = (Math.random() - 0.5) * 0.1;
+    const price = Math.max(0.05, Math.min(0.95, currentPrice + variation));
+    history.push({
+      time: new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString(),
+      price: price
+    });
+  }
+  return history;
+};
 
 // Enhanced mock data for development
 const mockMarkets = [
@@ -35,7 +51,8 @@ const mockMarkets = [
     change24h: 0.08,
     tags: ['社会保障', '格差是正', '政策', '効率化'],
     featured: true,
-    liquidity: 8500
+    liquidity: 8500,
+    priceHistory: generatePriceHistory(0.65)
   },
   {
     id: '2',
@@ -52,7 +69,8 @@ const mockMarkets = [
     change24h: -0.05,
     tags: ['デジタル化', '行政', 'DX', '効率化'],
     featured: false,
-    liquidity: 6200
+    liquidity: 6200,
+    priceHistory: generatePriceHistory(0.42)
   },
   {
     id: '3',
@@ -69,7 +87,8 @@ const mockMarkets = [
     change24h: 0.12,
     tags: ['教育', '格差是正', '学力向上', '社会課題'],
     featured: true,
-    liquidity: 4500
+    liquidity: 4500,
+    priceHistory: generatePriceHistory(0.78)
   },
   {
     id: '4',
@@ -86,7 +105,8 @@ const mockMarkets = [
     change24h: 0.15,
     tags: ['環境', 'エネルギー', '気候変動', '持続可能性'],
     featured: true,
-    liquidity: 15200
+    liquidity: 15200,
+    priceHistory: generatePriceHistory(0.55)
   },
   {
     id: '5',
@@ -103,7 +123,8 @@ const mockMarkets = [
     change24h: -0.03,
     tags: ['起業支援', '雇用創出', '地域活性化', '経済'],
     featured: false,
-    liquidity: 9800
+    liquidity: 9800,
+    priceHistory: generatePriceHistory(0.38)
   },
   {
     id: '6',
@@ -120,18 +141,23 @@ const mockMarkets = [
     change24h: 0.06,
     tags: ['AI', '高齢者支援', '安全', '技術'],
     featured: false,
-    liquidity: 5600
+    liquidity: 5600,
+    priceHistory: generatePriceHistory(0.71)
   }
 ];
 
 const categories = [
-  { id: 'all', name: 'すべて', count: 6 },
-  { id: 'social', name: '社会保障', count: 1 },
+  { id: 'all', name: 'すべて', count: 11 },
+  { id: 'social', name: '社会保障', count: 2 },
   { id: 'government', name: '行政効率', count: 1 },
   { id: 'education', name: '教育', count: 1 },
   { id: 'environment', name: '環境', count: 1 },
   { id: 'business', name: 'ビジネス', count: 1 },
   { id: 'technology', name: '技術', count: 1 },
+  { id: 'economy', name: '経済成長', count: 1 },
+  { id: 'childcare', name: '子育て', count: 1 },
+  { id: 'governance', name: 'ガバナンス', count: 1 },
+  { id: 'integrity', name: '政治倫理', count: 1 },
 ];
 
 export default function HomePage() {
@@ -173,7 +199,7 @@ export default function HomePage() {
 
   // Filter and sort markets
   const filteredAndSortedMarkets = useMemo(() => {
-    let filtered = mockMarkets;
+    let filtered = [...mockMarkets, ...miraiMarkets];
 
     // Category filter
     if (selectedCategory !== 'all') {
@@ -277,9 +303,25 @@ export default function HomePage() {
                       </div>
                     </div>
                   </div>
-                  <h3 className="font-medium text-gray-900 text-sm mb-1 line-clamp-2">
+                  <h3 className="font-medium text-gray-900 text-sm mb-2 line-clamp-2">
                     {market.title}
                   </h3>
+                  
+                  {/* Mini Chart Preview */}
+                  <div className="h-12 mb-2">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={market.priceHistory}>
+                        <Line 
+                          type="monotone" 
+                          dataKey="price" 
+                          stroke={market.change24h >= 0 ? '#10b981' : '#ef4444'} 
+                          strokeWidth={2}
+                          dot={false}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                  
                   <div className="flex items-center justify-between text-xs text-gray-500">
                     <span>{market.totalVolume.toLocaleString()} PT</span>
                     <span>{market.participants}人参加</span>
@@ -458,9 +500,26 @@ export default function HomePage() {
                   {market.title}
                 </h3>
                 
-                <p className="text-sm text-gray-600 mb-4 line-clamp-3">
+                <p className="text-sm text-gray-600 mb-3 line-clamp-3">
                   {market.kpiDescription}
                 </p>
+
+                {/* Price Chart Preview */}
+                <div className="h-16 mb-4 bg-gray-50 rounded-lg p-2">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={market.priceHistory}>
+                      <XAxis dataKey="time" hide />
+                      <YAxis domain={[0, 1]} hide />
+                      <Line 
+                        type="monotone" 
+                        dataKey="price" 
+                        stroke={market.change24h >= 0 ? '#10b981' : '#ef4444'} 
+                        strokeWidth={2}
+                        dot={false}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
 
                 {/* Tags */}
                 <div className="flex flex-wrap gap-1 mb-4">

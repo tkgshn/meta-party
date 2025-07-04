@@ -11,14 +11,17 @@ import {
 } from '@heroicons/react/24/outline';
 
 import OnboardingFlow from '@/components/OnboardingFlow';
+import EnvironmentDebug from '@/components/EnvironmentDebug';
 import { useMetaMask } from '@/hooks/useMetaMask';
 import { usePlayToken } from '@/hooks/usePlayToken';
+import { runAllTests } from '@/utils/contractTest';
 import '@/types/ethereum';
 
 export default function DashboardPage() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [showDebug, setShowDebug] = useState(false);
   const [txMonitoring, setTxMonitoring] = useState<{
     hash: string;
     status: 'pending' | 'confirmed' | 'failed';
@@ -121,15 +124,21 @@ export default function DashboardPage() {
       return;
     }
 
-    const result = await claimTokens();
-    
-    if (result.success && result.txHash) {
-      setTxMonitoring({
-        hash: result.txHash,
-        status: 'pending'
-      });
-    } else if (result.error) {
-      alert(result.error);
+    try {
+      const result = await claimTokens();
+      
+      if (result.success && result.txHash) {
+        setTxMonitoring({
+          hash: result.txHash,
+          status: 'pending'
+        });
+      } else if (result.error) {
+        console.error('Claim tokens error:', result.error);
+        alert(`❌ ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Unexpected error during claim:', error);
+      alert('❌ 予期しないエラーが発生しました。詳細はコンソールを確認してください。');
     }
   };
 
@@ -143,12 +152,73 @@ export default function DashboardPage() {
       }
       
       // Add PT token to MetaMask
-      await addTokenToMetaMask();
+      const tokenAdded = await addTokenToMetaMask();
+      if (!tokenAdded) {
+        console.warn('Token was not added to MetaMask');
+      }
       
       alert('✅ セットアップが完了しました！');
     } catch (error) {
       console.error('Auto-setup failed:', error);
       alert('❌ セットアップに失敗しました。手動で設定してください。');
+    }
+  };
+
+  // Test contract connectivity
+  const testContract = async () => {
+    const tokenAddress = process.env.NEXT_PUBLIC_PLAY_TOKEN_ADDRESS;
+    console.log('Testing contract at:', tokenAddress);
+    
+    if (!tokenAddress) {
+      alert('❌ Play Token address not found in environment variables');
+      return;
+    }
+    
+    if (!window.ethereum) {
+      alert('❌ MetaMask not available');
+      return;
+    }
+    
+    try {
+      // Test basic contract call
+      const result = await window.ethereum.request({
+        method: 'eth_call',
+        params: [
+          {
+            to: tokenAddress,
+            data: '0x18160ddd', // totalSupply()
+          },
+          'latest'
+        ],
+      });
+      
+      console.log('Contract test result:', result);
+      
+      if (result && result !== '0x') {
+        const totalSupply = BigInt(result as string);
+        alert(`✅ Contract is working! Total Supply: ${totalSupply.toString()}`);
+      } else {
+        alert('❌ Contract call returned empty result');
+      }
+    } catch (error) {
+      console.error('Contract test failed:', error);
+      alert(`❌ Contract test failed: ${error}`);
+    }
+  };
+
+  // Handle contract tests
+  const handleRunTests = async () => {
+    try {
+      const results = await runAllTests();
+      
+      if (results.overall) {
+        alert('✅ すべてのテストが成功しました！コントラクトは正常に動作しています。');
+      } else {
+        alert('❌ テストに失敗しました。詳細はコンソールを確認してください。');
+      }
+    } catch (error) {
+      console.error('Test execution failed:', error);
+      alert('❌ テストの実行に失敗しました。');
     }
   };
 
@@ -182,6 +252,7 @@ export default function DashboardPage() {
           </button>
         </div>
       </div>
+
 
       {/* MetaMask Status Card */}
       <div className="bg-white rounded-lg shadow p-6">
@@ -255,7 +326,7 @@ export default function DashboardPage() {
               onClick={disconnect}
               className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
             >
-              切断
+              接続解除
             </button>
           )}
 
@@ -277,6 +348,47 @@ export default function DashboardPage() {
             </button>
           )}
         </div>
+      </div>
+
+      {/* Advanced Options */}
+      <div className="mb-4">
+        <details className="group">
+          <summary className="text-sm text-gray-600 hover:text-gray-800 cursor-pointer list-none">
+            <span className="group-open:hidden">⚙️ 詳細設定・デバッグ</span>
+            <span className="hidden group-open:inline">⚙️ 詳細設定・デバッグ (開いています)</span>
+          </summary>
+          <div className="mt-4 space-y-4">
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h3 className="text-sm font-medium text-gray-800 mb-3">🔧 システム診断</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <button
+                  onClick={handleRunTests}
+                  className="px-3 py-2 text-sm bg-purple-600 text-white rounded-md hover:bg-purple-700"
+                >
+                  🧪 コントラクトテスト
+                </button>
+                <button
+                  onClick={testContract}
+                  className="px-3 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  🔍 接続テスト
+                </button>
+              </div>
+            </div>
+            
+            <div className="bg-yellow-50 rounded-lg border border-yellow-200 p-4">
+              <h3 className="text-sm font-medium text-yellow-800 mb-2">🔍 デバッグ情報</h3>
+              <div className="text-xs text-yellow-700 space-y-1">
+                <div>ウォレット: {account ? `${account.slice(0, 6)}...${account.slice(-4)}` : '未接続'}</div>
+                <div>ネットワーク: {isCorrectNetwork ? 'Polygon Amoy' : (chainId ? `Chain ${chainId}` : '未確認')}</div>
+                <div>残高: {balance} PT | 受け取り済み: {hasClaimed ? 'Yes' : 'No'}</div>
+                <div>読み込み中: {isTokenLoading ? 'Yes' : 'No'}</div>
+              </div>
+            </div>
+            
+            <EnvironmentDebug />
+          </div>
+        </details>
       </div>
 
       {/* Play Token Balance Card */}
@@ -349,14 +461,27 @@ export default function DashboardPage() {
 
           {/* Action buttons */}
           <div className="flex space-x-2">
-            {!hasClaimed && (
+            {!hasClaimed && parseFloat(balance) < 1000 && (
               <button
                 onClick={handleClaimTokens}
                 disabled={isTokenLoading || txMonitoring?.status === 'pending'}
-                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center"
               >
-                {isTokenLoading || txMonitoring?.status === 'pending' ? '処理中...' : '1,000 PT を受け取る'}
+                {isTokenLoading || txMonitoring?.status === 'pending' ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                    処理中...
+                  </>
+                ) : (
+                  '1,000 PT を受け取る'
+                )}
               </button>
+            )}
+            
+            {(hasClaimed || parseFloat(balance) >= 1000) && (
+              <div className="px-6 py-2 bg-green-100 text-green-800 rounded-md border border-green-300">
+                ✓ 受け取り済み
+              </div>
             )}
 
             <button
@@ -364,13 +489,6 @@ export default function DashboardPage() {
               className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700"
             >
               🦊 MetaMaskに追加
-            </button>
-
-            <button
-              onClick={refreshBalance}
-              className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
-            >
-              残高更新
             </button>
           </div>
 

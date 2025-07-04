@@ -12,7 +12,7 @@ interface MetaMaskState {
 
 interface MetaMaskActions {
   connect: () => Promise<boolean>;
-  disconnect: () => void;
+  disconnect: () => Promise<void>;
   switchToAmoy: () => Promise<boolean>;
   addAmoyNetwork: () => Promise<boolean>;
   refreshConnection: () => Promise<void>;
@@ -100,7 +100,22 @@ export function useMetaMask(): MetaMaskState & MetaMaskActions {
   }, [getCurrentChainId]);
 
   // Disconnect from MetaMask
-  const disconnect = useCallback(() => {
+  const disconnect = useCallback(async () => {
+    try {
+      // Try to revoke permissions from MetaMask
+      if (window.ethereum) {
+        await window.ethereum.request({
+          method: 'wallet_revokePermissions',
+          params: [{
+            eth_accounts: {}
+          }]
+        });
+      }
+    } catch (error) {
+      console.log('Permission revocation not supported or failed:', error);
+    }
+    
+    // Clear local state
     setAccount(null);
     setChainId(null);
     setIsConnected(false);
@@ -109,6 +124,11 @@ export function useMetaMask(): MetaMaskState & MetaMaskActions {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('walletConnected');
       localStorage.removeItem('lastConnectedAccount');
+      
+      // Force reload to ensure MetaMask provider state is reset
+      setTimeout(() => {
+        window.location.reload();
+      }, 100);
     }
   }, []);
 

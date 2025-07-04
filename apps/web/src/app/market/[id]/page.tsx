@@ -27,7 +27,10 @@ import {
   Tooltip,
   ResponsiveContainer,
   Area,
-  AreaChart
+  AreaChart,
+  PieChart,
+  Pie,
+  Cell
 } from 'recharts';
 
 // Mock market data
@@ -51,7 +54,7 @@ const mockMarketData = {
   tags: ['経済', 'GDP', '成長率', '日本']
 };
 
-// Mock price history data
+// Mock price history data - single YES probability line
 const mockPriceHistory = Array.from({ length: 30 }, (_, i) => {
   const date = new Date();
   date.setDate(date.getDate() - (29 - i));
@@ -61,8 +64,7 @@ const mockPriceHistory = Array.from({ length: 30 }, (_, i) => {
   
   return {
     date: date.toISOString().split('T')[0],
-    yesPrice,
-    noPrice: 1 - yesPrice,
+    yesPrice: yesPrice * 100, // Convert to percentage for display
     volume: Math.floor(Math.random() * 10000) + 1000
   };
 });
@@ -173,58 +175,99 @@ export default function MarketDetailPage() {
             </div>
           </div>
 
-          {/* Current Prices */}
-          <div className="mt-6 grid grid-cols-2 gap-4">
-            <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-green-900">YES</p>
-                  <p className="text-2xl font-bold text-green-600">
-                    {(mockMarketData.yesPrice * 100).toFixed(0)}%
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs text-green-600">
-                    {mockMarketData.yesPrice > 0.5 ? (
-                      <span className="flex items-center">
-                        <ArrowTrendingUpIcon className="w-4 h-4 mr-1" />
-                        +2.3%
-                      </span>
-                    ) : (
-                      <span className="flex items-center">
-                        <ArrowTrendingDownIcon className="w-4 h-4 mr-1" />
-                        -1.2%
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-xs text-gray-500">24時間</p>
+          {/* Current Prices with Pie Chart */}
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Pie Chart Visualization */}
+            <div className="md:col-span-1 flex items-center justify-center">
+              <div className="relative">
+                <ResponsiveContainer width={200} height={200}>
+                  <PieChart>
+                    <Pie
+                      data={[
+                        { name: 'YES', value: mockMarketData.yesPrice, color: '#10b981' },
+                        { name: 'NO', value: mockMarketData.noPrice, color: '#ef4444' }
+                      ]}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={90}
+                      startAngle={90}
+                      endAngle={450}
+                      dataKey="value"
+                      stroke="none"
+                    >
+                      <Cell fill="#10b981" />
+                      <Cell fill="#ef4444" />
+                    </Pie>
+                    <Tooltip 
+                      formatter={(value: number) => `${(value * 100).toFixed(1)}%`}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="text-center">
+                    <p className="text-xs text-gray-500">現在の確率</p>
+                    <p className="text-lg font-bold text-gray-900">
+                      {mockMarketData.yesPrice > mockMarketData.noPrice ? 'YES' : 'NO'}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
-            
-            <div className="bg-red-50 rounded-lg p-4 border border-red-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-red-900">NO</p>
-                  <p className="text-2xl font-bold text-red-600">
-                    {(mockMarketData.noPrice * 100).toFixed(0)}%
-                  </p>
+
+            {/* Price Cards */}
+            <div className="md:col-span-2 grid grid-cols-2 gap-4">
+              <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-green-900">YES</p>
+                    <p className="text-2xl font-bold text-green-600">
+                      {(mockMarketData.yesPrice * 100).toFixed(0)}%
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-green-600">
+                      {mockMarketData.yesPrice > 0.5 ? (
+                        <span className="flex items-center">
+                          <ArrowTrendingUpIcon className="w-4 h-4 mr-1" />
+                          +2.3%
+                        </span>
+                      ) : (
+                        <span className="flex items-center">
+                          <ArrowTrendingDownIcon className="w-4 h-4 mr-1" />
+                          -1.2%
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-xs text-gray-500">24時間</p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-xs text-red-600">
-                    {mockMarketData.noPrice > 0.5 ? (
-                      <span className="flex items-center">
-                        <ArrowTrendingUpIcon className="w-4 h-4 mr-1" />
-                        +1.2%
-                      </span>
-                    ) : (
-                      <span className="flex items-center">
-                        <ArrowTrendingDownIcon className="w-4 h-4 mr-1" />
-                        -2.3%
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-xs text-gray-500">24時間</p>
+              </div>
+              
+              <div className="bg-red-50 rounded-lg p-4 border border-red-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-red-900">NO</p>
+                    <p className="text-2xl font-bold text-red-600">
+                      {(mockMarketData.noPrice * 100).toFixed(0)}%
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-red-600">
+                      {mockMarketData.noPrice > 0.5 ? (
+                        <span className="flex items-center">
+                          <ArrowTrendingUpIcon className="w-4 h-4 mr-1" />
+                          +1.2%
+                        </span>
+                      ) : (
+                        <span className="flex items-center">
+                          <ArrowTrendingDownIcon className="w-4 h-4 mr-1" />
+                          -2.3%
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-xs text-gray-500">24時間</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -443,65 +486,107 @@ export default function MarketDetailPage() {
                 </div>
               </div>
 
-              {/* Price Chart */}
+              {/* Probability Chart */}
               <div className="h-96 mb-8">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">価格推移</h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-medium text-gray-900">YES確率の推移</h3>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                    <span className="text-sm text-gray-600">YES確率</span>
+                  </div>
+                </div>
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={mockPriceHistory}>
-                    <CartesianGrid strokeDasharray="3 3" />
+                  <AreaChart data={mockPriceHistory}>
+                    <defs>
+                      <linearGradient id="yesGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.05}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis 
                       dataKey="date" 
                       tickFormatter={(value) => format(new Date(value), 'MM/dd')}
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 12, fill: '#6b7280' }}
                     />
                     <YAxis 
-                      domain={[0, 1]} 
-                      tickFormatter={(value) => `${(value * 100).toFixed(0)}%`}
+                      domain={[0, 100]} 
+                      tickFormatter={(value) => `${value}%`}
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 12, fill: '#6b7280' }}
                     />
                     <Tooltip 
-                      formatter={(value: number) => `${(value * 100).toFixed(1)}%`}
+                      formatter={(value: number) => [`${value.toFixed(1)}%`, 'YES確率']}
                       labelFormatter={(label) => format(new Date(label), 'yyyy年MM月dd日')}
+                      contentStyle={{ 
+                        backgroundColor: 'white', 
+                        border: '1px solid #e5e7eb', 
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                      }}
                     />
-                    <Line 
+                    <Area 
                       type="monotone" 
                       dataKey="yesPrice" 
-                      stroke="#10b981" 
+                      stroke="#3b82f6" 
                       strokeWidth={2}
-                      name="YES"
+                      fill="url(#yesGradient)"
                       dot={false}
                     />
-                    <Line 
-                      type="monotone" 
-                      dataKey="noPrice" 
-                      stroke="#ef4444" 
-                      strokeWidth={2}
-                      name="NO"
-                      dot={false}
-                    />
-                  </LineChart>
+                  </AreaChart>
                 </ResponsiveContainer>
               </div>
 
               {/* Volume Chart */}
               <div className="h-64">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">取引量</h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-medium text-gray-900">取引量</h3>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                    <span className="text-sm text-gray-600">日次取引量</span>
+                  </div>
+                </div>
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={mockPriceHistory}>
-                    <CartesianGrid strokeDasharray="3 3" />
+                    <defs>
+                      <linearGradient id="volumeGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.4}/>
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0.1}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis 
                       dataKey="date" 
                       tickFormatter={(value) => format(new Date(value), 'MM/dd')}
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 12, fill: '#6b7280' }}
                     />
-                    <YAxis tickFormatter={(value) => `${value / 1000}k`} />
+                    <YAxis 
+                      tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 12, fill: '#6b7280' }}
+                    />
                     <Tooltip 
-                      formatter={(value: number) => `${value.toLocaleString()} PT`}
+                      formatter={(value: number) => [`${value.toLocaleString()} PT`, '取引量']}
                       labelFormatter={(label) => format(new Date(label), 'yyyy年MM月dd日')}
+                      contentStyle={{ 
+                        backgroundColor: 'white', 
+                        border: '1px solid #e5e7eb', 
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                      }}
                     />
                     <Area 
                       type="monotone" 
                       dataKey="volume" 
-                      stroke="#3b82f6" 
-                      fill="#3b82f6" 
-                      fillOpacity={0.3}
+                      stroke="#10b981" 
+                      strokeWidth={2}
+                      fill="url(#volumeGradient)"
                     />
                   </AreaChart>
                 </ResponsiveContainer>
