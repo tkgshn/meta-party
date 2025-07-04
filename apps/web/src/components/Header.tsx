@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import {
   MagnifyingGlassIcon,
   BellIcon,
@@ -11,14 +10,16 @@ import {
   WalletIcon,
   CurrencyDollarIcon,
   ArrowRightOnRectangleIcon,
-  Cog6ToothIcon,
   ChartBarIcon,
   PlusCircleIcon,
   InformationCircleIcon,
 } from '@heroicons/react/24/outline';
 import ClientOnly from './ClientOnly';
 import { useMetaMask } from '@/hooks/useMetaMask';
-import { usePlayToken } from '@/hooks/usePlayToken';
+import { useToken } from '@/hooks/useToken';
+import { useOnChainPortfolio } from '@/hooks/useOnChainPortfolio';
+import { NETWORKS, getNetworkByChainId, getCurrencySymbol } from '@/config/networks';
+import NetworkSwitcher from './NetworkSwitcher';
 
 interface HeaderProps {
   onSearch?: (query: string) => void;
@@ -95,17 +96,52 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
   const { 
     account, 
     isConnected, 
-    isCorrectNetwork, 
-    isMetaMaskAvailable,
     connect, 
-    disconnect 
+    disconnect,
+    getCurrentChainId 
   } = useMetaMask();
-
-  // Use PlayToken hook for real balance
-  const { balance: playTokenBalance, refreshBalance } = usePlayToken(account);
   
-  // Mock portfolio value calculation
-  const portfolioValue = isConnected ? 1250 + Number(playTokenBalance) : 0;
+  // Detect current network
+  const [currentNetworkKey, setCurrentNetworkKey] = useState<string>('polygon');
+  
+  useEffect(() => {
+    const detectNetwork = async () => {
+      if (!account) return;
+      
+      try {
+        const chainId = await getCurrentChainId();
+        const network = getNetworkByChainId(chainId);
+        if (network) {
+          const networkKey = Object.keys(NETWORKS).find(
+            key => NETWORKS[key].chainId === chainId
+          );
+          if (networkKey) {
+            setCurrentNetworkKey(networkKey);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to detect network:', error);
+      }
+    };
+    
+    detectNetwork();
+  }, [account, getCurrentChainId]);
+  
+  const currencySymbol = getCurrencySymbol(currentNetworkKey);
+
+  // Use token hook for current network
+  const { balance: tokenBalance, refreshBalance } = useToken(account, currentNetworkKey);
+  
+  // Use on-chain portfolio data
+  const {
+    totalPortfolioValue,
+    totalCash,
+    isLoading: portfolioLoading
+  } = useOnChainPortfolio(account);
+  
+  // Calculate portfolio value with real data
+  const portfolioValue = isConnected ? totalPortfolioValue : 0;
+  const cashValue = isConnected ? (totalCash || Number(tokenBalance)) : 0;
 
   // Handle wallet disconnect
   const handleDisconnect = async () => {
@@ -188,27 +224,44 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                     <ChartBarIcon className="h-4 w-4 text-blue-600" />
                     <span className="text-gray-600 group-hover:text-blue-700">ポートフォリオ:</span>
                     <span className="font-semibold text-gray-900 group-hover:text-blue-700">
-                      {portfolioValue.toLocaleString()} PT
+                      {portfolioLoading ? '...' : (
+                        currencySymbol === 'USDC' 
+                          ? portfolioValue.toFixed(2)
+                          : portfolioValue.toLocaleString()
+                      )} {currencySymbol}
+                    </span>
+                    <span className="text-xs bg-green-100 text-green-800 px-1 py-0.5 rounded ml-1">
+                      Live
                     </span>
                   </Link>
                   <Link href="/portfolio" className="flex items-center space-x-1 px-2 py-1 rounded hover:bg-blue-50 transition-colors cursor-pointer group">
                     <CurrencyDollarIcon className="h-4 w-4 text-green-600" />
                     <span className="text-gray-600 group-hover:text-blue-700">キャッシュ:</span>
                     <span className="font-semibold text-gray-900 group-hover:text-blue-700">
-                      {Number(playTokenBalance).toLocaleString()} PT
+                      {portfolioLoading ? '...' : (
+                        currencySymbol === 'USDC' 
+                          ? cashValue.toFixed(2)
+                          : cashValue.toLocaleString()
+                      )} {currencySymbol}
+                    </span>
+                    <span className="text-xs bg-green-100 text-green-800 px-1 py-0.5 rounded ml-1">
+                      Live
                     </span>
                   </Link>
                 </div>
 
                 {/* Action Buttons */}
                 <div className="flex items-center space-x-2">
-                  <Link
-                    href="/portfolio"
-                    className="inline-flex items-center px-3 py-2 border border-blue-600 text-sm font-medium rounded-lg text-blue-600 bg-white hover:bg-blue-50 transition-colors"
-                  >
-                    <PlusCircleIcon className="h-4 w-4 mr-1" />
-                    <span className="hidden sm:inline">デポジット</span>
-                  </Link>
+                  <div className="flex items-center space-x-2">
+                    <NetworkSwitcher className="hidden lg:block" />
+                    <Link
+                      href="/portfolio"
+                      className="inline-flex items-center px-3 py-2 border border-blue-600 text-sm font-medium rounded-lg text-blue-600 bg-white hover:bg-blue-50 transition-colors"
+                    >
+                      <PlusCircleIcon className="h-4 w-4 mr-1" />
+                      <span className="hidden sm:inline">ポートフォリオ</span>
+                    </Link>
+                  </div>
 
                   <button className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
                     <BellIcon className="h-5 w-5" />

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { createWalletSession, clearWalletSession, validateWalletSession, subscribeToSession } from '@/utils/walletSession';
+import { createWalletSession, clearWalletSession, validateWalletSession } from '@/utils/walletSession';
+import { NETWORKS, isSupportedChainId } from '@/config/networks';
 import '@/types/ethereum';
 
 interface MetaMaskState {
@@ -16,10 +17,13 @@ interface MetaMaskActions {
   disconnect: () => Promise<void>;
   switchToAmoy: () => Promise<boolean>;
   addAmoyNetwork: () => Promise<boolean>;
+  switchNetwork: (chainId: number) => Promise<boolean>;
+  addNetwork: (networkKey: string) => Promise<boolean>;
+  getCurrentChainId: () => Promise<number>;
   refreshConnection: () => Promise<void>;
 }
 
-const POLYGON_AMOY_CHAIN_ID = 80002;
+// const POLYGON_AMOY_CHAIN_ID = 80002;
 const POLYGON_AMOY_CHAIN_ID_HEX = '0x13882';
 
 export function useMetaMask(): MetaMaskState & MetaMaskActions {
@@ -29,7 +33,7 @@ export function useMetaMask(): MetaMaskState & MetaMaskActions {
   const [isMetaMaskAvailable, setIsMetaMaskAvailable] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  const isCorrectNetwork = chainId === POLYGON_AMOY_CHAIN_ID;
+  const isCorrectNetwork = chainId ? isSupportedChainId(chainId) : false;
 
   // Check if MetaMask is available
   const checkMetaMaskAvailability = useCallback(() => {
@@ -204,6 +208,59 @@ export function useMetaMask(): MetaMaskState & MetaMaskActions {
     }
   }, []);
 
+  // Generic network switching function
+  const switchNetwork = useCallback(async (chainId: number): Promise<boolean> => {
+    if (!window.ethereum) return false;
+
+    try {
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: `0x${chainId.toString(16)}` }],
+      });
+      return true;
+    } catch (error: any) {
+      console.error('Failed to switch network:', error);
+      
+      // If the chain is not added to MetaMask, try to add it
+      if ((error as { code: number }).code === 4902) {
+        const networkKey = Object.keys(NETWORKS).find(
+          key => NETWORKS[key].chainId === chainId
+        );
+        if (networkKey) {
+          return await addNetwork(networkKey);
+        }
+      }
+      return false;
+    }
+  }, [addNetwork]);
+
+  // Generic network adding function
+  const addNetwork = useCallback(async (networkKey: string): Promise<boolean> => {
+    if (!window.ethereum) return false;
+
+    const network = NETWORKS[networkKey];
+    if (!network) return false;
+
+    try {
+      await window.ethereum.request({
+        method: 'wallet_addEthereumChain',
+        params: [
+          {
+            chainId: network.chainIdHex,
+            chainName: network.displayName,
+            nativeCurrency: network.nativeCurrency,
+            rpcUrls: network.rpcUrls,
+            blockExplorerUrls: network.blockExplorerUrls,
+          },
+        ],
+      });
+      return true;
+    } catch (error) {
+      console.error(`Failed to add ${network.displayName}:`, error);
+      return false;
+    }
+  }, []);
+
   // Refresh connection state
   const refreshConnection = useCallback(async () => {
     if (!checkMetaMaskAvailability()) return;
@@ -328,6 +385,9 @@ export function useMetaMask(): MetaMaskState & MetaMaskActions {
     disconnect,
     switchToAmoy,
     addAmoyNetwork,
+    switchNetwork,
+    addNetwork,
+    getCurrentChainId,
     refreshConnection,
   };
 }

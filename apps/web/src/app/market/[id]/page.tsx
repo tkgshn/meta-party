@@ -31,7 +31,8 @@ import {
   AreaChart,
   PieChart,
   Pie,
-  Cell
+  Cell,
+  Legend
 } from 'recharts';
 
 import { miraiMarkets, type Market } from '@/data/miraiMarkets';
@@ -43,20 +44,100 @@ const getMarketById = (id: string) => {
   return miraiMarkets.find(market => market.id === id);
 };
 
-// Mock price history data
-const mockPriceHistory = Array.from({ length: 30 }, (_, i) => {
-  const date = new Date();
-  date.setDate(date.getDate() - (29 - i));
-  const basePrice = 0.5 + (i / 30) * 0.15;
-  const noise = (Math.random() - 0.5) * 0.1;
-  const yesPrice = Math.max(0.01, Math.min(0.99, basePrice + noise));
-
-  return {
-    date: format(date, 'MM/dd'),
-    yesPrice,
-    noPrice: 1 - yesPrice
+// Generate price history for multi-option markets with different time scopes
+const generatePriceHistory = (marketData: Market, timeScope: '1h' | '6h' | '1w' | '1m' | 'all') => {
+  // Define data points and time intervals based on scope
+  const scopeConfig = {
+    '1h': { points: 60, interval: 1, unit: 'minutes', formatString: 'HH:mm' },
+    '6h': { points: 72, interval: 5, unit: 'minutes', formatString: 'HH:mm' },
+    '1w': { points: 168, interval: 1, unit: 'hours', formatString: 'MM/dd HH:mm' },
+    '1m': { points: 30, interval: 1, unit: 'days', formatString: 'MM/dd' },
+    'all': { points: 90, interval: 1, unit: 'days', formatString: 'MM/dd' }
   };
-});
+
+  const config = scopeConfig[timeScope];
+  
+  return Array.from({ length: config.points }, (_, i) => {
+    const date = new Date();
+    
+    // Calculate the time offset based on scope
+    if (config.unit === 'minutes') {
+      date.setMinutes(date.getMinutes() - (config.points - 1 - i) * config.interval);
+    } else if (config.unit === 'hours') {
+      date.setHours(date.getHours() - (config.points - 1 - i) * config.interval);
+    } else {
+      date.setDate(date.getDate() - (config.points - 1 - i) * config.interval);
+    }
+    
+    const dataPoint: any = {
+      date: format(date, config.formatString, { locale: ja })
+    };
+
+    if (marketData.proposals) {
+      // Multi-option market - generate dramatic price movement
+      const rawPrices: number[] = [];
+      const totalPoints = config.points;
+      
+      marketData.proposals.forEach((proposal, index) => {
+        const trendFactor = (i / totalPoints); // 0 to 1 from past to present
+        const currentPrice = proposal.price;
+        
+        let historicalPrice;
+        
+        // Create dramatic story for each proposal with different patterns per time scope
+        if (proposal.id === 'askoe') {
+          // アスコエ: 大幅上昇 (15% → 42%)
+          const startPrice = timeScope === '1h' ? currentPrice * 0.95 : 
+                            timeScope === '6h' ? currentPrice * 0.85 : 
+                            timeScope === '1w' ? currentPrice * 0.6 : 
+                            timeScope === '1m' ? 0.25 : 0.15;
+          const midDrop = timeScope !== '1h' && i > totalPoints * 0.3 && i < totalPoints * 0.7 ? -0.05 : 0;
+          historicalPrice = startPrice + (currentPrice - startPrice) * trendFactor + midDrop;
+        } else if (proposal.id === 'civichat') {
+          // civichat: 大幅下落 (60% → 35%)
+          const startPrice = timeScope === '1h' ? currentPrice * 1.05 : 
+                            timeScope === '6h' ? currentPrice * 1.15 : 
+                            timeScope === '1w' ? currentPrice * 1.4 : 
+                            timeScope === '1m' ? 0.45 : 0.60;
+          const spike = timeScope !== '1h' && i > totalPoints * 0.1 && i < totalPoints * 0.3 ? 0.1 : 0;
+          historicalPrice = startPrice + (currentPrice - startPrice) * trendFactor + spike;
+        } else if (proposal.id === 'graffer') {
+          // graffer: 比較的安定 (25% → 23%)
+          const startPrice = timeScope === '1h' ? currentPrice * 1.02 : 
+                            timeScope === '6h' ? currentPrice * 1.08 : 
+                            timeScope === '1w' ? currentPrice * 1.1 : 
+                            timeScope === '1m' ? 0.30 : 0.25;
+          historicalPrice = startPrice + (currentPrice - startPrice) * trendFactor;
+        }
+        
+        // Add scope-appropriate noise
+        const noiseLevel = timeScope === '1h' ? 0.005 : 
+                          timeScope === '6h' ? 0.01 : 
+                          timeScope === '1w' ? 0.02 : 0.03;
+        const noise = (Math.random() - 0.5) * noiseLevel;
+        const rawPrice = Math.max(0.01, historicalPrice + noise);
+        
+        rawPrices.push(rawPrice);
+      });
+
+      // Normalize to ensure total equals exactly 1.0 (100%)
+      const totalRaw = rawPrices.reduce((sum, price) => sum + price, 0);
+      marketData.proposals.forEach((proposal, index) => {
+        dataPoint[`proposal_${proposal.id}`] = rawPrices[index] / totalRaw;
+      });
+    } else {
+      // Binary market - keep original logic
+      const basePrice = 0.5 + (i / config.points) * 0.15;
+      const noise = (Math.random() - 0.5) * 0.1;
+      const yesPrice = Math.max(0.01, Math.min(0.99, basePrice + noise));
+      
+      dataPoint.yesPrice = yesPrice;
+      dataPoint.noPrice = 1 - yesPrice;
+    }
+
+    return dataPoint;
+  });
+};
 
 export default function MarketDetailPage() {
   const params = useParams();
@@ -67,9 +148,16 @@ export default function MarketDetailPage() {
   const [tradeType, setTradeType] = useState<'buy' | 'sell'>('buy');
   const [amount, setAmount] = useState('');
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
+  const [timeScope, setTimeScope] = useState<'1h' | '6h' | '1w' | '1m' | 'all'>('1w');
 
   // Get the actual market data
   const marketData = getMarketById(marketId);
+
+  // Generate price history based on market data and time scope
+  const priceHistory = useMemo(() => {
+    if (!marketData) return [];
+    return generatePriceHistory(marketData, timeScope);
+  }, [marketData, timeScope]);
 
   // Initialize selected proposal
   useEffect(() => {
@@ -154,10 +242,29 @@ export default function MarketDetailPage() {
             {/* Chart Section */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200">
               <div className="p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">価格推移</h2>
-                <div className="h-64 mb-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold text-gray-900">価格推移</h2>
+                  
+                  {/* Time Scope Selector */}
+                  <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+                    {(['1h', '6h', '1w', '1m', 'all'] as const).map((scope) => (
+                      <button
+                        key={scope}
+                        onClick={() => setTimeScope(scope)}
+                        className={`px-3 py-1 text-sm font-medium transition-colors ${
+                          timeScope === scope
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-white text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        {scope === 'all' ? 'すべて' : scope}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="h-80 mb-4">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={mockPriceHistory}>
+                    <LineChart data={priceHistory}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                       <XAxis
                         dataKey="date"
@@ -174,7 +281,10 @@ export default function MarketDetailPage() {
                       />
                       <Tooltip
                         labelFormatter={(label) => `日付: ${label}`}
-                        formatter={(value: number) => [`${(value * 100).toFixed(1)}%`, '価格']}
+                        formatter={(value: number, name: string) => {
+                          const displayName = marketData?.proposals?.find(p => `proposal_${p.id}` === name)?.name || name;
+                          return [`${(value * 100).toFixed(1)}%`, displayName];
+                        }}
                         contentStyle={{
                           backgroundColor: 'white',
                           border: '1px solid #e5e7eb',
@@ -182,14 +292,43 @@ export default function MarketDetailPage() {
                           boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                         }}
                       />
-                      <Line
-                        type="monotone"
-                        dataKey="yesPrice"
-                        stroke="#3b82f6"
-                        strokeWidth={2}
-                        dot={false}
-                        name="全体確率"
-                      />
+                      {marketData?.proposals && marketData.proposals.length > 1 && (
+                        <Legend
+                          wrapperStyle={{ paddingTop: '20px' }}
+                          formatter={(value, entry) => {
+                            const proposal = marketData.proposals?.find(p => `proposal_${p.id}` === value);
+                            return <span style={{ color: entry.color }}>{proposal?.name || value}</span>;
+                          }}
+                        />
+                      )}
+                      {marketData?.proposals ? (
+                        // Multi-option market - show line for each proposal
+                        marketData.proposals.map((proposal, index) => {
+                          const colors = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444'];
+                          const color = colors[index % colors.length];
+                          return (
+                            <Line
+                              key={proposal.id}
+                              type="monotone"
+                              dataKey={`proposal_${proposal.id}`}
+                              stroke={color}
+                              strokeWidth={2}
+                              dot={false}
+                              name={proposal.name}
+                            />
+                          );
+                        })
+                      ) : (
+                        // Binary market - show YES line
+                        <Line
+                          type="monotone"
+                          dataKey="yesPrice"
+                          stroke="#3b82f6"
+                          strokeWidth={2}
+                          dot={false}
+                          name="YES確率"
+                        />
+                      )}
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -320,68 +459,105 @@ export default function MarketDetailPage() {
                     デポジット
                   </button> */}
 
-                  {/* Trade Type Selection */}
-                  <div className="mb-4">
-                    <div className="flex rounded-lg shadow-sm">
-                      <button
-                        onClick={() => setTradeType('buy')}
-                        className={`flex-1 py-2 px-4 text-sm font-medium rounded-l-lg border ${
-                          tradeType === 'buy'
-                            ? 'bg-blue-600 text-white border-blue-600'
-                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                        }`}
-                      >
-                        購入
-                      </button>
-                      <button
-                        onClick={() => setTradeType('sell')}
-                        className={`flex-1 py-2 px-4 text-sm font-medium rounded-r-lg border-t border-r border-b ${
-                          tradeType === 'sell'
-                            ? 'bg-blue-600 text-white border-blue-600'
-                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                        }`}
-                      >
-                        売却
-                      </button>
+                  {/* Trade Type Selection - Only for YES/NO markets */}
+                  {!marketData.proposals && (
+                    <div className="mb-4">
+                      <div className="flex rounded-lg shadow-sm">
+                        <button
+                          onClick={() => setTradeType('buy')}
+                          className={`flex-1 py-2 px-4 text-sm font-medium rounded-l-lg border ${
+                            tradeType === 'buy'
+                              ? 'bg-blue-600 text-white border-blue-600'
+                              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          購入
+                        </button>
+                        <button
+                          onClick={() => setTradeType('sell')}
+                          className={`flex-1 py-2 px-4 text-sm font-medium rounded-r-lg border-t border-r border-b ${
+                            tradeType === 'sell'
+                              ? 'bg-blue-600 text-white border-blue-600'
+                              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          売却
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
-                  {/* Proposal Selection */}
+                  {/* Proposal Selection - Only for multi-option markets */}
                   {marketData.proposals ? (
                     <div className="mb-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        実装候補を選択
+                      <label className="block text-sm font-medium text-gray-700 mb-3">
+                        取引する候補を選択
                       </label>
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         {marketData.proposals.map((proposal, index) => {
                           const colors = [
-                            { border: 'border-blue-500', bg: 'bg-blue-50', price: 'text-blue-600' },
-                            { border: 'border-green-500', bg: 'bg-green-50', price: 'text-green-600' },
-                            { border: 'border-purple-500', bg: 'bg-purple-50', price: 'text-purple-600' }
+                            { border: 'border-blue-500', bg: 'bg-blue-50', price: 'text-blue-600', buy: 'bg-blue-600', sell: 'bg-red-600' },
+                            { border: 'border-green-500', bg: 'bg-green-50', price: 'text-green-600', buy: 'bg-green-600', sell: 'bg-red-600' },
+                            { border: 'border-purple-500', bg: 'bg-purple-50', price: 'text-purple-600', buy: 'bg-purple-600', sell: 'bg-red-600' }
                           ];
                           const color = colors[index % 3];
+                          const isSelected = selectedProposal === proposal.id;
 
                           return (
-                            <button
-                              key={proposal.id}
-                              onClick={() => setSelectedProposal(proposal.id)}
-                              className={`w-full p-3 rounded-lg border-2 transition-colors text-left ${
-                                selectedProposal === proposal.id
-                                  ? `${color.border} ${color.bg}`
-                                  : 'border-gray-300 hover:border-gray-400'
-                              }`}
-                            >
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <p className="font-medium text-gray-900 text-sm">{proposal.name}</p>
-                                </div>
-                                <div className="text-right">
-                                  <p className={`text-lg font-bold ${color.price}`}>
-                                    {(proposal.price * 100).toFixed(0)}%
-                                  </p>
+                            <div key={proposal.id} className={`rounded-lg border-2 transition-all ${
+                              isSelected ? `${color.border} ${color.bg}` : 'border-gray-200 hover:border-gray-300'
+                            }`}>
+                              {/* Proposal Header */}
+                              <div 
+                                className="p-3 cursor-pointer"
+                                onClick={() => setSelectedProposal(isSelected ? '' : proposal.id)}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex-1">
+                                    <div className="flex items-center space-x-2">
+                                      <h3 className="font-medium text-gray-900 text-sm">{proposal.name}</h3>
+                                      <span className={`text-lg font-bold ${color.price}`}>
+                                        {(proposal.price * 100).toFixed(0)}%
+                                      </span>
+                                    </div>
+                                    <p className="text-xs text-gray-600 mt-1">{proposal.description}</p>
+                                  </div>
+                                  <div className="text-right ml-3">
+                                    <div className={`w-4 h-4 rounded-full border-2 ${
+                                      isSelected ? `${color.border} bg-current` : 'border-gray-300'
+                                    }`} />
+                                  </div>
                                 </div>
                               </div>
-                            </button>
+
+                              {/* Buy/Sell Buttons - Only show when selected */}
+                              {isSelected && (
+                                <div className="px-3 pb-3">
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <button
+                                      onClick={() => setTradeType('buy')}
+                                      className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                                        tradeType === 'buy'
+                                          ? `${color.buy} text-white`
+                                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                      }`}
+                                    >
+                                      買い
+                                    </button>
+                                    <button
+                                      onClick={() => setTradeType('sell')}
+                                      className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                                        tradeType === 'sell'
+                                          ? `${color.sell} text-white`
+                                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                      }`}
+                                    >
+                                      売り
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           );
                         })}
                       </div>
