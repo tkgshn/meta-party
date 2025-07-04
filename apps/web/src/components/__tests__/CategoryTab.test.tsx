@@ -56,7 +56,6 @@ describe('CategoryTab', () => {
 
       // Assert
       expect(screen.getByText('10')).toBeInTheDocument()
-      expect(screen.getByText('3')).toBeInTheDocument()
       expect(screen.getByText('4')).toBeInTheDocument()
       // Note: There are two '3's, so we check that at least one exists
       expect(screen.getAllByText('3')).toHaveLength(2)

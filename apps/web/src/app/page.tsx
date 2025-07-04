@@ -370,9 +370,7 @@ export default function HomePage() {
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-              </svg>
+              <SparklesIcon className="h-5 w-5 text-blue-400" />
             </div>
             <div className="ml-3">
               <h3 className="text-sm font-medium text-blue-800">
@@ -381,9 +379,9 @@ export default function HomePage() {
               <div className="mt-2 text-sm text-blue-700">
                 <p>
                   1,000 Play Token (PT) を無料で取得して予測市場に参加できます。
-                  <a href="/dashboard" className="font-medium underline hover:text-blue-600">
+                  <Link href="/dashboard" className="font-medium underline hover:text-blue-600">
                     マイページ
-                  </a>
+                  </Link>
                   でトークンを請求してください。
                 </p>
               </div>
@@ -392,117 +390,244 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Category Tabs */}
-      <div className="border-b border-gray-200">
-        <nav className="flex space-x-8">
-          {categories.map((category) => (
-            <button
-              key={category.id}
-              onClick={() => setSelectedCategory(category.id)}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                selectedCategory === category.id
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              {category.name}
-              <span className="ml-2 py-0.5 px-2 text-xs rounded-full bg-gray-100 text-gray-900">
-                {category.count}
-              </span>
-            </button>
-          ))}
-        </nav>
+      {/* Results Summary */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <h2 className="text-lg font-medium text-gray-900">
+            {selectedCategory === 'all' ? 'すべての市場' : categories.find(c => c.id === selectedCategory)?.name}
+          </h2>
+          <span className="text-sm text-gray-500">
+            {filteredAndSortedMarkets.length}件の市場
+          </span>
+        </div>
+        
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery('')}
+            className="text-sm text-gray-500 hover:text-gray-700"
+          >
+            検索をクリア
+          </button>
+        )}
       </div>
 
       {/* Market Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredMarkets.map((market) => (
-          <div key={market.id} className="bg-white rounded-lg shadow hover:shadow-md transition-shadow">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                  market.status === 'TRADING' 
-                    ? 'bg-green-100 text-green-800' 
-                    : 'bg-gray-100 text-gray-800'
-                }`}>
-                  {market.status === 'TRADING' ? '取引中' : '終了'}
-                </span>
-                <span className="text-sm text-gray-500">
-                  {market.deadline.toLocaleDateString('ja-JP')}
-                </span>
-              </div>
-              
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                {market.title}
-              </h3>
-              
-              <p className="text-sm text-gray-600 mb-4">
-                {market.kpiDescription}
-              </p>
-              
-              <div className="flex items-center justify-between text-sm text-gray-500">
-                <span>出来高: {market.totalVolume}</span>
-                <span>提案数: {market.numProposals}</span>
-              </div>
-              
-              <div className="mt-4 flex items-center justify-between">
-                <span className="text-lg font-semibold text-blue-600">
-                  {(market.topPrice * 100).toFixed(0)}%
-                </span>
-                <button className="px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">
-                  詳細を見る
-                </button>
+      <div className={`grid gap-6 ${
+        viewMode === 'grid' 
+          ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' 
+          : 'grid-cols-1'
+      }`}>
+        {filteredAndSortedMarkets.map((market) => (
+          <Link key={market.id} href={`/market/${market.id}`}>
+            <div className="bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border border-gray-200">
+              <div className="p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center space-x-2">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      market.status === 'TRADING' 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {market.status === 'TRADING' ? '取引中' : '終了'}
+                    </span>
+                    {market.featured && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                        <FireIcon className="w-3 h-3 mr-1" />
+                        注目
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <span className="text-lg font-bold text-blue-600">
+                      {(market.topPrice * 100).toFixed(0)}%
+                    </span>
+                    <div className={`text-xs flex items-center justify-end ${
+                      market.change24h >= 0 ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {market.change24h >= 0 ? (
+                        <TrendingUpIcon className="w-3 h-3 mr-1" />
+                      ) : (
+                        <TrendingUpIcon className="w-3 h-3 mr-1 rotate-180" />
+                      )}
+                      {Math.abs(market.change24h * 100).toFixed(1)}%
+                    </div>
+                  </div>
+                </div>
+                
+                <h3 className="text-lg font-medium text-gray-900 mb-2 line-clamp-2">
+                  {market.title}
+                </h3>
+                
+                <p className="text-sm text-gray-600 mb-4 line-clamp-3">
+                  {market.kpiDescription}
+                </p>
+
+                {/* Tags */}
+                <div className="flex flex-wrap gap-1 mb-4">
+                  {market.tags.slice(0, 3).map((tag) => (
+                    <span
+                      key={tag}
+                      className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                  {market.tags.length > 3 && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-500">
+                      +{market.tags.length - 3}
+                    </span>
+                  )}
+                </div>
+                
+                {/* Stats */}
+                <div className="grid grid-cols-3 gap-4 mb-4 text-center">
+                  <div>
+                    <div className="flex items-center justify-center text-gray-400 mb-1">
+                      <BanknotesIcon className="w-4 h-4" />
+                    </div>
+                    <div className="text-sm font-medium text-gray-900">
+                      {market.totalVolume.toLocaleString()}
+                    </div>
+                    <div className="text-xs text-gray-500">取引量</div>
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-center text-gray-400 mb-1">
+                      <UserGroupIcon className="w-4 h-4" />
+                    </div>
+                    <div className="text-sm font-medium text-gray-900">
+                      {market.participants}
+                    </div>
+                    <div className="text-xs text-gray-500">参加者</div>
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-center text-gray-400 mb-1">
+                      <ClockIcon className="w-4 h-4" />
+                    </div>
+                    <div className="text-sm font-medium text-gray-900">
+                      {format(market.deadline, 'MM/dd', { locale: ja })}
+                    </div>
+                    <div className="text-xs text-gray-500">終了</div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-gray-500">
+                    流動性: {market.liquidity.toLocaleString()} PT
+                  </span>
+                  <button className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors">
+                    取引する
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
 
       {/* Empty State */}
-      {filteredMarkets.length === 0 && (
-        <div className="text-center py-12">
-          <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-            <path d="M34 40h10v-4a6 6 0 00-10.712-3.714M34 40H14m20 0v-4a9.971 9.971 0 00-.712-3.714M14 40H4v-4a6 6 0 0110.713-3.714M14 40v-4c0-1.313.253-2.566.713-3.714m0 0A9.971 9.971 0 0124 24c4.21 0 7.813 2.602 9.288 6.286" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          <h3 className="mt-2 text-sm font-medium text-gray-900">市場がありません</h3>
-          <p className="mt-1 text-sm text-gray-500">選択されたカテゴリには市場がありません。</p>
+      {filteredAndSortedMarkets.length === 0 && (
+        <div className="text-center py-12 bg-white rounded-lg shadow-sm border border-gray-200">
+          <MagnifyingGlassIcon className="mx-auto h-12 w-12 text-gray-400" />
+          <h3 className="mt-4 text-lg font-medium text-gray-900">
+            {searchQuery ? '検索結果が見つかりません' : '市場がありません'}
+          </h3>
+          <p className="mt-2 text-sm text-gray-500">
+            {searchQuery 
+              ? `「${searchQuery}」に一致する市場が見つかりませんでした。`
+              : '選択されたカテゴリには市場がありません。'
+            }
+          </p>
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              すべての市場を表示
+            </button>
+          )}
         </div>
       )}
 
+      {/* Platform Stats */}
+      <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl p-6 border border-gray-200">
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">プラットフォーム統計</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-blue-600">
+              {mockMarkets.length}
+            </div>
+            <div className="text-sm text-gray-600">総市場数</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-green-600">
+              {mockMarkets.filter(m => m.status === 'TRADING').length}
+            </div>
+            <div className="text-sm text-gray-600">アクティブ市場</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-purple-600">
+              {mockMarkets.reduce((sum, m) => sum + m.totalVolume, 0).toLocaleString()}
+            </div>
+            <div className="text-sm text-gray-600">総取引量 (PT)</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-orange-600">
+              {mockMarkets.reduce((sum, m) => sum + m.participants, 0).toLocaleString()}
+            </div>
+            <div className="text-sm text-gray-600">総参加者数</div>
+          </div>
+        </div>
+      </div>
+
       {/* Getting Started Section */}
       {!account && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">
-            Futarchy プラットフォームへようこそ
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              Futarchy プラットフォームへようこそ
+            </h2>
+            <p className="text-gray-600">
+              予測市場を通じて、社会課題の解決に参加しましょう
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="text-center">
-              <div className="bg-blue-100 rounded-full p-3 w-12 h-12 mx-auto mb-3 flex items-center justify-center">
-                <span className="text-blue-600 font-bold">1</span>
+              <div className="bg-blue-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                <span className="text-blue-600 font-bold text-xl">1</span>
               </div>
-              <h3 className="font-medium text-gray-900">ウォレット接続</h3>
-              <p className="text-sm text-gray-500 mt-1">
-                MetaMaskなどのウォレットを接続
+              <h3 className="font-semibold text-gray-900 mb-2">ウォレット接続</h3>
+              <p className="text-sm text-gray-600">
+                MetaMaskなどのウォレットを接続して開始
               </p>
             </div>
             <div className="text-center">
-              <div className="bg-blue-100 rounded-full p-3 w-12 h-12 mx-auto mb-3 flex items-center justify-center">
-                <span className="text-blue-600 font-bold">2</span>
+              <div className="bg-green-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                <span className="text-green-600 font-bold text-xl">2</span>
               </div>
-              <h3 className="font-medium text-gray-900">PT取得</h3>
-              <p className="text-sm text-gray-500 mt-1">
-                無料で1,000 Play Tokenを取得
+              <h3 className="font-semibold text-gray-900 mb-2">Play Token取得</h3>
+              <p className="text-sm text-gray-600">
+                無料で1,000 Play Tokenを取得して取引開始
               </p>
             </div>
             <div className="text-center">
-              <div className="bg-blue-100 rounded-full p-3 w-12 h-12 mx-auto mb-3 flex items-center justify-center">
-                <span className="text-blue-600 font-bold">3</span>
+              <div className="bg-purple-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                <span className="text-purple-600 font-bold text-xl">3</span>
               </div>
-              <h3 className="font-medium text-gray-900">予測投資</h3>
-              <p className="text-sm text-gray-500 mt-1">
-                最適な解決策に投資して予測
+              <h3 className="font-semibold text-gray-900 mb-2">予測投資</h3>
+              <p className="text-sm text-gray-600">
+                最適な解決策に投資して未来を予測
               </p>
             </div>
+          </div>
+
+          <div className="text-center mt-8">
+            <button
+              onClick={connectWallet}
+              className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              今すぐ始める
+            </button>
           </div>
         </div>
       )}

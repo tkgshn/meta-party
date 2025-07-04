@@ -54,12 +54,12 @@ jest.mock('@rainbow-me/rainbowkit', () => ({
   ConnectButton: () => <button>Connect Wallet</button>,
 }))
 
-// Mock Firebase
+// Mock Firebase (since it may not exist)
 jest.mock('@/lib/firebase', () => ({
   auth: {},
   db: {},
   functions: {},
-}))
+}), { virtual: true })
 
 // Mock date-fns
 jest.mock('date-fns', () => ({
