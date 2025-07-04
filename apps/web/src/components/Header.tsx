@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -14,6 +14,7 @@ import {
   Cog6ToothIcon,
   ChartBarIcon,
   PlusCircleIcon,
+  InformationCircleIcon,
 } from '@heroicons/react/24/outline';
 import '@/types/ethereum';
 import { usePlayToken } from '@/hooks/usePlayToken';
@@ -24,6 +25,57 @@ interface HeaderProps {
   showSearch?: boolean;
 }
 
+/**
+ * プラットフォーム概要を3ステップで表示するモーダル
+ */
+function AboutModal({ open, onClose, step, setStep }: { open: boolean; onClose: () => void; step: number; setStep: (n: number) => void }) {
+  const steps = [
+    {
+      title: '予測市場で社会課題を解決',
+      desc: 'このプラットフォームは、社会課題の解決策を「予測市場」で評価・投資できるサービスです。みんなで未来の出来事や政策の成果を予測し、最適な解決策を見つけます。',
+    },
+    {
+      title: 'Play Tokenで参加・投資',
+      desc: 'ユーザーはウォレットを接続し、Play Token（PT）を受け取って市場に参加します。各市場で提案や選択肢にPTを投資し、予測に基づく意思決定に貢献できます。',
+    },
+    {
+      title: '透明で公正な意思決定',
+      desc: '取引量や価格の変動を通じて、どの解決策が有望かを可視化します。すべての取引や結果はブロックチェーン上で透明に管理され、公正な意思決定をサポートします。',
+    },
+  ];
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-100/80">
+      <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6 relative animate-fade-in">
+        <button
+          className="absolute top-3 right-3 text-gray-400 hover:text-gray-700 text-xl"
+          onClick={onClose}
+          aria-label="閉じる"
+        >
+          ×
+        </button>
+        <div className="mb-4">
+          <h2 className="text-xl font-bold text-gray-900 mb-2">{steps[step].title}</h2>
+          <p className="text-gray-700 text-sm whitespace-pre-line">{steps[step].desc}</p>
+        </div>
+        <div className="flex justify-between items-center mt-6">
+          <div className="flex space-x-1">
+            {steps.map((_, i) => (
+              <span key={i} className={`w-2 h-2 rounded-full ${i === step ? 'bg-blue-600' : 'bg-gray-300'}`}></span>
+            ))}
+          </div>
+          <button
+            className="ml-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+            onClick={() => step < steps.length - 1 ? setStep(step + 1) : onClose()}
+          >
+            {step < steps.length - 1 ? '次へ' : '閉じる'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Header({ onSearch, searchQuery = '', showSearch = true }: HeaderProps) {
   const pathname = usePathname();
   const [account, setAccount] = useState<string | null>(null);
@@ -31,6 +83,8 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [searchInput, setSearchInput] = useState(searchQuery);
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const [aboutStep, setAboutStep] = useState(0);
 
   // Use PlayToken hook for real balance
   const { balance: playTokenBalance, refreshBalance } = usePlayToken(account);
@@ -100,7 +154,7 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
     if (account) {
       refreshBalance();
       // Mock portfolio value for now - can be replaced with actual calculation
-      setPortfolioValue(playTokenBalance);
+      setPortfolioValue(Number(playTokenBalance));
     } else {
       setPortfolioValue(0);
     }
@@ -117,7 +171,6 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
     e.preventDefault();
     onSearch?.(searchInput);
   };
-
 
   return (
     <header className="bg-white shadow-sm border-b sticky top-0 z-50">
@@ -136,7 +189,7 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
 
             {/* Search Bar */}
             {showSearch && (
-              <div className="hidden md:block ml-8">
+              <div className="hidden md:flex items-center ml-8 space-x-4">
                 <form onSubmit={handleSearchSubmit} className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
@@ -149,6 +202,16 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                     className="block w-80 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                   />
                 </form>
+                {/* 仕組みについてボタン */}
+                <button
+                  className="ml-4 flex items-center text-blue-600 hover:underline text-sm font-medium transition-colors focus:outline-none"
+                  onClick={() => { setAboutStep(0); setAboutOpen(true); }}
+                  type="button"
+                  style={{ background: 'none', border: 'none', padding: 0 }}
+                >
+                  <InformationCircleIcon className="w-5 h-5 mr-1" />
+                  仕組みについて
+                </button>
               </div>
             )}
           </div>
@@ -286,6 +349,9 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
           </div>
         </div>
       </div>
+
+      {/* Aboutモーダル */}
+      <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} step={aboutStep} setStep={setAboutStep} />
 
       {/* Mobile Search */}
       {showSearch && (
