@@ -19,7 +19,6 @@ import { useMetaMask } from '@/hooks/useMetaMask';
 import { useToken } from '@/hooks/useToken';
 import { useOnChainPortfolio } from '@/hooks/useOnChainPortfolio';
 import { NETWORKS, getNetworkByChainId, getCurrencySymbol } from '@/config/networks';
-import NetworkSwitcher from './NetworkSwitcher';
 
 interface HeaderProps {
   onSearch?: (query: string) => void;
@@ -95,6 +94,7 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
   // Use enhanced MetaMask hook
   const { 
     account, 
+    chainId,
     isConnected, 
     connect, 
     disconnect,
@@ -105,11 +105,10 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
   const [currentNetworkKey, setCurrentNetworkKey] = useState<string>('polygon');
   
   useEffect(() => {
-    const detectNetwork = async () => {
-      if (!account) return;
+    const detectNetwork = () => {
+      if (!chainId) return;
       
       try {
-        const chainId = await getCurrentChainId();
         const network = getNetworkByChainId(chainId);
         if (network) {
           const networkKey = Object.keys(NETWORKS).find(
@@ -125,23 +124,30 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
     };
     
     detectNetwork();
-  }, [account, getCurrentChainId]);
+  }, [chainId]); // chainIdの変更を直接監視
   
   const currencySymbol = getCurrencySymbol(currentNetworkKey);
 
-  // Use token hook for current network
-  const { balance: tokenBalance, refreshBalance } = useToken(account, currentNetworkKey);
+  // Use token hook for current network (matches portfolio page logic)
+  const {
+    balance: tokenBalance,
+    symbol: tokenSymbol,
+    isLoading: tokenLoading,
+    refreshBalance
+  } = useToken(account, currentNetworkKey);
   
   // Use on-chain portfolio data
   const {
+    positionTokens,
     totalPortfolioValue,
-    totalCash,
     isLoading: portfolioLoading
   } = useOnChainPortfolio(account);
   
-  // Calculate portfolio value with real data
-  const portfolioValue = isConnected ? totalPortfolioValue : 0;
-  const cashValue = isConnected ? (totalCash || Number(tokenBalance)) : 0;
+  // Calculate portfolio value using same logic as portfolio page
+  const cash = parseFloat(tokenBalance) || 0;
+  const positionsValue = positionTokens.reduce((sum, token) => sum + token.value, 0);
+  const portfolioValue = isConnected ? (totalPortfolioValue || (cash + positionsValue)) : 0;
+  const cashValue = isConnected ? cash : 0;
 
   // Handle wallet disconnect
   const handleDisconnect = async () => {
@@ -224,11 +230,11 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                     <ChartBarIcon className="h-4 w-4 text-blue-600" />
                     <span className="text-gray-600 group-hover:text-blue-700">ポートフォリオ:</span>
                     <span className="font-semibold text-gray-900 group-hover:text-blue-700">
-                      {portfolioLoading ? '...' : (
-                        currencySymbol === 'USDC' 
-                          ? portfolioValue.toFixed(2)
+                      {(portfolioLoading || tokenLoading) ? '...' : (
+                        (tokenSymbol || currencySymbol) === 'MATIC' 
+                          ? portfolioValue.toFixed(4)
                           : portfolioValue.toLocaleString()
-                      )} {currencySymbol}
+                      )} {tokenSymbol || currencySymbol}
                     </span>
                     <span className="text-xs bg-green-100 text-green-800 px-1 py-0.5 rounded ml-1">
                       Live
@@ -238,11 +244,11 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                     <CurrencyDollarIcon className="h-4 w-4 text-green-600" />
                     <span className="text-gray-600 group-hover:text-blue-700">キャッシュ:</span>
                     <span className="font-semibold text-gray-900 group-hover:text-blue-700">
-                      {portfolioLoading ? '...' : (
-                        currencySymbol === 'USDC' 
-                          ? cashValue.toFixed(2)
+                      {(portfolioLoading || tokenLoading) ? '...' : (
+                        (tokenSymbol || currencySymbol) === 'MATIC' 
+                          ? cashValue.toFixed(4)
                           : cashValue.toLocaleString()
-                      )} {currencySymbol}
+                      )} {tokenSymbol || currencySymbol}
                     </span>
                     <span className="text-xs bg-green-100 text-green-800 px-1 py-0.5 rounded ml-1">
                       Live
@@ -252,16 +258,13 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
 
                 {/* Action Buttons */}
                 <div className="flex items-center space-x-2">
-                  <div className="flex items-center space-x-2">
-                    <NetworkSwitcher className="hidden lg:block" />
-                    <Link
-                      href="/portfolio"
-                      className="inline-flex items-center px-3 py-2 border border-blue-600 text-sm font-medium rounded-lg text-blue-600 bg-white hover:bg-blue-50 transition-colors"
-                    >
-                      <PlusCircleIcon className="h-4 w-4 mr-1" />
-                      <span className="hidden sm:inline">ポートフォリオ</span>
-                    </Link>
-                  </div>
+                  <Link
+                    href="/portfolio"
+                    className="inline-flex items-center px-3 py-2 border border-blue-600 text-sm font-medium rounded-lg text-blue-600 bg-white hover:bg-blue-50 transition-colors"
+                  >
+                    <PlusCircleIcon className="h-4 w-4 mr-1" />
+                    <span className="hidden sm:inline">ポートフォリオ</span>
+                  </Link>
 
                   <button className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
                     <BellIcon className="h-5 w-5" />
@@ -288,7 +291,8 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                             {account.slice(0, 6)}...{account.slice(-4)}
                           </Link>
                           <div className="text-xs text-gray-500 mt-1">
-                            Polygon Amoy Testnet
+                            {NETWORKS[currentNetworkKey]?.displayName || 'Unknown Network'}
+                            {NETWORKS[currentNetworkKey]?.isTestnet && ' (テストネット)'}
                           </div>
                         </div>
 

@@ -215,8 +215,8 @@ export default function PortfolioPage() {
                   </span>
                 </div>
                 <p className="text-3xl font-bold text-gray-900">
-                  {portfolioSummary.currencySymbol === 'USDC' 
-                    ? portfolioSummary.portfolioTotal.toFixed(2)
+                  {portfolioSummary.currencySymbol === 'MATIC' 
+                    ? portfolioSummary.portfolioTotal.toFixed(4)
                     : portfolioSummary.portfolioTotal.toFixed(0)
                   } {portfolioSummary.currencySymbol}
                 </p>
@@ -246,8 +246,8 @@ export default function PortfolioPage() {
                   </span>
                 </div>
                 <p className="text-3xl font-bold text-gray-900">
-                  {portfolioSummary.currencySymbol === 'USDC' 
-                    ? portfolioSummary.cash.toFixed(2)
+                  {portfolioSummary.currencySymbol === 'MATIC' 
+                    ? portfolioSummary.cash.toFixed(4)
                     : portfolioSummary.cash.toFixed(0)
                   } {portfolioSummary.currencySymbol}
                 </p>

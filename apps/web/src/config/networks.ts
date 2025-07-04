@@ -109,9 +109,12 @@ export function getCurrencySymbol(networkKey: string): string {
   const network = NETWORKS[networkKey];
   if (!network) return 'Unknown';
   
-  if (network.contracts.usdc) {
-    return 'USDC';
-  } else if (network.contracts.playToken) {
+  // For Polygon mainnet, show native MATIC instead of USDC
+  if (networkKey === 'polygon') {
+    return 'MATIC';
+  }
+  
+  if (network.contracts.playToken) {
     return 'PT';
   }
   
@@ -129,10 +132,11 @@ export function getCurrencyDecimals(networkKey: string): number {
   const network = NETWORKS[networkKey];
   if (!network) return 18;
   
-  // USDC has 6 decimals, PT has 18
-  if (network.contracts.usdc) {
-    return 6;
+  // For Polygon mainnet, use native MATIC (18 decimals)
+  if (networkKey === 'polygon') {
+    return 18;
   }
   
+  // PT has 18 decimals
   return 18;
 }

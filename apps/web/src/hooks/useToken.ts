@@ -94,7 +94,7 @@ export function useToken(account: string | null, networkKey?: string): TokenStat
 
   // Refresh token balance and metadata
   const refreshBalance = useCallback(async () => {
-    if (!account || !tokenAddress) {
+    if (!account) {
       setBalance('0');
       setBalanceWei(BigInt(0));
       setSymbol(tokenSymbol);
@@ -113,7 +113,56 @@ export function useToken(account: string | null, networkKey?: string): TokenStat
         return;
       }
 
-      const { contract } = initialized;
+      const { contract, provider } = initialized;
+
+      if (DEBUG_MODE) {
+        console.log('🔍 Debug: Balance check details:', {
+          account,
+          tokenAddress,
+          network: currentNetwork.displayName,
+          chainId: currentNetwork.chainId,
+          rpcUrl: currentNetwork.rpcUrls[0],
+          hasTokenAddress: !!tokenAddress
+        });
+      }
+
+      // For Polygon mainnet, show native MATIC balance instead of USDC
+      if (currentNetworkKey === 'polygon') {
+        // Get native MATIC balance
+        const balanceWei = await provider.getBalance(account);
+        const balanceFormatted = formatUnits(balanceWei, 18); // MATIC has 18 decimals
+        
+        if (DEBUG_MODE) {
+          console.log('🔍 Debug: Native MATIC balance:', {
+            balanceWei: balanceWei.toString(),
+            balanceFormatted,
+            decimals: 18
+          });
+        }
+        
+        setBalanceWei(balanceWei);
+        setBalance(balanceFormatted);
+        setSymbol('MATIC');
+        setDecimals(18);
+        setLastUpdated(new Date());
+
+        if (DEBUG_MODE) {
+          console.log('Native MATIC balance updated:', {
+            token: 'MATIC',
+            balance: balanceFormatted,
+            network: currentNetwork.displayName
+          });
+        }
+        
+        return;
+      }
+
+      // For other networks with token contracts (like Amoy with Play Token)
+      if (!tokenAddress) {
+        setBalance('0');
+        setBalanceWei(BigInt(0));
+        return;
+      }
 
       // Get balance and token metadata
       const [balanceWei, tokenSymbol, tokenDecimals] = await Promise.all([
@@ -121,6 +170,15 @@ export function useToken(account: string | null, networkKey?: string): TokenStat
         contract.symbol().catch(() => symbol || 'Unknown'),
         contract.decimals().catch(() => tokenDecimals)
       ]);
+
+      if (DEBUG_MODE) {
+        console.log('🔍 Debug: Token contract responses:', {
+          balanceWei: balanceWei.toString(),
+          tokenSymbol,
+          tokenDecimals: tokenDecimals.toString(),
+          expectedDecimals: tokenDecimals
+        });
+      }
 
       const balanceFormatted = formatUnits(balanceWei, tokenDecimals);
       
