@@ -216,7 +216,7 @@ export function useToken(account: string | null, networkKey?: string): TokenStat
     } finally {
       setIsLoading(false);
     }
-  }, [account, tokenAddress, initializeProvider, currentNetwork, currentNetworkKey, symbol, tokenDecimals, tokenSymbol]);
+  }, [account, tokenAddress, initializeProvider, currentNetwork, currentNetworkKey]);
 
   // Transfer tokens
   const transfer = useCallback(async (to: string, amount: string): Promise<{ success: boolean; txHash?: string; error?: string }> => {

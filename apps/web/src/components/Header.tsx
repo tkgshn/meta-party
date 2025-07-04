@@ -176,8 +176,8 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
 
   return (
     <header className="bg-white shadow-sm border-b sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+      <div className="w-full px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16 min-w-0 gap-4">
           {/* Logo and Title */}
           <div className="flex items-center">
             <Link href="/" className="flex items-center">
@@ -188,8 +188,8 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
 
             {/* Search Bar */}
             {showSearch && (
-              <div className="hidden md:flex items-center ml-8 space-x-4">
-                <form onSubmit={handleSearchSubmit} className="relative">
+              <div className="hidden md:flex items-center ml-6 space-x-4 flex-1 max-w-md">
+                <form onSubmit={handleSearchSubmit} className="relative w-full">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
                   </div>
@@ -198,7 +198,7 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                     value={searchInput}
                     onChange={handleSearchChange}
                     placeholder="市場を検索..."
-                    className="block w-80 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    className="block w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                   />
                 </form>
                 {/* 仕組みについてボタン */}
@@ -225,9 +225,9 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
             {account ? (
               <div className="flex items-center space-x-4">
                 {/* Portfolio Value */}
-                <div className="hidden lg:flex items-center space-x-4 text-sm">
-                  <Link href="/portfolio" className="flex items-center space-x-1 px-2 py-1 rounded hover:bg-blue-50 transition-colors cursor-pointer group">
-                    <ChartBarIcon className="h-4 w-4 text-blue-600" />
+                <div className="hidden xl:flex items-center space-x-3 text-sm">
+                  <Link href="/portfolio" className="flex items-center space-x-1 px-2 py-1 rounded hover:bg-blue-50 transition-colors cursor-pointer group whitespace-nowrap">
+                    <ChartBarIcon className="h-4 w-4 text-blue-600 flex-shrink-0" />
                     <span className="text-gray-600 group-hover:text-blue-700">ポートフォリオ:</span>
                     <span className="font-semibold text-gray-900 group-hover:text-blue-700">
                       {(portfolioLoading || tokenLoading) ? '...' : (
@@ -236,12 +236,12 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                           : portfolioValue.toLocaleString()
                       )} {tokenSymbol || currencySymbol}
                     </span>
-                    <span className="text-xs bg-green-100 text-green-800 px-1 py-0.5 rounded ml-1">
+                    <span className="text-xs bg-green-100 text-green-800 px-1 py-0.5 rounded ml-1 flex-shrink-0">
                       Live
                     </span>
                   </Link>
-                  <Link href="/portfolio" className="flex items-center space-x-1 px-2 py-1 rounded hover:bg-blue-50 transition-colors cursor-pointer group">
-                    <CurrencyDollarIcon className="h-4 w-4 text-green-600" />
+                  <Link href="/portfolio" className="flex items-center space-x-1 px-2 py-1 rounded hover:bg-blue-50 transition-colors cursor-pointer group whitespace-nowrap">
+                    <CurrencyDollarIcon className="h-4 w-4 text-green-600 flex-shrink-0" />
                     <span className="text-gray-600 group-hover:text-blue-700">キャッシュ:</span>
                     <span className="font-semibold text-gray-900 group-hover:text-blue-700">
                       {(portfolioLoading || tokenLoading) ? '...' : (
@@ -250,7 +250,7 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                           : cashValue.toLocaleString()
                       )} {tokenSymbol || currencySymbol}
                     </span>
-                    <span className="text-xs bg-green-100 text-green-800 px-1 py-0.5 rounded ml-1">
+                    <span className="text-xs bg-green-100 text-green-800 px-1 py-0.5 rounded ml-1 flex-shrink-0">
                       Live
                     </span>
                   </Link>
