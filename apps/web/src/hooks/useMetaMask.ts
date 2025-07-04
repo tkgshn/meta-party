@@ -208,32 +208,6 @@ export function useMetaMask(): MetaMaskState & MetaMaskActions {
     }
   }, []);
 
-  // Generic network switching function
-  const switchNetwork = useCallback(async (chainId: number): Promise<boolean> => {
-    if (!window.ethereum) return false;
-
-    try {
-      await window.ethereum.request({
-        method: 'wallet_switchEthereumChain',
-        params: [{ chainId: `0x${chainId.toString(16)}` }],
-      });
-      return true;
-    } catch (error: any) {
-      console.error('Failed to switch network:', error);
-      
-      // If the chain is not added to MetaMask, try to add it
-      if ((error as { code: number }).code === 4902) {
-        const networkKey = Object.keys(NETWORKS).find(
-          key => NETWORKS[key].chainId === chainId
-        );
-        if (networkKey) {
-          return await addNetwork(networkKey);
-        }
-      }
-      return false;
-    }
-  }, [addNetwork]);
-
   // Generic network adding function
   const addNetwork = useCallback(async (networkKey: string): Promise<boolean> => {
     if (!window.ethereum) return false;
@@ -260,6 +234,32 @@ export function useMetaMask(): MetaMaskState & MetaMaskActions {
       return false;
     }
   }, []);
+
+  // Generic network switching function
+  const switchNetwork = useCallback(async (chainId: number): Promise<boolean> => {
+    if (!window.ethereum) return false;
+
+    try {
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: `0x${chainId.toString(16)}` }],
+      });
+      return true;
+    } catch (error: any) {
+      console.error('Failed to switch network:', error);
+      
+      // If the chain is not added to MetaMask, try to add it
+      if ((error as { code: number }).code === 4902) {
+        const networkKey = Object.keys(NETWORKS).find(
+          key => NETWORKS[key].chainId === chainId
+        );
+        if (networkKey) {
+          return await addNetwork(networkKey);
+        }
+      }
+      return false;
+    }
+  }, [addNetwork]);
 
   // Refresh connection state
   const refreshConnection = useCallback(async () => {
