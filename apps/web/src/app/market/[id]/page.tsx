@@ -56,10 +56,10 @@ const generatePriceHistory = (marketData: Market, timeScope: '1h' | '6h' | '1w' 
   };
 
   const config = scopeConfig[timeScope];
-  
+
   return Array.from({ length: config.points }, (_, i) => {
     const date = new Date();
-    
+
     // Calculate the time offset based on scope
     if (config.unit === 'minutes') {
       date.setMinutes(date.getMinutes() - (config.points - 1 - i) * config.interval);
@@ -68,7 +68,7 @@ const generatePriceHistory = (marketData: Market, timeScope: '1h' | '6h' | '1w' 
     } else {
       date.setDate(date.getDate() - (config.points - 1 - i) * config.interval);
     }
-    
+
     const dataPoint: any = {
       date: format(date, config.formatString, { locale: ja })
     };
@@ -77,46 +77,46 @@ const generatePriceHistory = (marketData: Market, timeScope: '1h' | '6h' | '1w' 
       // Multi-option market - generate dramatic price movement
       const rawPrices: number[] = [];
       const totalPoints = config.points;
-      
+
       marketData.proposals.forEach((proposal, index) => {
         const trendFactor = (i / totalPoints); // 0 to 1 from past to present
         const currentPrice = proposal.price;
-        
+
         let historicalPrice;
-        
+
         // Create dramatic story for each proposal with different patterns per time scope
         if (proposal.id === 'askoe') {
           // アスコエ: 大幅上昇 (15% → 42%)
-          const startPrice = timeScope === '1h' ? currentPrice * 0.95 : 
-                            timeScope === '6h' ? currentPrice * 0.85 : 
-                            timeScope === '1w' ? currentPrice * 0.6 : 
+          const startPrice = timeScope === '1h' ? currentPrice * 0.95 :
+                            timeScope === '6h' ? currentPrice * 0.85 :
+                            timeScope === '1w' ? currentPrice * 0.6 :
                             timeScope === '1m' ? 0.25 : 0.15;
           const midDrop = timeScope !== '1h' && i > totalPoints * 0.3 && i < totalPoints * 0.7 ? -0.05 : 0;
           historicalPrice = startPrice + (currentPrice - startPrice) * trendFactor + midDrop;
         } else if (proposal.id === 'civichat') {
           // civichat: 大幅下落 (60% → 35%)
-          const startPrice = timeScope === '1h' ? currentPrice * 1.05 : 
-                            timeScope === '6h' ? currentPrice * 1.15 : 
-                            timeScope === '1w' ? currentPrice * 1.4 : 
+          const startPrice = timeScope === '1h' ? currentPrice * 1.05 :
+                            timeScope === '6h' ? currentPrice * 1.15 :
+                            timeScope === '1w' ? currentPrice * 1.4 :
                             timeScope === '1m' ? 0.45 : 0.60;
           const spike = timeScope !== '1h' && i > totalPoints * 0.1 && i < totalPoints * 0.3 ? 0.1 : 0;
           historicalPrice = startPrice + (currentPrice - startPrice) * trendFactor + spike;
         } else if (proposal.id === 'graffer') {
           // graffer: 比較的安定 (25% → 23%)
-          const startPrice = timeScope === '1h' ? currentPrice * 1.02 : 
-                            timeScope === '6h' ? currentPrice * 1.08 : 
-                            timeScope === '1w' ? currentPrice * 1.1 : 
+          const startPrice = timeScope === '1h' ? currentPrice * 1.02 :
+                            timeScope === '6h' ? currentPrice * 1.08 :
+                            timeScope === '1w' ? currentPrice * 1.1 :
                             timeScope === '1m' ? 0.30 : 0.25;
           historicalPrice = startPrice + (currentPrice - startPrice) * trendFactor;
         }
-        
+
         // Add scope-appropriate noise
-        const noiseLevel = timeScope === '1h' ? 0.005 : 
-                          timeScope === '6h' ? 0.01 : 
+        const noiseLevel = timeScope === '1h' ? 0.005 :
+                          timeScope === '6h' ? 0.01 :
                           timeScope === '1w' ? 0.02 : 0.03;
         const noise = (Math.random() - 0.5) * noiseLevel;
         const rawPrice = Math.max(0.01, historicalPrice + noise);
-        
+
         rawPrices.push(rawPrice);
       });
 
@@ -130,7 +130,7 @@ const generatePriceHistory = (marketData: Market, timeScope: '1h' | '6h' | '1w' 
       const basePrice = 0.5 + (i / config.points) * 0.15;
       const noise = (Math.random() - 0.5) * 0.1;
       const yesPrice = Math.max(0.01, Math.min(0.99, basePrice + noise));
-      
+
       dataPoint.yesPrice = yesPrice;
       dataPoint.noPrice = 1 - yesPrice;
     }
@@ -244,7 +244,7 @@ export default function MarketDetailPage() {
               <div className="p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-lg font-semibold text-gray-900">価格推移</h2>
-                  
+
                   {/* Time Scope Selector */}
                   <div className="flex rounded-lg border border-gray-200 overflow-hidden">
                     {(['1h', '6h', '1w', '1m', 'all'] as const).map((scope) => (
@@ -508,7 +508,7 @@ export default function MarketDetailPage() {
                               isSelected ? `${color.border} ${color.bg}` : 'border-gray-200 hover:border-gray-300'
                             }`}>
                               {/* Proposal Header */}
-                              <div 
+                              <div
                                 className="p-3 cursor-pointer"
                                 onClick={() => setSelectedProposal(isSelected ? '' : proposal.id)}
                               >

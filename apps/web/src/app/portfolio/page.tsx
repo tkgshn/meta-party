@@ -21,11 +21,11 @@ export default function PortfolioPage() {
   const { account, isConnected, getCurrentChainId } = useMetaMask();
   const [currentNetworkKey, setCurrentNetworkKey] = useState<string>('polygon');
   const [selectedTab, setSelectedTab] = useState<'positions' | 'history' | 'analytics'>('positions');
-  
+
   // Get current network info
   const currentNetwork = NETWORKS[currentNetworkKey];
   const currencySymbol = getCurrencySymbol(currentNetworkKey);
-  
+
   // Use token hook for current network
   const {
     balance: tokenBalance,
@@ -40,7 +40,7 @@ export default function PortfolioPage() {
     addTokenToMetaMask,
     refreshBalance
   } = useToken(account, currentNetworkKey);
-  
+
   // Use portfolio hook (mainly for position tracking)
   const {
     positionTokens,
@@ -50,7 +50,7 @@ export default function PortfolioPage() {
     lastUpdated: portfolioLastUpdated,
     refreshPortfolio
   } = useOnChainPortfolio(account);
-  
+
   // Detect current network from MetaMask
   useEffect(() => {
     const detectNetwork = async () => {
@@ -69,7 +69,7 @@ export default function PortfolioPage() {
         console.error('Failed to detect network:', error);
       }
     };
-    
+
     if (account) {
       detectNetwork();
     }
@@ -79,7 +79,7 @@ export default function PortfolioPage() {
   const handleNetworkChange = (networkKey: string) => {
     setCurrentNetworkKey(networkKey);
   };
-  
+
   // Calculate portfolio summary using live on-chain data only
   const portfolioSummary = useMemo(() => {
     const cash = parseFloat(tokenBalance) || 0;
@@ -157,7 +157,7 @@ export default function PortfolioPage() {
               <div>
                 <p className="text-sm font-medium text-gray-900">{currentNetwork?.displayName}</p>
                 <p className="text-xs text-gray-500">
-                  {currentNetwork?.isTestnet ? 'テストネット' : 'メインネット'} • 
+                  {currentNetwork?.isTestnet ? 'テストネット' : 'メインネット'} •
                   {currencySymbol} • チェーンID: {currentNetwork?.chainId}
                 </p>
               </div>
@@ -179,18 +179,18 @@ export default function PortfolioPage() {
             )}
           </div>
         </div>
-        
+
         {/* Portfolio Status */}
         {(tokenLoading || portfolioLoading) && (
           <div className="mb-4 p-4 bg-blue-50 rounded-lg">
             <p className="text-sm text-blue-800">データを読み込み中...</p>
           </div>
         )}
-        
+
         {(tokenError || portfolioError) && (
           <div className="mb-4 p-4 bg-red-50 rounded-lg">
             <p className="text-sm text-red-800">エラー: {tokenError || portfolioError}</p>
-            <button 
+            <button
               onClick={() => {
                 refreshBalance();
                 refreshPortfolio();
@@ -210,12 +210,12 @@ export default function PortfolioPage() {
               <div>
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-medium text-gray-600">Portfolio</p>
-                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                  {/* <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
                     Live
-                  </span>
+                  </span> */}
                 </div>
                 <p className="text-3xl font-bold text-gray-900">
-                  {portfolioSummary.currencySymbol === 'MATIC' 
+                  {portfolioSummary.currencySymbol === 'MATIC'
                     ? portfolioSummary.portfolioTotal.toFixed(4)
                     : portfolioSummary.portfolioTotal.toFixed(0)
                   } {portfolioSummary.currencySymbol}
@@ -241,12 +241,12 @@ export default function PortfolioPage() {
               <div>
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-medium text-gray-600">Cash</p>
-                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                  {/* <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
                     Live
-                  </span>
+                  </span> */}
                 </div>
                 <p className="text-3xl font-bold text-gray-900">
-                  {portfolioSummary.currencySymbol === 'MATIC' 
+                  {portfolioSummary.currencySymbol === 'MATIC'
                     ? portfolioSummary.cash.toFixed(4)
                     : portfolioSummary.cash.toFixed(0)
                   } {portfolioSummary.currencySymbol}
@@ -313,7 +313,7 @@ export default function PortfolioPage() {
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-gray-900">現在のポジション</h3>
                   <div className="flex items-center space-x-2">
-                    <button 
+                    <button
                       onClick={() => {
                         refreshBalance();
                         refreshPortfolio();
@@ -330,7 +330,7 @@ export default function PortfolioPage() {
                     </button>
                   </div>
                 </div>
-                
+
                 {/* Live positions from on-chain data */}
                 {positionTokens.length > 0 ? (
                   <div className="space-y-4">
@@ -363,7 +363,7 @@ export default function PortfolioPage() {
                     <p className="text-gray-500 mb-4">
                       現在、予測市場でのアクティブなポジションはありません。
                     </p>
-                    <Link 
+                    <Link
                       href="/"
                       className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition-colors"
                     >

@@ -9,7 +9,7 @@ import {
   ChevronDownIcon,
   WalletIcon,
   CurrencyDollarIcon,
-  ArrowRightOnRectangleIcon,
+  ArrowRightStartOnRectangleIcon,
   ChartBarIcon,
   PlusCircleIcon,
   InformationCircleIcon,
@@ -19,6 +19,7 @@ import { useMetaMask } from '@/hooks/useMetaMask';
 import { useToken } from '@/hooks/useToken';
 import { useOnChainPortfolio } from '@/hooks/useOnChainPortfolio';
 import { NETWORKS, getNetworkByChainId, getCurrencySymbol } from '@/config/networks';
+import WalletModal from './WalletModal';
 
 interface HeaderProps {
   onSearch?: (query: string) => void;
@@ -90,24 +91,25 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
   const [searchInput, setSearchInput] = useState(searchQuery);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [aboutStep, setAboutStep] = useState(0);
+  const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
 
   // Use enhanced MetaMask hook
-  const { 
-    account, 
+  const {
+    account,
     chainId,
-    isConnected, 
-    connect, 
+    isConnected,
+    connect,
     disconnect,
-    getCurrentChainId 
+    getCurrentChainId
   } = useMetaMask();
-  
+
   // Detect current network
   const [currentNetworkKey, setCurrentNetworkKey] = useState<string>('polygon');
-  
+
   useEffect(() => {
     const detectNetwork = () => {
       if (!chainId) return;
-      
+
       try {
         const network = getNetworkByChainId(chainId);
         if (network) {
@@ -122,10 +124,10 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
         console.error('Failed to detect network:', error);
       }
     };
-    
+
     detectNetwork();
-  }, [chainId]); // chainIdの変更を直接監視
-  
+  }, [chainId]);
+
   const currencySymbol = getCurrencySymbol(currentNetworkKey);
 
   // Use token hook for current network (matches portfolio page logic)
@@ -135,14 +137,14 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
     isLoading: tokenLoading,
     refreshBalance
   } = useToken(account, currentNetworkKey);
-  
+
   // Use on-chain portfolio data
   const {
     positionTokens,
     totalPortfolioValue,
     isLoading: portfolioLoading
   } = useOnChainPortfolio(account);
-  
+
   // Calculate portfolio value using same logic as portfolio page
   const cash = parseFloat(tokenBalance) || 0;
   const positionsValue = positionTokens.reduce((sum, token) => sum + token.value, 0);
@@ -231,40 +233,40 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                     <span className="text-gray-600 group-hover:text-blue-700">ポートフォリオ:</span>
                     <span className="font-semibold text-gray-900 group-hover:text-blue-700">
                       {(portfolioLoading || tokenLoading) ? '...' : (
-                        (tokenSymbol || currencySymbol) === 'MATIC' 
+                        (tokenSymbol || currencySymbol) === 'MATIC'
                           ? portfolioValue.toFixed(4)
-                          : portfolioValue.toLocaleString()
+                          : Math.floor(portfolioValue).toLocaleString()
                       )} {tokenSymbol || currencySymbol}
                     </span>
-                    <span className="text-xs bg-green-100 text-green-800 px-1 py-0.5 rounded ml-1 flex-shrink-0">
+                    {/* <span className="text-xs bg-green-100 text-green-800 px-1 py-0.5 rounded ml-1 flex-shrink-0">
                       Live
-                    </span>
+                    </span> */}
                   </Link>
                   <Link href="/portfolio" className="flex items-center space-x-1 px-2 py-1 rounded hover:bg-blue-50 transition-colors cursor-pointer group whitespace-nowrap">
                     <CurrencyDollarIcon className="h-4 w-4 text-green-600 flex-shrink-0" />
                     <span className="text-gray-600 group-hover:text-blue-700">キャッシュ:</span>
                     <span className="font-semibold text-gray-900 group-hover:text-blue-700">
                       {(portfolioLoading || tokenLoading) ? '...' : (
-                        (tokenSymbol || currencySymbol) === 'MATIC' 
+                        (tokenSymbol || currencySymbol) === 'MATIC'
                           ? cashValue.toFixed(4)
-                          : cashValue.toLocaleString()
+                          : Math.floor(cashValue).toLocaleString()
                       )} {tokenSymbol || currencySymbol}
                     </span>
-                    <span className="text-xs bg-green-100 text-green-800 px-1 py-0.5 rounded ml-1 flex-shrink-0">
+                    {/* <span className="text-xs bg-green-100 text-green-800 px-1 py-0.5 rounded ml-1 flex-shrink-0">
                       Live
-                    </span>
+                    </span> */}
                   </Link>
                 </div>
 
                 {/* Action Buttons */}
                 <div className="flex items-center space-x-2">
-                  <Link
-                    href="/portfolio"
+                  <button
+                    onClick={() => setIsWalletModalOpen(true)}
                     className="inline-flex items-center px-3 py-2 border border-blue-600 text-sm font-medium rounded-lg text-blue-600 bg-white hover:bg-blue-50 transition-colors"
                   >
                     <PlusCircleIcon className="h-4 w-4 mr-1" />
-                    <span className="hidden sm:inline">ポートフォリオ</span>
-                  </Link>
+                    <span className="hidden sm:inline">デポジット</span>
+                  </button>
 
                   <button className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
                     <BellIcon className="h-5 w-5" />
@@ -307,27 +309,41 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                           </Link>
                         </div> */}
 
-                        <Link
-                          href={`/${account}`}
-                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                          onClick={() => setShowUserMenu(false)}
-                        >
-                          <div className="flex items-center">
-                            <UserIcon className="h-4 w-4 mr-2" />
-                            マイページ
-                          </div>
-                        </Link>
+                          <Link
+                            href={`/${account}`}
+                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                            onClick={() => setShowUserMenu(false)}
+                          >
+                            <div className="flex items-center">
+                              <UserIcon className="h-4 w-4 mr-2" />
+                              マイページ
+                            </div>
+                          </Link>
 
                         <Link
                           href="/portfolio"
                           className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                           onClick={() => setShowUserMenu(false)}
                         >
-                          <div className="flex items-center">
-                            <ChartBarIcon className="h-4 w-4 mr-2" />
-                            ポートフォリオ
+                          <div className="flex items-center justify-between w-full">
+                            <div className="flex items-center">
+                              <ChartBarIcon className="h-4 w-4 mr-2" />
+                              ポートフォリオ
+                            </div>
+                            {/* <div className="text-right">
+                              <div className="font-semibold text-gray-900">
+                                {(portfolioLoading || tokenLoading) ? '...' : (
+                                  (tokenSymbol || currencySymbol) === 'MATIC'
+                                    ? cashValue.toFixed(4)
+                                    : Math.floor(cashValue).toLocaleString()
+                                )} {tokenSymbol || currencySymbol}
+                              </div>
+                              <div className="text-xs text-green-600">Live</div> */}
+                            {/* </div> */}
                           </div>
                         </Link>
+
+
 
 
 
@@ -338,7 +354,7 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                             className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
                           >
                             <div className="flex items-center">
-                              <ArrowRightOnRectangleIcon className="h-4 w-4 mr-2" />
+                              <ArrowRightStartOnRectangleIcon className="h-4 w-4 mr-2" />
                               ログアウト
                             </div>
                           </button>
@@ -364,6 +380,12 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
 
       {/* Aboutモーダル */}
       <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} step={aboutStep} setStep={setAboutStep} account={account} />
+
+      {/* Wallet Modal */}
+      <WalletModal
+        isOpen={isWalletModalOpen}
+        onClose={() => setIsWalletModalOpen(false)}
+      />
 
       {/* Mobile Search */}
       {showSearch && (

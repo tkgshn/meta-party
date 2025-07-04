@@ -41,7 +41,7 @@ interface TokenActions {
   addTokenToMetaMask: () => Promise<boolean>;
 }
 
-const DEBUG_MODE = process.env.NODE_ENV === 'development';
+const DEBUG_MODE = process.env.NODE_ENV === 'development'; // Re-enable for debugging
 
 export function useToken(account: string | null, networkKey?: string): TokenState & TokenActions {
   const [balance, setBalance] = useState<string>('0');
@@ -64,9 +64,20 @@ export function useToken(account: string | null, networkKey?: string): TokenStat
   const tokenDecimals = getCurrencyDecimals(currentNetworkKey);
   const tokenSymbol = getCurrencySymbol(currentNetworkKey);
 
+  if (DEBUG_MODE) {
+    console.log('🔍 Debug: Network config:', {
+      currentNetworkKey,
+      tokenAddress,
+      tokenSymbol,
+      isPolygon: currentNetworkKey === 'polygon',
+      isAmoy: currentNetworkKey === 'polygonAmoy',
+      shouldHaveContract: currentNetworkKey === 'polygonAmoy'
+    });
+  }
+
   // Initialize provider and contract
   const initializeProvider = useCallback(async () => {
-    if (!window.ethereum || !account || !tokenAddress || !currentNetwork) return null;
+    if (!window.ethereum || !account || !currentNetwork) return null;
 
     try {
       const provider = new BrowserProvider(window.ethereum);
@@ -79,10 +90,14 @@ export function useToken(account: string | null, networkKey?: string): TokenStat
         return null;
       }
 
-      const contract = new Contract(tokenAddress, ERC20_ABI, provider);
+      // For token contracts, initialize contract only if tokenAddress exists
+      let contract = null;
+      if (tokenAddress) {
+        contract = new Contract(tokenAddress, ERC20_ABI, provider);
+        contractRef.current = contract;
+      }
       
       providerRef.current = provider;
-      contractRef.current = contract;
       
       return { provider, contract };
     } catch (error) {
@@ -97,8 +112,8 @@ export function useToken(account: string | null, networkKey?: string): TokenStat
     if (!account) {
       setBalance('0');
       setBalanceWei(BigInt(0));
-      setSymbol(tokenSymbol);
-      setDecimals(tokenDecimals);
+      setSymbol(getCurrencySymbol(currentNetworkKey));
+      setDecimals(getCurrencyDecimals(currentNetworkKey));
       return;
     }
 
@@ -121,92 +136,120 @@ export function useToken(account: string | null, networkKey?: string): TokenStat
           tokenAddress,
           network: currentNetwork.displayName,
           chainId: currentNetwork.chainId,
-          rpcUrl: currentNetwork.rpcUrls[0],
-          hasTokenAddress: !!tokenAddress
+          currentNetworkKey,
+          hasTokenAddress: !!tokenAddress,
+          hasContract: !!contract
         });
       }
 
-      // For Polygon mainnet, show native MATIC balance instead of USDC
-      if (currentNetworkKey === 'polygon') {
+      // Get actual chain ID to ensure we're on the correct network
+      const actualNetwork = await provider.getNetwork();
+      const actualChainId = Number(actualNetwork.chainId);
+      
+      if (DEBUG_MODE) {
+        console.log('🔍 Debug: Network verification:', {
+          expectedChainId: currentNetwork.chainId,
+          actualChainId,
+          networkMatch: actualChainId === currentNetwork.chainId,
+          networkKey: currentNetworkKey
+        });
+      }
+
+      // Only proceed if we're on the expected network
+      if (actualChainId !== currentNetwork.chainId) {
+        if (DEBUG_MODE) {
+          console.log('🔍 Debug: Network mismatch, skipping balance fetch');
+        }
+        setBalance('0');
+        setBalanceWei(BigInt(0));
+        setError('Network mismatch detected');
+        return;
+      }
+
+      // For Polygon mainnet (Chain ID 137), show native MATIC balance
+      if (actualChainId === 137) {
         // Get native MATIC balance
         const balanceWei = await provider.getBalance(account);
         const balanceFormatted = formatUnits(balanceWei, 18); // MATIC has 18 decimals
-        
-        if (DEBUG_MODE) {
-          console.log('🔍 Debug: Native MATIC balance:', {
-            balanceWei: balanceWei.toString(),
-            balanceFormatted,
-            decimals: 18
-          });
-        }
         
         setBalanceWei(balanceWei);
         setBalance(balanceFormatted);
         setSymbol('MATIC');
         setDecimals(18);
         setLastUpdated(new Date());
-
-        if (DEBUG_MODE) {
-          console.log('Native MATIC balance updated:', {
-            token: 'MATIC',
-            balance: balanceFormatted,
-            network: currentNetwork.displayName
-          });
-        }
         
         return;
       }
 
-      // For other networks with token contracts (like Amoy with Play Token)
-      if (!tokenAddress) {
-        setBalance('0');
-        setBalanceWei(BigInt(0));
-        return;
-      }
-
-      // Get balance and token metadata
-      const [balanceWei, tokenSymbol, tokenDecimals] = await Promise.all([
-        contract.balanceOf(account),
-        contract.symbol().catch(() => symbol || 'Unknown'),
-        contract.decimals().catch(() => tokenDecimals)
-      ]);
-
-      if (DEBUG_MODE) {
-        console.log('🔍 Debug: Token contract responses:', {
-          balanceWei: balanceWei.toString(),
-          tokenSymbol,
-          tokenDecimals: tokenDecimals.toString(),
-          expectedDecimals: tokenDecimals
-        });
-      }
-
-      const balanceFormatted = formatUnits(balanceWei, tokenDecimals);
-      
-      setBalanceWei(balanceWei);
-      setBalance(balanceFormatted);
-      setSymbol(tokenSymbol);
-      setDecimals(Number(tokenDecimals));
-      setLastUpdated(new Date());
-
-      // Check claim status for Play Token
-      if (currentNetworkKey === 'polygonAmoy' && contract.hasClaimed) {
-        try {
-          const claimed = await contract.hasClaimed(account);
-          setHasClaimed(claimed);
-        } catch (error) {
+      // For Amoy testnet (Chain ID 80002) with Play Token
+      if (actualChainId === 80002) {
+        if (!contract) {
           if (DEBUG_MODE) {
-            console.log('hasClaimed function not available:', error);
+            console.log('🔍 Debug: No contract available for Amoy testnet');
           }
+          setError('Play Token contract not available');
+          return;
+        }
+        if (DEBUG_MODE) {
+          console.log('🔍 Debug: Fetching Play Token balance on Amoy');
+        }
+        
+        try {
+          // Get Play Token balance
+          const [balanceWei, tokenSymbol, tokenDecimals] = await Promise.all([
+            contract.balanceOf(account),
+            contract.symbol().catch(() => 'PT'),
+            contract.decimals().catch(() => 18)
+          ]);
+
+          if (DEBUG_MODE) {
+            console.log('🔍 Debug: Play Token responses:', {
+              balanceWei: balanceWei.toString(),
+              tokenSymbol,
+              tokenDecimals: tokenDecimals.toString()
+            });
+          }
+
+          const balanceFormatted = formatUnits(balanceWei, tokenDecimals);
+          
+          setBalanceWei(balanceWei);
+          setBalance(balanceFormatted);
+          setSymbol(tokenSymbol);
+          setDecimals(Number(tokenDecimals));
+          setLastUpdated(new Date());
+
+          // Check claim status for Play Token
+          try {
+            const claimed = await contract.hasClaimed(account);
+            setHasClaimed(claimed);
+          } catch (error) {
+            if (DEBUG_MODE) {
+              console.log('🔍 Debug: hasClaimed function error:', error);
+            }
+          }
+
+          if (DEBUG_MODE) {
+            console.log('Play Token balance updated:', {
+              token: tokenSymbol,
+              balance: balanceFormatted,
+              network: currentNetwork.displayName
+            });
+          }
+          
+          return;
+        } catch (error) {
+          console.error('Failed to get Play Token balance:', error);
+          setError(error instanceof Error ? error.message : 'Failed to get Play Token balance');
+          return;
         }
       }
 
+      // For other networks or when no specific handling, show 0 balance
       if (DEBUG_MODE) {
-        console.log('Token balance updated:', {
-          token: tokenSymbol,
-          balance: balanceFormatted,
-          network: currentNetwork.displayName
-        });
+        console.log('🔍 Debug: No specific handler for chainId:', actualChainId);
       }
+      setBalance('0');
+      setBalanceWei(BigInt(0));
 
     } catch (error) {
       console.error('Failed to get token balance:', error);
@@ -354,8 +397,8 @@ export function useToken(account: string | null, networkKey?: string): TokenStat
     if (!account || !window.ethereum) {
       setBalance('0');
       setBalanceWei(null);
-      setSymbol(tokenSymbol);
-      setDecimals(tokenDecimals);
+      setSymbol(getCurrencySymbol(currentNetworkKey));
+      setDecimals(getCurrencyDecimals(currentNetworkKey));
       setHasClaimed(false);
       setError(null);
       return;
@@ -372,10 +415,17 @@ export function useToken(account: string | null, networkKey?: string): TokenStat
       // Initial balance fetch
       await refreshBalance();
 
-      // Listen for new blocks for real-time updates
+      // Throttled block listener to reduce excessive calls
+      let lastBlockUpdate = 0;
+      const BLOCK_UPDATE_THROTTLE = 30000; // 30 seconds minimum between block updates
+      
       const blockListener = () => {
         if (mounted) {
-          refreshBalance();
+          const now = Date.now();
+          if (now - lastBlockUpdate > BLOCK_UPDATE_THROTTLE) {
+            lastBlockUpdate = now;
+            refreshBalance();
+          }
         }
       };
 
@@ -413,7 +463,7 @@ export function useToken(account: string | null, networkKey?: string): TokenStat
         if (mounted) {
           refreshBalance();
         }
-      }, 30000); // Every 30 seconds
+      }, 120000); // Every 2 minutes
 
       return () => {
         provider.removeAllListeners();
@@ -433,7 +483,7 @@ export function useToken(account: string | null, networkKey?: string): TokenStat
         clearInterval(intervalRef.current);
       }
     };
-  }, [account, refreshBalance, initializeProvider, tokenSymbol, tokenDecimals]);
+  }, [account, refreshBalance, initializeProvider, currentNetworkKey]);
 
   return {
     // State

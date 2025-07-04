@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { XMarkIcon, WalletIcon, ArrowUpIcon, ArrowDownIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, WalletIcon, ArrowUpIcon, ArrowDownIcon, EyeIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 import { useMetaMask } from '@/hooks/useMetaMask';
 import { usePlayToken } from '@/hooks/usePlayToken';
 
@@ -16,7 +16,35 @@ interface TokenBalance {
   balance: string;
   value?: string;
   icon?: string;
+  address?: string;
+  decimals?: number;
+  type: 'native' | 'erc20';
 }
+
+// 一般的なERC-20トークンのリスト（Polygon Amoy Testnet）
+const COMMON_TOKENS = [
+  {
+    symbol: 'USDC',
+    name: 'USD Coin',
+    address: '0x41e94eb019c0762f9bfcf9fb1e58725bfb0e7582', // Amoy testnet USDC
+    decimals: 6,
+    icon: '💰'
+  },
+  {
+    symbol: 'WETH',
+    name: 'Wrapped Ether',
+    address: '0xa6fa4fb5f76172d178d61b04b0ecd319c5d1c0aa', // Amoy testnet WETH
+    decimals: 18,
+    icon: '🔶'
+  },
+  {
+    symbol: 'LINK',
+    name: 'Chainlink Token',
+    address: '0x0fb3b2c2b2fa6b30ef0ad9b3b60c1b7e5b0b5b9e', // Mock address
+    decimals: 18,
+    icon: '🔗'
+  }
+];
 
 export default function WalletModal({ isOpen, onClose }: WalletModalProps) {
   console.log('WalletModal rendered with isOpen:', isOpen);
@@ -50,30 +78,114 @@ export default function WalletModal({ isOpen, onClose }: WalletModalProps) {
     fetchNativeBalance();
   }, [account]);
 
-  // Set token balances
-  useEffect(() => {
-    if (!account) return;
+  // Get ERC-20 token balance
+  const getTokenBalance = async (tokenAddress: string, decimals: number) => {
+    if (!account || !window.ethereum) return '0';
 
-    const tokens: TokenBalance[] = [
-      {
+    try {
+      // ERC-20 balanceOf function signature
+      const balanceOfData = `0x70a08231000000000000000000000000${account.slice(2)}`;
+      
+      const result = await window.ethereum.request({
+        method: 'eth_call',
+        params: [{
+          to: tokenAddress,
+          data: balanceOfData
+        }, 'latest']
+      });
+
+      if (result && result !== '0x') {
+        const balance = parseInt(result, 16);
+        const formattedBalance = balance / Math.pow(10, decimals);
+        return formattedBalance.toFixed(4);
+      }
+      return '0';
+    } catch (error) {
+      console.error(`Failed to fetch token balance for ${tokenAddress}:`, error);
+      return '0';
+    }
+  };
+
+  // Fetch all token balances
+  useEffect(() => {
+    const fetchAllTokenBalances = async () => {
+      if (!account) return;
+      
+      setIsLoading(true);
+      const tokens: TokenBalance[] = [];
+
+      // Add native token
+      tokens.push({
         symbol: 'POL',
         name: 'Polygon',
         balance: nativeBalance,
         value: '¥0',
-        icon: '🟣'
-      },
-      {
+        icon: '🟣',
+        type: 'native'
+      });
+
+      // Add Play Token
+      tokens.push({
         symbol: 'PT',
         name: 'Play Token',
         balance: playTokenBalance,
         value: '¥0',
-        icon: '🎮'
-      }
-    ];
+        icon: '🎮',
+        address: process.env.NEXT_PUBLIC_PLAY_TOKEN_ADDRESS,
+        decimals: 18,
+        type: 'erc20'
+      });
 
-    setTokenBalances(tokens);
-    setIsLoading(false);
-  }, [nativeBalance, playTokenBalance]);
+      // Add common ERC-20 tokens (always show all)
+      for (const token of COMMON_TOKENS) {
+        const balance = await getTokenBalance(token.address, token.decimals);
+        tokens.push({
+          symbol: token.symbol,
+          name: token.name,
+          balance,
+          value: '¥0',
+          icon: token.icon,
+          address: token.address,
+          decimals: token.decimals,
+          type: 'erc20'
+        });
+      }
+
+      setTokenBalances(tokens);
+      setIsLoading(false);
+    };
+
+    fetchAllTokenBalances();
+  }, [account, nativeBalance, playTokenBalance]);
+
+  // Add token to MetaMask
+  const addTokenToMetaMask = async (token: TokenBalance) => {
+    if (!window.ethereum || !token.address) return;
+
+    try {
+      await window.ethereum.request({
+        method: 'wallet_watchAsset',
+        params: {
+          type: 'ERC20',
+          options: {
+            address: token.address,
+            symbol: token.symbol,
+            decimals: token.decimals,
+          },
+        },
+      });
+    } catch (error) {
+      console.error('Failed to add token to MetaMask:', error);
+    }
+  };
+
+  // View on explorer
+  const viewOnExplorer = (address: string) => {
+    const explorerUrl = chainId === 80002 
+      ? `https://amoy.polygonscan.com/address/${address}`
+      : `https://polygonscan.com/address/${address}`;
+    window.open(explorerUrl, '_blank');
+  };
 
   const truncateAddress = (address: string) => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -92,14 +204,16 @@ export default function WalletModal({ isOpen, onClose }: WalletModalProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <>
+      {/* Background overlay for closing */}
       <div 
-        className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+        className="fixed inset-0 z-40"
         onClick={onClose}
       />
       
-      <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-        <div className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
+      {/* Popup positioned relative to header */}
+      <div className="fixed top-16 right-4 z-50 w-96 max-w-sm">
+        <div className="relative transform overflow-hidden rounded-lg bg-white border border-gray-200 shadow-2xl transition-all">
           <div className="absolute right-0 top-0 pr-4 pt-4">
             <button
               type="button"
@@ -111,14 +225,15 @@ export default function WalletModal({ isOpen, onClose }: WalletModalProps) {
             </button>
           </div>
 
-          <div className="sm:flex sm:items-start">
-            <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
-              <WalletIcon className="h-6 w-6 text-blue-600" aria-hidden="true" />
-            </div>
-            <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left flex-1">
-              <h3 className="text-base font-semibold leading-6 text-gray-900">
-                ウォレット概要
-              </h3>
+          <div className="p-6">
+            <div className="flex items-start">
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-blue-100">
+                <WalletIcon className="h-5 w-5 text-blue-600" aria-hidden="true" />
+              </div>
+              <div className="ml-4 flex-1">
+                <h3 className="text-lg font-semibold leading-6 text-gray-900">
+                  ウォレット概要
+                </h3>
               
               {account && (
                 <div className="mt-2">
@@ -138,42 +253,90 @@ export default function WalletModal({ isOpen, onClose }: WalletModalProps) {
                   </div>
                 </div>
               )}
+              </div>
             </div>
           </div>
 
           <div className="mt-6">
-            <h4 className="text-sm font-medium text-gray-900 mb-3">保有資産</h4>
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-sm font-medium text-gray-900">保有資産</h4>
+              <span className="text-xs text-gray-500 flex items-center">
+                <EyeIcon className="h-3 w-3 mr-1" />
+                全て表示中
+              </span>
+            </div>
             
             {isLoading ? (
               <div className="space-y-3">
-                {[1, 2].map((i) => (
+                {[1, 2, 3].map((i) => (
                   <div key={i} className="animate-pulse">
                     <div className="h-16 bg-gray-200 rounded-lg"></div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2 max-h-64 overflow-y-auto">
                 {tokenBalances.map((token) => (
-                  <div key={token.symbol} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                    <div className="flex items-center space-x-3">
-                      <div className="text-2xl">{token.icon}</div>
-                      <div>
-                        <p className="font-medium text-gray-900">{token.symbol}</p>
-                        <p className="text-sm text-gray-500">{token.name}</p>
+                  <div key={`${token.symbol}-${token.address}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group">
+                    <div className="flex items-center space-x-3 flex-1">
+                      <div className="text-xl">{token.icon}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-2">
+                          <p className="font-medium text-gray-900">{token.symbol}</p>
+                          {parseFloat(token.balance) === 0 && (
+                            <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded">
+                              残高なし
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-500 truncate">{token.name}</p>
+                        {token.address && (
+                          <p className="text-xs text-gray-400 truncate">{truncateAddress(token.address)}</p>
+                        )}
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-medium text-gray-900">{token.balance}</p>
-                      <p className="text-sm text-gray-500">{token.value}</p>
+                    
+                    <div className="flex items-center space-x-2">
+                      <div className="text-right">
+                        <p className="font-medium text-gray-900 text-sm">{token.balance}</p>
+                        <p className="text-xs text-gray-500">{token.value}</p>
+                      </div>
+                      
+                      {/* Token Actions */}
+                      <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {token.type === 'erc20' && token.address && (
+                          <button
+                            onClick={() => addTokenToMetaMask(token)}
+                            className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
+                            title="MetaMaskに追加"
+                          >
+                            🦊
+                          </button>
+                        )}
+                        {token.address && (
+                          <button
+                            onClick={() => viewOnExplorer(token.address!)}
+                            className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
+                            title="エクスプローラーで表示"
+                          >
+                            <ArrowTopRightOnSquareIcon className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}
+                
+                {tokenBalances.length === 0 && (
+                  <div className="text-center py-8 text-gray-500">
+                    <p className="text-sm">トークンが見つかりません</p>
+                  </div>
+                )}
               </div>
             )}
           </div>
 
-          <div className="mt-6 border-t pt-6">
+          <div className="mt-6 border-t pt-6 px-6 pb-6">
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"

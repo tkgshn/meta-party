@@ -109,13 +109,14 @@ export function getCurrencySymbol(networkKey: string): string {
   const network = NETWORKS[networkKey];
   if (!network) return 'Unknown';
   
+  // For Polygon Amoy testnet, show Play Token
+  if (networkKey === 'polygonAmoy' && network.contracts.playToken) {
+    return 'PT';
+  }
+  
   // For Polygon mainnet, show native MATIC instead of USDC
   if (networkKey === 'polygon') {
     return 'MATIC';
-  }
-  
-  if (network.contracts.playToken) {
-    return 'PT';
   }
   
   return network.nativeCurrency.symbol;
@@ -124,7 +125,20 @@ export function getCurrencySymbol(networkKey: string): string {
 // Get currency contract address
 export function getCurrencyContract(networkKey: string): string | undefined {
   const network = NETWORKS[networkKey];
-  return network?.contracts.usdc || network?.contracts.playToken;
+  if (!network) return undefined;
+  
+  // For Polygon mainnet, don't return any contract address (use native MATIC)
+  if (networkKey === 'polygon') {
+    return undefined;
+  }
+  
+  // For Amoy testnet, return Play Token address
+  if (networkKey === 'polygonAmoy') {
+    return network.contracts.playToken;
+  }
+  
+  // For other networks, return appropriate contract
+  return network.contracts.usdc || network.contracts.playToken;
 }
 
 // Get currency decimals
@@ -132,11 +146,6 @@ export function getCurrencyDecimals(networkKey: string): number {
   const network = NETWORKS[networkKey];
   if (!network) return 18;
   
-  // For Polygon mainnet, use native MATIC (18 decimals)
-  if (networkKey === 'polygon') {
-    return 18;
-  }
-  
-  // PT has 18 decimals
+  // All tokens (MATIC, PT) have 18 decimals
   return 18;
 }
