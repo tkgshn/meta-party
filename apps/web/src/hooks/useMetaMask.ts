@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { createWalletSession, clearWalletSession, validateWalletSession, subscribeToSession } from '@/utils/walletSession';
 import '@/types/ethereum';
 
 interface MetaMaskState {
@@ -90,6 +91,11 @@ export function useMetaMask(): MetaMaskState & MetaMaskActions {
         const currentChainId = await getCurrentChainId();
         setChainId(currentChainId);
         
+        // Create wallet session for persistent login
+        if (currentChainId) {
+          createWalletSession(currentAccount, currentChainId);
+        }
+        
         return true;
       }
       return false;
@@ -99,37 +105,59 @@ export function useMetaMask(): MetaMaskState & MetaMaskActions {
     }
   }, [getCurrentChainId]);
 
-  // Disconnect from MetaMask
+  // Enhanced disconnect with proper cleanup (no page reload needed)
   const disconnect = useCallback(async () => {
     try {
-      // Try to revoke permissions from MetaMask
-      if (window.ethereum) {
-        await window.ethereum.request({
-          method: 'wallet_revokePermissions',
-          params: [{
-            eth_accounts: {}
-          }]
-        });
+      // Try to revoke permissions from MetaMask (EIP-2255)
+      if (window.ethereum && window.ethereum.request) {
+        try {
+          await window.ethereum.request({
+            method: 'wallet_revokePermissions',
+            params: [{
+              eth_accounts: {}
+            }]
+          });
+        } catch (revokeError) {
+          // wallet_revokePermissions not supported in all wallets, continue with cleanup
+          console.log('Permission revocation not supported:', revokeError);
+        }
       }
     } catch (error) {
-      console.log('Permission revocation not supported or failed:', error);
+      console.log('MetaMask permission revocation failed:', error);
     }
     
-    // Clear local state
+    // Clear local component state immediately
     setAccount(null);
     setChainId(null);
     setIsConnected(false);
     
-    // Clear any stored connection state
+    // Clear wallet session
+    clearWalletSession();
+    
+    // Clear persistent storage and cached data
     if (typeof window !== 'undefined') {
+      // Clear wallet connection state
       localStorage.removeItem('walletConnected');
       localStorage.removeItem('lastConnectedAccount');
       
-      // Force reload to ensure MetaMask provider state is reset
-      setTimeout(() => {
-        window.location.reload();
-      }, 100);
+      // Clear any WalletConnect related storage (if present)
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith('wc@') || key.startsWith('walletconnect')) {
+          localStorage.removeItem(key);
+        }
+      });
+      
+      // Clear wagmi-style storage (if present)
+      localStorage.removeItem('wagmi.store');
+      localStorage.removeItem('wagmi.cache');
+      localStorage.removeItem('wagmi.wallet');
+      
+      // Clear session storage
+      sessionStorage.removeItem('walletConnected');
+      sessionStorage.removeItem('wallet-address');
     }
+    
+    console.log('Wallet disconnected successfully');
   }, []);
 
   // Switch to Polygon Amoy network
@@ -230,12 +258,23 @@ export function useMetaMask(): MetaMaskState & MetaMaskActions {
       const available = checkMetaMaskAvailability();
       
       if (available) {
-        // Check if user was previously connected
-        const wasConnected = localStorage.getItem('walletConnected') === 'true';
-        const lastAccount = localStorage.getItem('lastConnectedAccount');
+        // Check session and auto-restore connection
+        const currentAccount = await getCurrentAccount();
+        const currentChainId = await getCurrentChainId();
         
-        if (wasConnected && lastAccount) {
-          await refreshConnection();
+        // Validate existing session
+        if (validateWalletSession(currentAccount, currentChainId)) {
+          setAccount(currentAccount);
+          setChainId(currentChainId);
+          setIsConnected(Boolean(currentAccount));
+        } else if (currentAccount) {
+          // Account exists but no valid session, create new session
+          if (currentChainId) {
+            createWalletSession(currentAccount, currentChainId);
+            setAccount(currentAccount);
+            setChainId(currentChainId);
+            setIsConnected(true);
+          }
         }
 
         // Set up event listeners

@@ -122,19 +122,40 @@ export default function PortfolioPage() {
   const { balance: playTokenBalance } = usePlayToken();
   const [selectedTab, setSelectedTab] = useState<'positions' | 'history' | 'analytics'>('positions');
 
-  // Calculate portfolio summary
+  // Calculate portfolio summary based on Polymarket logic
   const portfolioSummary = useMemo(() => {
-    const totalValue = mockPositions.reduce((sum, pos) => sum + pos.value, 0);
-    const totalGainLoss = mockPositions.reduce((sum, pos) => sum + pos.gainLoss, 0);
-    const totalGainLossPercent = totalValue > 0 ? (totalGainLoss / (totalValue - totalGainLoss)) * 100 : 0;
+    // Cash = すぐに使えるPT残高（MetaMaskからデポジット済み分）
+    const cash = parseFloat(playTokenBalance);
+
+    // Portfolio positions = 保有しているポジションの時価評価額合計
+    const positionsValue = mockPositions.reduce((sum, pos) => {
+      // 各ポジションの価値 = シェア数 × 現在価格
+      return sum + (pos.shares * pos.currentPrice);
+    }, 0);
+
+    // Portfolio = Cash + ポジション時価評価額
+    const portfolioTotal = cash + positionsValue;
+
+    // 損益計算（実現損益 + 含み損益）
+    const unrealizedPnL = mockPositions.reduce((sum, pos) => sum + pos.gainLoss, 0);
+    const realizedPnL = 0; // ここでは0として設定（実際には過去の取引履歴から計算）
+    const totalPnL = unrealizedPnL + realizedPnL;
+
+    // PnL率計算
+    const totalCost = mockPositions.reduce((sum, pos) => sum + (pos.shares * pos.avgPrice), 0);
+    const pnlPercent = totalCost > 0 ? (totalPnL / totalCost) * 100 : 0;
 
     return {
-      totalValue,
-      totalGainLoss,
-      totalGainLossPercent,
+      cash,                    // 現金（PT残高）
+      positionsValue,          // ポジション時価評価額
+      portfolioTotal,          // 総資産（Cash + Positions）
+      unrealizedPnL,          // 含み損益
+      realizedPnL,            // 実現損益
+      totalPnL,               // 総損益
+      pnlPercent,             // 損益率
       activePositions: mockPositions.filter(pos => pos.status === 'OPEN').length
     };
-  }, []);
+  }, [playTokenBalance]);
 
   if (!isConnected) {
     return (
@@ -164,18 +185,58 @@ export default function PortfolioPage() {
         </div>
 
 
-        {/* Portfolio Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* Main Portfolio and Cash Cards - Polymarket Style */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          {/* Portfolio Card */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">総保有額</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {portfolioSummary.totalValue.toFixed(2)} PT
+                <p className="text-sm font-medium text-gray-600">Portfolio</p>
+                <p className="text-3xl font-bold text-gray-900">
+                  {portfolioSummary.portfolioTotal.toFixed(2)} PT
+                </p>
+                <p className="text-sm text-gray-500 mt-1">
+                  Cash + ポジション時価評価額
                 </p>
               </div>
-              <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <WalletIcon className="h-6 w-6 text-blue-600" />
+              <div className="h-16 w-16 bg-blue-100 rounded-lg flex items-center justify-center">
+                <TrophyIcon className="h-8 w-8 text-blue-600" />
+              </div>
+            </div>
+          </div>
+
+          {/* Cash Card */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Cash</p>
+                <p className="text-3xl font-bold text-gray-900">
+                  {portfolioSummary.cash.toFixed(2)} PT
+                </p>
+                <p className="text-sm text-gray-500 mt-1">
+                  今すぐ使えるPT残高
+                </p>
+              </div>
+              <div className="h-16 w-16 bg-green-100 rounded-lg flex items-center justify-center">
+                <BanknotesIcon className="h-8 w-8 text-green-600" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Secondary Stats Cards */}
+        {/* <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">ポジション価値</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {portfolioSummary.positionsValue.toFixed(2)} PT
+                </p>
+                <p className="text-sm text-gray-500">時価評価額</p>
+              </div>
+              <div className="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                <ChartBarIcon className="h-6 w-6 text-purple-600" />
               </div>
             </div>
           </div>
@@ -183,18 +244,18 @@ export default function PortfolioPage() {
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">総損益</p>
-                <p className={`text-2xl font-bold ${portfolioSummary.totalGainLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {portfolioSummary.totalGainLoss >= 0 ? '+' : ''}{portfolioSummary.totalGainLoss.toFixed(2)} PT
+                <p className="text-sm font-medium text-gray-600">含み損益</p>
+                <p className={`text-2xl font-bold ${portfolioSummary.unrealizedPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {portfolioSummary.unrealizedPnL >= 0 ? '+' : ''}{portfolioSummary.unrealizedPnL.toFixed(2)} PT
                 </p>
-                <p className={`text-sm ${portfolioSummary.totalGainLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  ({portfolioSummary.totalGainLoss >= 0 ? '+' : ''}{portfolioSummary.totalGainLossPercent.toFixed(2)}%)
+                <p className={`text-sm ${portfolioSummary.unrealizedPnL >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  ({portfolioSummary.unrealizedPnL >= 0 ? '+' : ''}{portfolioSummary.pnlPercent.toFixed(2)}%)
                 </p>
               </div>
               <div className={`h-12 w-12 rounded-lg flex items-center justify-center ${
-                portfolioSummary.totalGainLoss >= 0 ? 'bg-green-100' : 'bg-red-100'
+                portfolioSummary.unrealizedPnL >= 0 ? 'bg-green-100' : 'bg-red-100'
               }`}>
-                {portfolioSummary.totalGainLoss >= 0 ? (
+                {portfolioSummary.unrealizedPnL >= 0 ? (
                   <ArrowTrendingUpIcon className="h-6 w-6 text-green-600" />
                 ) : (
                   <ArrowTrendingDownIcon className="h-6 w-6 text-red-600" />
@@ -208,25 +269,14 @@ export default function PortfolioPage() {
               <div>
                 <p className="text-sm font-medium text-gray-600">アクティブポジション</p>
                 <p className="text-2xl font-bold text-gray-900">{portfolioSummary.activePositions}</p>
+                <p className="text-sm text-gray-500">開いているマーケット</p>
               </div>
-              <div className="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <ChartBarIcon className="h-6 w-6 text-purple-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">PT残高</p>
-                <p className="text-2xl font-bold text-gray-900">{playTokenBalance} PT</p>
-              </div>
-              <div className="h-12 w-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                <BanknotesIcon className="h-6 w-6 text-yellow-600" />
+              <div className="h-12 w-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                <EyeIcon className="h-6 w-6 text-orange-600" />
               </div>
             </div>
           </div>
-        </div>
+        </div> */}
 
         {/* Portfolio Performance Chart */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">

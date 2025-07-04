@@ -16,7 +16,8 @@ import {
   PlusCircleIcon,
   InformationCircleIcon,
 } from '@heroicons/react/24/outline';
-import '@/types/ethereum';
+import ClientOnly from './ClientOnly';
+import { useMetaMask } from '@/hooks/useMetaMask';
 import { usePlayToken } from '@/hooks/usePlayToken';
 
 interface HeaderProps {
@@ -85,95 +86,37 @@ function AboutModal({ open, onClose, step, setStep, account }: { open: boolean; 
  * - エラー発生時は、MetaMaskから返されるエラーメッセージをalertでユーザーに通知し、原因の特定を容易にします。
  */
 export default function Header({ onSearch, searchQuery = '', showSearch = true }: HeaderProps) {
-  const pathname = usePathname();
-  const [account, setAccount] = useState<string | null>(null);
-  const [portfolioValue, setPortfolioValue] = useState<number>(0);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [isConnecting, setIsConnecting] = useState(false);
   const [searchInput, setSearchInput] = useState(searchQuery);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [aboutStep, setAboutStep] = useState(0);
 
+  // Use enhanced MetaMask hook
+  const { 
+    account, 
+    isConnected, 
+    isCorrectNetwork, 
+    isMetaMaskAvailable,
+    connect, 
+    disconnect 
+  } = useMetaMask();
+
   // Use PlayToken hook for real balance
   const { balance: playTokenBalance, refreshBalance } = usePlayToken(account);
+  
+  // Mock portfolio value calculation
+  const portfolioValue = isConnected ? 1250 + Number(playTokenBalance) : 0;
 
-  /**
-   * ウォレット接続処理。多重リクエストを防止し、エラー時はユーザーに分かりやすいメッセージを表示する。
-   */
-  const connectWallet = async () => {
-    if (isConnecting) return; // 多重リクエスト防止
-    if (typeof window !== 'undefined' && window.ethereum) {
-      try {
-        setIsConnecting(true);
-        const accounts = await window.ethereum.request({
-          method: 'eth_requestAccounts',
-        });
-        setAccount((accounts as string[])[0]);
-
-        // Switch to Polygon Amoy if needed
-        try {
-          await window.ethereum.request({
-            method: 'wallet_switchEthereumChain',
-            params: [{ chainId: '0x13882' }], // Polygon Amoy
-          });
-        } catch (switchError: any) {
-          if (switchError.code === 4902) {
-            // Network not added, add it
-            await window.ethereum.request({
-              method: 'wallet_addEthereumChain',
-              params: [{
-                chainId: '0x13882',
-                chainName: 'Polygon Amoy Testnet',
-                nativeCurrency: { name: 'POL', symbol: 'POL', decimals: 18 },
-                rpcUrls: ['https://rpc-amoy.polygon.technology/'],
-                blockExplorerUrls: ['https://amoy.polygonscan.com/'],
-              }],
-            });
-          }
-        }
-      } catch (error: any) {
-        console.error('Failed to connect wallet:', error);
-        // MetaMaskのエラー内容をユーザーに表示
-        let message = 'ウォレット接続に失敗しました。';
-        if (error && error.message) {
-          message += `\n${error.message}`;
-        }
-        alert(message);
-      } finally {
-        setIsConnecting(false);
-      }
-    } else {
-      alert('MetaMaskが見つかりません。MetaMaskをインストールしてください。');
-    }
-  };
-
-  const disconnectWallet = () => {
-    setAccount(null);
-    setPortfolioValue(0);
+  // Handle wallet disconnect
+  const handleDisconnect = async () => {
+    await disconnect();
     setShowUserMenu(false);
   };
-
-  // Check if already connected
-  useEffect(() => {
-    if (typeof window !== 'undefined' && window.ethereum) {
-      window.ethereum.request({ method: 'eth_accounts' })
-        .then((accounts) => {
-          const accountsArray = accounts as string[];
-          if (accountsArray.length > 0) {
-            setAccount(accountsArray[0]);
-          }
-        });
-    }
-  }, []);
 
   // Refresh balance when account changes
   useEffect(() => {
     if (account) {
       refreshBalance();
-      // Mock portfolio value for now - can be replaced with actual calculation
-      setPortfolioValue(Number(playTokenBalance));
-    } else {
-      setPortfolioValue(0);
     }
   }, [account, refreshBalance]);
 
@@ -234,6 +177,9 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
 
           {/* User Section */}
           <div className="flex items-center space-x-6">
+            <ClientOnly fallback={
+              <div className="w-32 h-10 bg-gray-200 rounded-lg animate-pulse"></div>
+            }>
             {account ? (
               <div className="flex items-center space-x-4">
                 {/* Portfolio Value */}
@@ -331,7 +277,7 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
 
                         <div className="border-t border-gray-200 mt-1">
                           <button
-                            onClick={disconnectWallet}
+                            onClick={handleDisconnect}
                             className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
                           >
                             <div className="flex items-center">
@@ -347,14 +293,14 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
               </div>
             ) : (
               <button
-                onClick={connectWallet}
-                disabled={isConnecting}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                onClick={connect}
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
               >
                 <WalletIcon className="h-4 w-4 mr-2" />
-                {isConnecting ? 'ウォレット接続中...' : 'ウォレット接続'}
+                ウォレット接続
               </button>
             )}
+            </ClientOnly>
           </div>
         </div>
       </div>
