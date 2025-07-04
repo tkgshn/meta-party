@@ -242,38 +242,36 @@ export default function HomePage() {
                   </div>
                 </div> */}
                     {/* Stats */}
-                    <div className="flex items-center justify-end text-sm text-gray-500 mb-4">
+                    {/* <div className="flex items-center justify-end text-sm text-gray-500 mb-4">
                       <ClockIcon className="w-4 h-4 mr-1" />
                       <span>{format(market.deadline, 'MM/dd', { locale: ja })} 終了</span>
-                    </div>
+                    </div> */}
 
-                    <h3 className="text-lg font-medium text-gray-900 mb-2 line-clamp-2">
+                    <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2">
                       {market.title}
                     </h3>
 
-                    <p className="text-sm text-gray-600 mb-3 line-clamp-3">
+                    {/* <p className="text-sm text-gray-600 mb-3 line-clamp-3">
                       {market.kpiDescription}
-                    </p>
+                    </p> */}
 
                     {/* Proposals Preview or YES/NO */}
-                    <div className="mb-4 min-h-32 flex items-center justify-center">
+                    <div className="mb-4 h-32 flex items-center justify-center">
                       {Array.isArray(market.proposals) && market.proposals.length > 0 ? (
-                        <div className="w-full max-h-48 overflow-y-auto space-y-2 pr-2">
-                          {market.proposals.map((proposal: import('@/data/miraiMarkets').Proposal, index: number) => {
+                        <div className="w-full h-full overflow-y-auto space-y-1.5">
+                          {market.proposals.slice(0, 3).map((proposal: import('@/data/miraiMarkets').Proposal, index: number) => {
                             const colors = [
                               { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700', price: 'text-blue-600' },
                               { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700', price: 'text-green-600' },
-                              { bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700', price: 'text-purple-600' },
-                              { bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700', price: 'text-orange-600' },
-                              { bg: 'bg-pink-50', border: 'border-pink-200', text: 'text-pink-700', price: 'text-pink-600' }
+                              { bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700', price: 'text-purple-600' }
                             ];
-                            const color = colors[index % 5];
+                            const color = colors[index % 3];
 
                             return (
-                              <div key={proposal.id} className={`${color.bg} rounded-lg p-3 border ${color.border}`}>
+                              <div key={proposal.id} className={`${color.bg} rounded-lg p-2.5 border ${color.border}`}>
                                 <div className="flex items-center justify-between">
-                                  <div className="flex-1">
-                                    <h4 className={`font-medium text-sm ${color.text}`}>
+                                  <div className="flex-1 min-w-0">
+                                    <h4 className={`font-medium text-sm ${color.text} truncate`}>
                                       {proposal.name}
                                     </h4>
                                   </div>
@@ -286,12 +284,17 @@ export default function HomePage() {
                               </div>
                             );
                           })}
+                          {market.proposals.length > 3 && (
+                            <div className="text-center py-1">
+                              <span className="text-xs text-gray-500">他 {market.proposals.length - 3} 件</span>
+                            </div>
+                          )}
                         </div>
                       ) : (
                         /* YES/NO Pie Chart for binary markets */
-                        <div className="flex items-center justify-between w-full">
+                        <div className="flex items-center justify-center w-full h-full">
                           {/* Pie Chart */}
-                          <div className="relative w-20 h-20">
+                          <div className="relative w-24 h-24 flex-shrink-0">
                             <ResponsiveContainer width="100%" height="100%">
                               <PieChart>
                                 <Pie
@@ -301,8 +304,8 @@ export default function HomePage() {
                                   ]}
                                   cx="50%"
                                   cy="50%"
-                                  innerRadius={25}
-                                  outerRadius={35}
+                                  innerRadius={30}
+                                  outerRadius={45}
                                   dataKey="value"
                                   startAngle={90}
                                   endAngle={450}
@@ -314,14 +317,14 @@ export default function HomePage() {
                             </ResponsiveContainer>
                             {/* Center label */}
                             <div className="absolute inset-0 flex items-center justify-center">
-                              <span className="text-xs font-bold text-gray-700">
+                              <span className="text-sm font-bold text-gray-700">
                                 {(market.topPrice * 100).toFixed(0)}%
                               </span>
                             </div>
                           </div>
 
                           {/* YES/NO Labels */}
-                          <div className="flex-1 ml-4 space-y-2">
+                          <div className="flex-1 ml-6 space-y-3">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center space-x-2">
                                 <div className="w-3 h-3 bg-green-500 rounded-full"></div>
