@@ -88,32 +88,32 @@ const generatePriceHistory = (marketData: Market, timeScope: '1h' | '6h' | '1w' 
         if (proposal.id === 'askoe') {
           // アスコエ: 大幅上昇 (15% → 42%)
           const startPrice = timeScope === '1h' ? currentPrice * 0.95 :
-                            timeScope === '6h' ? currentPrice * 0.85 :
-                            timeScope === '1w' ? currentPrice * 0.6 :
-                            timeScope === '1m' ? 0.25 : 0.15;
+            timeScope === '6h' ? currentPrice * 0.85 :
+              timeScope === '1w' ? currentPrice * 0.6 :
+                timeScope === '1m' ? 0.25 : 0.15;
           const midDrop = timeScope !== '1h' && i > totalPoints * 0.3 && i < totalPoints * 0.7 ? -0.05 : 0;
           historicalPrice = startPrice + (currentPrice - startPrice) * trendFactor + midDrop;
         } else if (proposal.id === 'civichat') {
           // civichat: 大幅下落 (60% → 35%)
           const startPrice = timeScope === '1h' ? currentPrice * 1.05 :
-                            timeScope === '6h' ? currentPrice * 1.15 :
-                            timeScope === '1w' ? currentPrice * 1.4 :
-                            timeScope === '1m' ? 0.45 : 0.60;
+            timeScope === '6h' ? currentPrice * 1.15 :
+              timeScope === '1w' ? currentPrice * 1.4 :
+                timeScope === '1m' ? 0.45 : 0.60;
           const spike = timeScope !== '1h' && i > totalPoints * 0.1 && i < totalPoints * 0.3 ? 0.1 : 0;
           historicalPrice = startPrice + (currentPrice - startPrice) * trendFactor + spike;
         } else if (proposal.id === 'graffer') {
           // graffer: 比較的安定 (25% → 23%)
           const startPrice = timeScope === '1h' ? currentPrice * 1.02 :
-                            timeScope === '6h' ? currentPrice * 1.08 :
-                            timeScope === '1w' ? currentPrice * 1.1 :
-                            timeScope === '1m' ? 0.30 : 0.25;
+            timeScope === '6h' ? currentPrice * 1.08 :
+              timeScope === '1w' ? currentPrice * 1.1 :
+                timeScope === '1m' ? 0.30 : 0.25;
           historicalPrice = startPrice + (currentPrice - startPrice) * trendFactor;
         }
 
         // Add scope-appropriate noise
         const noiseLevel = timeScope === '1h' ? 0.005 :
-                          timeScope === '6h' ? 0.01 :
-                          timeScope === '1w' ? 0.02 : 0.03;
+          timeScope === '6h' ? 0.01 :
+            timeScope === '1w' ? 0.02 : 0.03;
         const noise = (Math.random() - 0.5) * noiseLevel;
         const rawPrice = Math.max(0.01, historicalPrice + noise);
 
@@ -170,7 +170,7 @@ export default function MarketDetailPage() {
   if (!marketData) {
     return (
       <>
-        <Header/>
+        <Header />
         <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">市場が見つかりません</h1>
@@ -188,7 +188,7 @@ export default function MarketDetailPage() {
 
   return (
     <>
-      <Header/>
+      <Header />
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
         {/* Breadcrumb */}
         <Link
@@ -224,11 +224,10 @@ export default function MarketDetailPage() {
 
             {/* Status Badge */}
             <div className="ml-4">
-              <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                marketData.status === 'TRADING'
+              <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${marketData.status === 'TRADING'
                   ? 'bg-green-100 text-green-800'
                   : 'bg-yellow-100 text-yellow-800'
-              }`}>
+                }`}>
                 {marketData.status === 'TRADING' ? '取引中' : '取引終了'}
               </span>
             </div>
@@ -251,11 +250,10 @@ export default function MarketDetailPage() {
                       <button
                         key={scope}
                         onClick={() => setTimeScope(scope)}
-                        className={`px-3 py-1 text-sm font-medium transition-colors ${
-                          timeScope === scope
+                        className={`px-3 py-1 text-sm font-medium transition-colors ${timeScope === scope
                             ? 'bg-blue-600 text-white'
                             : 'bg-white text-gray-700 hover:bg-gray-50'
-                        }`}
+                          }`}
                       >
                         {scope === 'all' ? 'すべて' : scope}
                       </button>
@@ -334,93 +332,6 @@ export default function MarketDetailPage() {
                 </div>
               </div>
             </div>
-
-
-            {/* YES/NO Market Odds - Only for binary markets */}
-            {!marketData.proposals && (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                <div className="p-6">
-                  <h2 className="text-lg font-semibold text-gray-900 mb-4">市場オッズ</h2>
-                  <div className="grid grid-cols-2 gap-4">
-                    {/* YES Option */}
-                    <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-3">
-                            <h3 className="font-semibold text-green-900">YES</h3>
-                            <span className="text-2xl font-bold text-green-600">
-                              {(yesPrice * 100).toFixed(0)}%
-                            </span>
-                            <span className="text-sm text-gray-600">
-                              ({(1 / yesPrice).toFixed(2)}倍)
-                            </span>
-                          </div>
-                          <p className="text-sm mt-1 text-green-900 opacity-80">政党要件を満たす</p>
-                          <div className="flex items-center space-x-4 mt-2 text-xs text-gray-600">
-                            <span>取引量: {Math.floor(marketData.totalVolume * yesPrice).toLocaleString()} PT</span>
-                            <span>支持者: {Math.floor(marketData.participants * 0.6)}人</span>
-                          </div>
-                        </div>
-                        <div className="text-right ml-4">
-                          <p className={`text-sm font-semibold ${marketData.change24h >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {marketData.change24h >= 0 ? (
-                              <span className="flex items-center">
-                                <ArrowTrendingUpIcon className="w-4 h-4 mr-1" />
-                                +{(marketData.change24h * 100).toFixed(1)}%
-                              </span>
-                            ) : (
-                              <span className="flex items-center">
-                                <ArrowTrendingDownIcon className="w-4 h-4 mr-1" />
-                                {(marketData.change24h * 100).toFixed(1)}%
-                              </span>
-                            )}
-                          </p>
-                          <p className="text-xs text-gray-500">24時間変化</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* NO Option */}
-                    <div className="bg-red-50 rounded-lg p-4 border border-red-200">
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-3">
-                            <h3 className="font-semibold text-red-900">NO</h3>
-                            <span className="text-2xl font-bold text-red-600">
-                              {(noPrice * 100).toFixed(0)}%
-                            </span>
-                            <span className="text-sm text-gray-600">
-                              ({(1 / noPrice).toFixed(2)}倍)
-                            </span>
-                          </div>
-                          <p className="text-sm mt-1 text-red-900 opacity-80">政党要件を満たさない</p>
-                          <div className="flex items-center space-x-4 mt-2 text-xs text-gray-600">
-                            <span>取引量: {Math.floor(marketData.totalVolume * noPrice).toLocaleString()} PT</span>
-                            <span>支持者: {Math.floor(marketData.participants * 0.4)}人</span>
-                          </div>
-                        </div>
-                        <div className="text-right ml-4">
-                          <p className={`text-sm font-semibold ${-marketData.change24h >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {-marketData.change24h >= 0 ? (
-                              <span className="flex items-center">
-                                <ArrowTrendingUpIcon className="w-4 h-4 mr-1" />
-                                +{(-marketData.change24h * 100).toFixed(1)}%
-                              </span>
-                            ) : (
-                              <span className="flex items-center">
-                                <ArrowTrendingDownIcon className="w-4 h-4 mr-1" />
-                                {(-marketData.change24h * 100).toFixed(1)}%
-                              </span>
-                            )}
-                          </p>
-                          <p className="text-xs text-gray-500">24時間変化</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* Proposals Odds */}
             {marketData.proposals && (
@@ -524,8 +435,6 @@ export default function MarketDetailPage() {
             </div>
           </div>
 
-
-
           {/* Right Side - Trading Panel */}
           <div className="lg:col-span-1">
             <div className="sticky top-6">
@@ -551,21 +460,19 @@ export default function MarketDetailPage() {
                       <div className="flex rounded-lg shadow-sm">
                         <button
                           onClick={() => setTradeType('buy')}
-                          className={`flex-1 py-2 px-4 text-sm font-medium rounded-l-lg border ${
-                            tradeType === 'buy'
+                          className={`flex-1 py-2 px-4 text-sm font-medium rounded-l-lg border ${tradeType === 'buy'
                               ? 'bg-blue-600 text-white border-blue-600'
                               : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                          }`}
+                            }`}
                         >
                           購入
                         </button>
                         <button
                           onClick={() => setTradeType('sell')}
-                          className={`flex-1 py-2 px-4 text-sm font-medium rounded-r-lg border-t border-r border-b ${
-                            tradeType === 'sell'
+                          className={`flex-1 py-2 px-4 text-sm font-medium rounded-r-lg border-t border-r border-b ${tradeType === 'sell'
                               ? 'bg-blue-600 text-white border-blue-600'
                               : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                          }`}
+                            }`}
                         >
                           売却
                         </button>
@@ -590,9 +497,8 @@ export default function MarketDetailPage() {
                           const isSelected = selectedProposal === proposal.id;
 
                           return (
-                            <div key={proposal.id} className={`rounded-lg border-2 transition-all ${
-                              isSelected ? `${color.border} ${color.bg}` : 'border-gray-200 hover:border-gray-300'
-                            }`}>
+                            <div key={proposal.id} className={`rounded-lg border-2 transition-all ${isSelected ? `${color.border} ${color.bg}` : 'border-gray-200 hover:border-gray-300'
+                              }`}>
                               {/* Proposal Header */}
                               <div
                                 className="p-3 cursor-pointer"
@@ -609,9 +515,8 @@ export default function MarketDetailPage() {
                                     <p className="text-xs text-gray-600 mt-1">{proposal.description}</p>
                                   </div>
                                   <div className="text-right ml-3">
-                                    <div className={`w-4 h-4 rounded-full border-2 ${
-                                      isSelected ? `${color.border} bg-current` : 'border-gray-300'
-                                    }`} />
+                                    <div className={`w-4 h-4 rounded-full border-2 ${isSelected ? `${color.border} bg-current` : 'border-gray-300'
+                                      }`} />
                                   </div>
                                 </div>
                               </div>
@@ -622,21 +527,19 @@ export default function MarketDetailPage() {
                                   <div className="grid grid-cols-2 gap-2">
                                     <button
                                       onClick={() => setTradeType('buy')}
-                                      className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                                        tradeType === 'buy'
+                                      className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${tradeType === 'buy'
                                           ? `${color.buy} text-white`
                                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                      }`}
+                                        }`}
                                     >
                                       買い
                                     </button>
                                     <button
                                       onClick={() => setTradeType('sell')}
-                                      className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                                        tradeType === 'sell'
+                                      className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${tradeType === 'sell'
                                           ? `${color.sell} text-white`
                                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                      }`}
+                                        }`}
                                     >
                                       売り
                                     </button>
@@ -657,11 +560,10 @@ export default function MarketDetailPage() {
                       <div className="grid grid-cols-2 gap-2">
                         <button
                           onClick={() => setSelectedOutcome('yes')}
-                          className={`p-3 rounded-lg border-2 transition-colors ${
-                            selectedOutcome === 'yes'
+                          className={`p-3 rounded-lg border-2 transition-colors ${selectedOutcome === 'yes'
                               ? 'border-green-500 bg-green-50'
                               : 'border-gray-300 hover:border-gray-400'
-                          }`}
+                            }`}
                         >
                           <p className="font-medium text-gray-900 text-sm">YES</p>
                           <p className="text-lg font-bold text-green-600">
@@ -670,11 +572,10 @@ export default function MarketDetailPage() {
                         </button>
                         <button
                           onClick={() => setSelectedOutcome('no')}
-                          className={`p-3 rounded-lg border-2 transition-colors ${
-                            selectedOutcome === 'no'
+                          className={`p-3 rounded-lg border-2 transition-colors ${selectedOutcome === 'no'
                               ? 'border-red-500 bg-red-50'
                               : 'border-gray-300 hover:border-gray-400'
-                          }`}
+                            }`}
                         >
                           <p className="font-medium text-gray-900 text-sm">NO</p>
                           <p className="text-lg font-bold text-red-600">

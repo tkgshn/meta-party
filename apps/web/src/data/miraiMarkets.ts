@@ -401,4 +401,4 @@ export const miraiMarkets = [
   //   liquidity: 14800,
   //   priceHistory: generatePriceHistory(0.68)
   // }
-] as const;
+] as Market[];
