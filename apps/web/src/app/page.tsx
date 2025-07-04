@@ -21,18 +21,18 @@ import '@/types/ethereum';
 import { miraiMarkets, type Market } from '@/data/miraiMarkets';
 import Header from '@/components/Header';
 
-const categories = [
-  { id: 'all', name: 'すべて', count: 1 },
-  { id: 'social', name: '社会保障', count: 1 },
-  { id: 'government', name: '行政効率', count: 0 },
-  { id: 'education', name: '教育', count: 0 },
-  { id: 'environment', name: '環境', count: 0 },
-  { id: 'business', name: 'ビジネス', count: 0 },
-  { id: 'technology', name: '技術', count: 0 },
-  { id: 'economy', name: '経済成長', count: 0 },
-  { id: 'childcare', name: '子育て', count: 0 },
-  { id: 'governance', name: 'ガバナンス', count: 0 },
-  { id: 'integrity', name: '政治倫理', count: 0 },
+const categoriesData = [
+  { id: 'all', name: 'すべて' },
+  { id: 'social', name: '社会保障' },
+  { id: 'government', name: '行政効率' },
+  { id: 'education', name: '教育' },
+  { id: 'environment', name: '環境' },
+  { id: 'business', name: 'ビジネス' },
+  { id: 'technology', name: '技術' },
+  { id: 'economy', name: '経済成長' },
+  { id: 'childcare', name: '子育て' },
+  { id: 'governance', name: 'ガバナンス' },
+  { id: 'integrity', name: '政治倫理' },
 ];
 
 export default function HomePage() {
@@ -41,6 +41,20 @@ export default function HomePage() {
   const [sortBy, setSortBy] = useState<'newest' | 'volume' | 'trending' | 'ending'>('trending');
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [hoveredButton, setHoveredButton] = useState<{ proposalId: string; type: 'yes' | 'no' } | null>(null);
+
+  // Calculate category counts dynamically
+  const categories = useMemo(() => {
+    const categoryCounts = miraiMarkets.reduce((acc, market) => {
+      acc[market.category] = (acc[market.category] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return categoriesData.map(cat => ({
+      ...cat,
+      count: cat.id === 'all' ? miraiMarkets.length : (categoryCounts[cat.id] || 0)
+    }));
+  }, []);
 
   // Handle search from Header component
   const handleSearch = (query: string) => {
@@ -141,7 +155,7 @@ export default function HomePage() {
                 </div>
 
                 {/* Filter Toggle */}
-                <button
+                {/* <button
                   onClick={() => setShowFilters(!showFilters)}
                   className={`inline-flex items-center px-3 py-2 border rounded-lg text-sm font-medium ${showFilters
                     ? 'border-blue-500 text-blue-600 bg-blue-50'
@@ -150,26 +164,41 @@ export default function HomePage() {
                 >
                   <FunnelIcon className="w-4 h-4 mr-2" />
                   フィルター
-                </button>
+                </button> */}
               </div>
             </div>
 
             {/* Expanded Filters */}
             {showFilters && (
               <div className="mt-4 pt-4 border-t border-gray-200">
+                <div className="mb-3">
+                  <h3 className="text-sm font-medium text-gray-700 mb-2">カテゴリで絞り込む</h3>
+                </div>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                   {categories.map((category) => (
                     <button
                       key={category.id}
                       onClick={() => setSelectedCategory(category.id)}
-                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${selectedCategory === category.id
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
+                      disabled={category.id !== 'all' && category.count === 0}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all relative ${
+                        selectedCategory === category.id
+                          ? 'bg-blue-600 text-white shadow-md'
+                          : category.count > 0 || category.id === 'all'
+                          ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:shadow-sm'
+                          : 'bg-gray-50 text-gray-400 cursor-not-allowed'
+                      }`}
                     >
-                      {category.name}
-                      <span className="ml-2 text-xs opacity-75">
-                        {category.count}
+                      <span className="flex items-center justify-between">
+                        <span>{category.name}</span>
+                        <span className={`ml-2 text-xs ${
+                          selectedCategory === category.id
+                            ? 'bg-blue-700 text-white px-1.5 py-0.5 rounded-full'
+                            : category.count > 0
+                            ? 'bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded-full'
+                            : 'opacity-50'
+                        }`}>
+                          {category.count}
+                        </span>
                       </span>
                     </button>
                   ))}
@@ -179,11 +208,37 @@ export default function HomePage() {
           </div>
 
 
+          {/* Quick Category Tabs */}
+          <div className="border-b border-gray-200">
+            <nav className="flex space-x-8 overflow-x-auto" aria-label="Categories">
+              {categories.filter(cat => cat.count > 0 || cat.id === 'all').map((category) => (
+                <button
+                  key={category.id}
+                  onClick={() => setSelectedCategory(category.id)}
+                  className={`whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    selectedCategory === category.id
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  {category.name}
+                  <span className={`ml-2 py-0.5 px-2 rounded-full text-xs ${
+                    selectedCategory === category.id
+                      ? 'bg-blue-100 text-blue-600'
+                      : 'bg-gray-100 text-gray-600'
+                  }`}>
+                    {category.count}
+                  </span>
+                </button>
+              ))}
+            </nav>
+          </div>
+
           {/* Results Summary */}
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <h2 className="text-lg font-medium text-gray-900">
-                {selectedCategory === 'all' ? 'すべての市場' : categories.find(c => c.id === selectedCategory)?.name}
+                {selectedCategory === 'all' ? 'すべての市場' : `${categories.find(c => c.id === selectedCategory)?.name}の市場`}
               </h2>
               <span className="text-sm text-gray-500">
                 {filteredAndSortedMarkets.length}件の市場
@@ -242,86 +297,104 @@ export default function HomePage() {
                   </div>
                 </div> */}
                     {/* Stats */}
-                    <div className="flex items-center justify-end text-sm text-gray-500 mb-4">
+                    {/* <div className="flex items-center justify-end text-sm text-gray-500 mb-4">
                       <ClockIcon className="w-4 h-4 mr-1" />
                       <span>{format(market.deadline, 'MM/dd', { locale: ja })} 終了</span>
-                    </div>
+                    </div> */}
 
-                    <h3 className="text-lg font-medium text-gray-900 mb-2 line-clamp-2">
+                    <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2">
                       {market.title}
                     </h3>
 
-                    <p className="text-sm text-gray-600 mb-3 line-clamp-3">
+
+                    {/* <p className="text-sm text-gray-600 mb-3 line-clamp-3">
                       {market.kpiDescription}
-                    </p>
+                    </p> */}
 
                     {/* Proposals Preview or YES/NO */}
-                    <div className="mb-4 min-h-32 flex items-center justify-center">
+                    <div className="mb-4 h-32 flex items-center justify-center">
                       {Array.isArray(market.proposals) && market.proposals.length > 0 ? (
-                        <div className="w-full max-h-48 overflow-y-auto space-y-2 pr-2">
-                          {market.proposals.map((proposal: import('@/data/miraiMarkets').Proposal, index: number) => {
-                            const colors = [
-                              { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700', price: 'text-blue-600' },
-                              { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700', price: 'text-green-600' },
-                              { bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700', price: 'text-purple-600' },
-                              { bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700', price: 'text-orange-600' },
-                              { bg: 'bg-pink-50', border: 'border-pink-200', text: 'text-pink-700', price: 'text-pink-600' }
-                            ];
-                            const color = colors[index % 5];
-
-                            return (
-                              <div key={proposal.id} className={`${color.bg} rounded-lg p-3 border ${color.border}`}>
-                                <div className="flex items-center justify-between">
-                                  <div className="flex-1">
-                                    <h4 className={`font-medium text-sm ${color.text}`}>
-                                      {proposal.name}
-                                    </h4>
-                                  </div>
-                                  <div className="text-right ml-3 flex-shrink-0">
-                                    <div className={`text-lg font-bold ${color.price}`}>
-                                      {(proposal.price * 100).toFixed(0)}%
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
+                        <div className="w-full h-full overflow-y-auto space-y-2">
+                          {market.proposals.slice(0, 3).map((proposal: import('@/data/miraiMarkets').Proposal) => (
+                            <div
+                              key={proposal.id}
+                              className="flex items-center justify-between py-2 min-h-[40px]"
+                            >
+                              <span className="text-base font-medium text-gray-900 truncate">
+                                {proposal.name}
+                              </span>
+                              <span className="flex items-center ml-3 space-x-2">
+                                <span className="text-base font-bold text-gray-700">
+                                  {(proposal.price * 100).toFixed(0)}%
+                                </span>
+                                <button
+                                  className="px-2 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded hover:bg-green-200 transition-colors min-w-[40px]"
+                                  onMouseEnter={() => setHoveredButton({ proposalId: proposal.id, type: 'yes' })}
+                                  onMouseLeave={() => setHoveredButton(null)}
+                                  type="button"
+                                >
+                                  {hoveredButton?.proposalId === proposal.id && hoveredButton?.type === 'yes'
+                                    ? `${(proposal.price * 100).toFixed(0)}%`
+                                    : 'YES'}
+                                </button>
+                                <button
+                                  className="px-2 py-1 bg-red-100 text-red-700 text-xs font-semibold rounded hover:bg-red-200 transition-colors min-w-[40px]"
+                                  onMouseEnter={() => setHoveredButton({ proposalId: proposal.id, type: 'no' })}
+                                  onMouseLeave={() => setHoveredButton(null)}
+                                  type="button"
+                                >
+                                  {hoveredButton?.proposalId === proposal.id && hoveredButton?.type === 'no'
+                                    ? `${((1 - proposal.price) * 100).toFixed(0)}%`
+                                    : 'NO'}
+                                </button>
+                              </span>
+                            </div>
+                          ))}
+                          {market.proposals.length > 3 && (
+                            <div className="text-center py-1">
+                              <span className="text-xs text-gray-500">他 {market.proposals.length - 3} 件</span>
+                            </div>
+                          )}
                         </div>
                       ) : (
                         /* YES/NO Pie Chart for binary markets */
-                        <div className="flex items-center justify-between w-full">
+                        <div className="flex items-center justify-center w-full h-full">
                           {/* Pie Chart */}
-                          <div className="relative w-20 h-20">
+                          <div className="relative w-24 h-24 flex-shrink-0">
                             <ResponsiveContainer width="100%" height="100%">
+
                               <PieChart>
                                 <Pie
                                   data={[
                                     { name: 'YES', value: market.topPrice, color: '#10b981' },
-                                    { name: 'NO', value: 1 - market.topPrice, color: '#ef4444' }
+                                    { name: 'NO', value: 1 - market.topPrice, color: '#d1d5db' }
                                   ]}
                                   cx="50%"
                                   cy="50%"
-                                  innerRadius={25}
-                                  outerRadius={35}
+                                  innerRadius={30}
+                                  outerRadius={45}
                                   dataKey="value"
                                   startAngle={90}
                                   endAngle={450}
                                 >
                                   <Cell fill="#10b981" />
-                                  <Cell fill="#ef4444" />
+                                  <Cell fill="#d1d5db" />
                                 </Pie>
                               </PieChart>
                             </ResponsiveContainer>
-                            {/* Center label */}
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <span className="text-xs font-bold text-gray-700">
+                            {/* Center label with token name */}
+                            <div className="absolute inset-0 flex flex-col items-center justify-center">
+                              <span className="text-sm font-bold text-green-600">
                                 {(market.topPrice * 100).toFixed(0)}%
+                              </span>
+                              <span className="text-xs font-semibold text-gray-600 mt-0.5 tracking-wide">
+                                YES
                               </span>
                             </div>
                           </div>
 
                           {/* YES/NO Labels */}
-                          <div className="flex-1 ml-4 space-y-2">
+                          <div className="flex-1 ml-6 space-y-3">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center space-x-2">
                                 <div className="w-3 h-3 bg-green-500 rounded-full"></div>
@@ -331,7 +404,7 @@ export default function HomePage() {
                                 <span className="text-sm font-bold text-green-600">
                                   {(market.topPrice * 100).toFixed(0)}%
                                 </span>
-                                <span className={`text-xs flex items-center ${market.change24h >= 0 ? 'text-green-600' : 'text-red-600'
+                                {/* <span className={`text-xs flex items-center ${market.change24h >= 0 ? 'text-green-600' : 'text-red-600'
                                   }`}>
                                   {market.change24h >= 0 ? (
                                     <ArrowTrendingUpIcon className="w-3 h-3 mr-0.5" />
@@ -339,7 +412,7 @@ export default function HomePage() {
                                     <ArrowTrendingUpIcon className="w-3 h-3 mr-0.5 rotate-180" />
                                   )}
                                   {Math.abs(market.change24h * 100).toFixed(1)}%
-                                </span>
+                                </span> */}
                               </div>
                             </div>
                             <div className="flex items-center justify-between">
@@ -351,7 +424,7 @@ export default function HomePage() {
                                 <span className="text-sm font-bold text-red-600">
                                   {((1 - market.topPrice) * 100).toFixed(0)}%
                                 </span>
-                                <span className={`text-xs flex items-center ${-market.change24h >= 0 ? 'text-green-600' : 'text-red-600'
+                                {/* <span className={`text-xs flex items-center ${-market.change24h >= 0 ? 'text-green-600' : 'text-red-600'
                                   }`}>
                                   {-market.change24h >= 0 ? (
                                     <ArrowTrendingUpIcon className="w-3 h-3 mr-0.5" />
@@ -359,7 +432,7 @@ export default function HomePage() {
                                     <ArrowTrendingUpIcon className="w-3 h-3 mr-0.5 rotate-180" />
                                   )}
                                   {Math.abs(-market.change24h * 100).toFixed(1)}%
-                                </span>
+                                </span> */}
                               </div>
                             </div>
                           </div>
