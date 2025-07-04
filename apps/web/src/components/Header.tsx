@@ -78,7 +78,6 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
 
   const disconnectWallet = () => {
     setAccount(null);
-    setPlayTokenBalance(0);
     setPortfolioValue(0);
     setShowUserMenu(false);
   };
@@ -101,7 +100,7 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
     if (account) {
       refreshBalance();
       // Mock portfolio value for now - can be replaced with actual calculation
-      setPortfolioValue(1250);
+      setPortfolioValue(playTokenBalance);
     } else {
       setPortfolioValue(0);
     }
@@ -160,26 +159,26 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
               <div className="flex items-center space-x-4">
                 {/* Portfolio Value */}
                 <div className="hidden lg:flex items-center space-x-4 text-sm">
-                  <div className="flex items-center space-x-1">
+                  <Link href="/portfolio" className="flex items-center space-x-1">
                     <ChartBarIcon className="h-4 w-4 text-blue-600" />
                     <span className="text-gray-600">ポートフォリオ:</span>
                     <span className="font-semibold text-gray-900">
                       {portfolioValue.toLocaleString()} PT
                     </span>
-                  </div>
-                  <div className="flex items-center space-x-1">
+                  </Link>
+                  <Link href="/portfolio" className="flex items-center space-x-1">
                     <CurrencyDollarIcon className="h-4 w-4 text-green-600" />
                     <span className="text-gray-600">キャッシュ:</span>
                     <span className="font-semibold text-gray-900">
                       {Number(playTokenBalance).toLocaleString()} PT
                     </span>
-                  </div>
+                  </Link>
                 </div>
 
                 {/* Action Buttons */}
                 <div className="flex items-center space-x-2">
                   <Link
-                    href="/dashboard"
+                    href="/portfolio"
                     className="inline-flex items-center px-3 py-2 border border-blue-600 text-sm font-medium rounded-lg text-blue-600 bg-white hover:bg-blue-50 transition-colors"
                   >
                     <PlusCircleIcon className="h-4 w-4 mr-1" />
@@ -207,44 +206,33 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                     {showUserMenu && (
                       <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
                         <div className="px-4 py-3 border-b border-gray-200">
-                          <div className="text-sm font-medium text-gray-900">
+                          <Link href={`/${account}`} className="text-sm font-medium text-gray-900 hover:underline">
                             {account.slice(0, 6)}...{account.slice(-4)}
-                          </div>
+                          </Link>
                           <div className="text-xs text-gray-500 mt-1">
                             Polygon Amoy Testnet
                           </div>
                         </div>
 
                         <div className="px-4 py-2 text-sm text-gray-700 bg-gray-50">
-                          <div className="flex justify-between">
+                          <Link href="/portfolio" className="flex justify-between">
                             <span>ポートフォリオ:</span>
                             <span className="font-semibold">{portfolioValue.toLocaleString()} PT</span>
-                          </div>
-                          <div className="flex justify-between mt-1">
+                          </Link>
+                          <Link href="/portfolio" className="flex justify-between mt-1">
                             <span>キャッシュ:</span>
                             <span className="font-semibold">{Number(playTokenBalance).toLocaleString()} PT</span>
-                          </div>
+                          </Link>
                         </div>
 
                         <Link
-                          href="/dashboard"
+                          href="/portfolio"
                           className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                           onClick={() => setShowUserMenu(false)}
                         >
                           <div className="flex items-center">
-                            <UserIcon className="h-4 w-4 mr-2" />
-                            プロフィール
-                          </div>
-                        </Link>
-
-                        <Link
-                          href="/dashboard"
-                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                          onClick={() => setShowUserMenu(false)}
-                        >
-                          <div className="flex items-center">
-                            <WalletIcon className="h-4 w-4 mr-2" />
-                            ウォレット
+                            <ChartBarIcon className="h-4 w-4 mr-2" />
+                            ポートフォリオ
                           </div>
                         </Link>
 
