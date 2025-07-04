@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { format } from 'date-fns';
@@ -38,6 +38,7 @@ import {
 import { miraiMarkets, type Market } from '@/data/miraiMarkets';
 import Header from '@/components/Header';
 import WalletModal from '@/components/WalletModal';
+import { calculateTradeCost, calculateOdds, updateMarketState } from '@/utils/futarchyMath';
 
 // Helper function to get market data by ID
 const getMarketById = (id: string) => {
@@ -149,6 +150,10 @@ export default function MarketDetailPage() {
   const [amount, setAmount] = useState('');
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [timeScope, setTimeScope] = useState<'1h' | '6h' | '1w' | '1m' | 'all'>('1w');
+  const [selectedBuyButton, setSelectedBuyButton] = useState<{ proposalId: string; type: 'yes' | 'no' } | null>(null);
+
+  // User holdings (mock data - in real app this would come from wallet/contracts)
+  const [userBalance, setUserBalance] = useState(11.08); // PT balance
 
   // Get the actual market data
   const marketData = getMarketById(marketId);
@@ -159,12 +164,35 @@ export default function MarketDetailPage() {
     return generatePriceHistory(marketData, timeScope);
   }, [marketData, timeScope]);
 
-  // Initialize selected proposal
+  // Calculate market state using futarchy math
+  const marketState = useMemo(() => {
+    if (!marketData?.proposals) return null;
+
+    const outcomes = marketData.proposals.map(proposal => ({
+      id: proposal.id,
+      name: proposal.name,
+      probability: proposal.price
+    }));
+
+    return updateMarketState(outcomes, 0.01); // 1% spread
+  }, [marketData]);
+
+  // Initialize selected proposal and buy button
   useEffect(() => {
-    if (marketData?.proposals && marketData.proposals.length > 0 && !selectedProposal) {
-      setSelectedProposal(marketData.proposals[0].id);
+    if (marketData?.proposals && marketData.proposals.length > 0) {
+      // Set default selection to first proposal's "yes" option
+      if (!selectedBuyButton) {
+        setSelectedBuyButton({
+          proposalId: marketData.proposals[0].id,
+          type: 'yes'
+        });
+      }
+      // Keep the old selectedProposal logic for compatibility
+      if (!selectedProposal) {
+        setSelectedProposal(marketData.proposals[0].id);
+      }
     }
-  }, [marketData, selectedProposal]);
+  }, [marketData, selectedProposal, selectedBuyButton]);
 
   // If market not found, show error
   if (!marketData) {
@@ -187,17 +215,17 @@ export default function MarketDetailPage() {
   const noPrice = 1 - yesPrice;
 
   return (
-    <>
+    <div>
       <Header />
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
         {/* Breadcrumb */}
-        <Link
+        {/* <Link
           href="/"
           className="inline-flex items-center text-blue-600 hover:text-blue-500 mb-6"
         >
           <ArrowLeftIcon className="w-4 h-4 mr-2" />
           市場一覧に戻る
-        </Link>
+        </Link> */}
 
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
@@ -225,8 +253,8 @@ export default function MarketDetailPage() {
             {/* Status Badge */}
             <div className="ml-4">
               <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${marketData.status === 'TRADING'
-                  ? 'bg-green-100 text-green-800'
-                  : 'bg-yellow-100 text-yellow-800'
+                ? 'bg-green-100 text-green-800'
+                : 'bg-yellow-100 text-yellow-800'
                 }`}>
                 {marketData.status === 'TRADING' ? '取引中' : '取引終了'}
               </span>
@@ -251,8 +279,8 @@ export default function MarketDetailPage() {
                         key={scope}
                         onClick={() => setTimeScope(scope)}
                         className={`px-3 py-1 text-sm font-medium transition-colors ${timeScope === scope
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-white text-gray-700 hover:bg-gray-50'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-white text-gray-700 hover:bg-gray-50'
                           }`}
                       >
                         {scope === 'all' ? 'すべて' : scope}
@@ -338,7 +366,7 @@ export default function MarketDetailPage() {
               <div className="bg-white rounded-lg shadow-sm border border-gray-200">
                 <div className="p-6">
                   <h2 className="text-lg font-semibold text-gray-900 mb-4">実装候補の倍率</h2>
-                  <div className="space-y-3">
+                  <div className="divide-y divide-gray-200">
                     {marketData.proposals.map((proposal, index) => {
                       const colors = [
                         { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-900', price: 'text-blue-600' },
@@ -349,39 +377,63 @@ export default function MarketDetailPage() {
                       const odds = (1 / proposal.price).toFixed(2);
 
                       return (
-                        <div key={proposal.id} className={`${color.bg} rounded-lg p-4 border ${color.border}`}>
+                        <div key={proposal.id} className="py-4 transition-colors hover:bg-gray-50">
                           <div className="flex items-center justify-between">
                             <div className="flex-1">
-                              <div className="flex items-center space-x-3">
-                                <h3 className={`font-semibold ${color.text}`}>{proposal.name}</h3>
-                                <span className={`text-xl font-bold ${color.price}`}>
-                                  {(proposal.price * 100).toFixed(0)}%
-                                </span>
-                                <span className="text-sm text-gray-600">
-                                  ({odds}倍)
-                                </span>
+                              <div className="mb-2">
+                                <h3 className="font-semibold text-gray-900">{proposal.name}</h3>
                               </div>
-                              <p className={`text-sm mt-1 ${color.text} opacity-80`}>{proposal.description}</p>
-                              <div className="flex items-center space-x-4 mt-2 text-xs text-gray-600">
-                                <span>取引量: {proposal.volume.toLocaleString()} PT</span>
-                                <span>支持者: {proposal.supporters}人</span>
+                              {/* <p className="text-sm text-gray-600 mb-3">{proposal.description}</p> */}
+                              <div className="flex items-center space-x-4 text-xs text-gray-500">
+                                <span>{proposal.volume.toLocaleString()} ボリューム</span>
+                                <span className="flex items-center">
+                                  {proposal.supporters}人の支持者
+                                </span>
                               </div>
                             </div>
-                            <div className="text-right ml-4">
-                              <p className={`text-sm font-semibold ${proposal.change24h >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                {proposal.change24h >= 0 ? (
-                                  <span className="flex items-center">
-                                    <ArrowTrendingUpIcon className="w-4 h-4 mr-1" />
-                                    +{(proposal.change24h * 100).toFixed(1)}%
-                                  </span>
-                                ) : (
-                                  <span className="flex items-center">
-                                    <ArrowTrendingDownIcon className="w-4 h-4 mr-1" />
-                                    {(proposal.change24h * 100).toFixed(1)}%
-                                  </span>
-                                )}
-                              </p>
-                              <p className="text-xs text-gray-500">24時間変化</p>
+                            <div className="flex items-center space-x-4 ml-6">
+                              <div className="text-right">
+                                <div className="text-2xl font-bold text-gray-900">
+                                  {(proposal.price * 100).toFixed(0)}%
+                                </div>
+                                {/* <div className="text-sm text-gray-500">
+                                  確率 ({calculateOdds(proposal.price).toFixed(2)}x倍率)
+                                </div> */}
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <button
+                                  onClick={() => {
+                                    const newSelection = { proposalId: proposal.id, type: 'yes' as const };
+                                    setSelectedBuyButton(
+                                      selectedBuyButton?.proposalId === proposal.id && selectedBuyButton?.type === 'yes'
+                                        ? null
+                                        : newSelection
+                                    );
+                                  }}
+                                  className={`px-4 py-2 text-white rounded-lg font-medium text-sm transition-colors min-w-[100px] ${selectedBuyButton?.proposalId === proposal.id && selectedBuyButton?.type === 'yes'
+                                      ? 'bg-green-500 hover:bg-green-600'
+                                      : 'bg-green-300 hover:bg-green-400'
+                                    }`}
+                                >
+                                  Buy Yes {((1 - proposal.price) * 100).toFixed(0)}¢
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    const newSelection = { proposalId: proposal.id, type: 'no' as const };
+                                    setSelectedBuyButton(
+                                      selectedBuyButton?.proposalId === proposal.id && selectedBuyButton?.type === 'no'
+                                        ? null
+                                        : newSelection
+                                    );
+                                  }}
+                                  className={`px-4 py-2 text-white rounded-lg font-medium text-sm transition-colors min-w-[100px] ${selectedBuyButton?.proposalId === proposal.id && selectedBuyButton?.type === 'no'
+                                      ? 'bg-red-500 hover:bg-red-600'
+                                      : 'bg-red-300 hover:bg-red-400'
+                                    }`}
+                                >
+                                  Buy No {(proposal.price * 100).toFixed(0)}¢
+                                </button>
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -391,6 +443,8 @@ export default function MarketDetailPage() {
                 </div>
               </div>
             )}
+
+
             {/* Market Overview */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200">
               <div className="p-6">
@@ -440,38 +494,33 @@ export default function MarketDetailPage() {
             <div className="sticky top-6">
               <div className="bg-white rounded-lg shadow-sm border border-gray-200">
                 <div className="p-6">
-                  <h2 className="text-lg font-semibold text-gray-900 mb-4">取引</h2>
+                  {/* <h2 className="text-lg font-semibold text-gray-900 mb-4">取引</h2> */}
 
-                  {/* Deposit Button */}
-                  {/* <button
-                    onClick={() => {
-                      console.log('Deposit button clicked!');
-                      setIsWalletModalOpen(true);
-                    }}
-                    className="w-full mb-4 inline-flex justify-center items-center rounded-md bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-200 transition-colors"
-                  >
-                    <WalletIcon className="h-4 w-4 mr-2" />
-                    デポジット
-                  </button> */}
 
                   {/* Trade Type Selection - Only for YES/NO markets */}
                   {!marketData.proposals && (
                     <div className="mb-4">
-                      <div className="flex rounded-lg shadow-sm">
+                      <div className="flex border-b border-gray-200">
                         <button
+                          type="button"
                           onClick={() => setTradeType('buy')}
-                          className={`flex-1 py-2 px-4 text-sm font-medium rounded-l-lg border ${tradeType === 'buy'
-                              ? 'bg-blue-600 text-white border-blue-600'
-                              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                          aria-pressed={tradeType === 'buy'}
+                          className={`flex-1 pb-2 px-1 border-b-2 font-medium text-sm transition-colors
+                            ${tradeType === 'buy'
+                              ? 'border-blue-500 text-blue-600'
+                              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                             }`}
                         >
                           購入
                         </button>
                         <button
+                          type="button"
                           onClick={() => setTradeType('sell')}
-                          className={`flex-1 py-2 px-4 text-sm font-medium rounded-r-lg border-t border-r border-b ${tradeType === 'sell'
-                              ? 'bg-blue-600 text-white border-blue-600'
-                              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                          aria-pressed={tradeType === 'sell'}
+                          className={`flex-1 pb-2 px-1 border-b-2 font-medium text-sm transition-colors
+                            ${tradeType === 'sell'
+                              ? 'border-blue-500 text-blue-600'
+                              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                             }`}
                         >
                           売却
@@ -480,157 +529,245 @@ export default function MarketDetailPage() {
                     </div>
                   )}
 
-                  {/* Proposal Selection - Only for multi-option markets */}
-                  {marketData.proposals ? (
-                    <div className="mb-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-3">
-                        取引する候補を選択
-                      </label>
-                      <div className="space-y-3">
-                        {marketData.proposals.map((proposal, index) => {
-                          const colors = [
-                            { border: 'border-blue-500', bg: 'bg-blue-50', price: 'text-blue-600', buy: 'bg-blue-600', sell: 'bg-red-600' },
-                            { border: 'border-green-500', bg: 'bg-green-50', price: 'text-green-600', buy: 'bg-green-600', sell: 'bg-red-600' },
-                            { border: 'border-purple-500', bg: 'bg-purple-50', price: 'text-purple-600', buy: 'bg-purple-600', sell: 'bg-red-600' }
-                          ];
-                          const color = colors[index % 3];
-                          const isSelected = selectedProposal === proposal.id;
-
-                          return (
-                            <div key={proposal.id} className={`rounded-lg border-2 transition-all ${isSelected ? `${color.border} ${color.bg}` : 'border-gray-200 hover:border-gray-300'
-                              }`}>
-                              {/* Proposal Header */}
-                              <div
-                                className="p-3 cursor-pointer"
-                                onClick={() => setSelectedProposal(isSelected ? '' : proposal.id)}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <div className="flex-1">
-                                    <div className="flex items-center space-x-2">
-                                      <h3 className="font-medium text-gray-900 text-sm">{proposal.name}</h3>
-                                      <span className={`text-lg font-bold ${color.price}`}>
-                                        {(proposal.price * 100).toFixed(0)}%
-                                      </span>
-                                    </div>
-                                    <p className="text-xs text-gray-600 mt-1">{proposal.description}</p>
-                                  </div>
-                                  <div className="text-right ml-3">
-                                    <div className={`w-4 h-4 rounded-full border-2 ${isSelected ? `${color.border} bg-current` : 'border-gray-300'
-                                      }`} />
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Buy/Sell Buttons - Only show when selected */}
-                              {isSelected && (
-                                <div className="px-3 pb-3">
-                                  <div className="grid grid-cols-2 gap-2">
-                                    <button
-                                      onClick={() => setTradeType('buy')}
-                                      className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${tradeType === 'buy'
-                                          ? `${color.buy} text-white`
-                                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                        }`}
-                                    >
-                                      買い
-                                    </button>
-                                    <button
-                                      onClick={() => setTradeType('sell')}
-                                      className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${tradeType === 'sell'
-                                          ? `${color.sell} text-white`
-                                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                        }`}
-                                    >
-                                      売り
-                                    </button>
-                                  </div>
-                                </div>
-                              )}
+                  {/* Selected Proposal Display - Only for multi-option markets */}
+                  {marketData.proposals && selectedBuyButton ? (
+                    (() => {
+                      const selectedProposal = marketData.proposals.find(p => p.id === selectedBuyButton.proposalId);
+                      if (!selectedProposal) return null;
+                      return (
+                        <div className="rounded-lg">
+                          <div className="flex items-center space-x-3 mb-4">
+                            <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                              <span className="text-sm font-medium text-gray-600">
+                                {selectedProposal.name.charAt(0)}
+                              </span>
                             </div>
-                          );
-                        })}
-                      </div>
-                    </div>
+                            <h3 className="font-semibold text-gray-900">{selectedProposal.name}</h3>
+                          </div>
+                          {/* Buy/Sell Toggle */}
+                          {/*
+                            計画:
+                            - @file_context_0のカテゴリタブのUIを参考に、buy/sellトグルのデザインを統一します。
+                            - 選択中はボーダーと色を強調し、未選択はグレーでホバー時に色が変わるようにします。
+                            - 日本語表記（購入/売却）に変更します。
+                            - アクセシビリティのためにaria-pressedを追加します。
+                          */}
+                          <div className="mb-4">
+                            <div className="flex border-b border-gray-200">
+                              <button
+                                type="button"
+                                onClick={() => setTradeType('buy')}
+                                aria-pressed={tradeType === 'buy'}
+                                className={`flex-1 pb-2 px-1 border-b-2 font-medium text-sm transition-colors
+                                  ${tradeType === 'buy'
+                                    ? 'border-blue-500 text-blue-600'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                  }`}
+                              >
+                                購入
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setTradeType('sell')}
+                                aria-pressed={tradeType === 'sell'}
+                                className={`flex-1 pb-2 px-1 border-b-2 font-medium text-sm transition-colors
+                                  ${tradeType === 'sell'
+                                    ? 'border-blue-500 text-blue-600'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                  }`}
+                              >
+                                売却
+                              </button>
+                            </div>
+                          </div>
+                          {/* Yes/No Outcome Selector */}
+                          <div className="mb-4">
+                            <div className="grid grid-cols-2 gap-2">
+                              <button
+                                onClick={() => setSelectedBuyButton(prev =>
+                                  prev ? { ...prev, type: 'yes' } : null
+                                )}
+                                className={`p-3 rounded-lg transition-colors ${selectedBuyButton.type === 'yes'
+                                    ? 'bg-green-500 text-white'
+                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                  }`}
+                              >
+                                <div className="text-sm font-medium">Yes</div>
+                                <div className="text-lg font-bold">
+                                  {((1 - selectedProposal.price) * 100).toFixed(0)}¢
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  勝利時 +{(((1 / (1 - selectedProposal.price)) - 1) * 100).toFixed(0)}%
+                                </div>
+                              </button>
+                              <button
+                                onClick={() => setSelectedBuyButton(prev =>
+                                  prev ? { ...prev, type: 'no' } : null
+                                )}
+                                className={`p-3 rounded-lg transition-colors ${selectedBuyButton.type === 'no'
+                                    ? 'bg-red-500 text-white'
+                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                  }`}
+                              >
+                                <div className="text-sm font-medium">No</div>
+                                <div className="text-lg font-bold">
+                                  {(selectedProposal.price * 100).toFixed(0)}¢
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  勝利時 +{(((1 / selectedProposal.price) - 1) * 100).toFixed(0)}%
+                                </div>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()
                   ) : (
                     // Fallback for YES/NO markets
                     <div className="mb-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        予測を選択
-                      </label>
                       <div className="grid grid-cols-2 gap-2">
                         <button
                           onClick={() => setSelectedOutcome('yes')}
-                          className={`p-3 rounded-lg border-2 transition-colors ${selectedOutcome === 'yes'
-                              ? 'border-green-500 bg-green-50'
-                              : 'border-gray-300 hover:border-gray-400'
-                            }`}
+                          className={`p-3 rounded-lg transition-colors ${
+                            selectedOutcome === 'yes'
+                              ? 'bg-green-500 text-white'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
                         >
-                          <p className="font-medium text-gray-900 text-sm">YES</p>
-                          <p className="text-lg font-bold text-green-600">
-                            {(yesPrice * 100).toFixed(0)}%
-                          </p>
+                          <div className="text-sm font-medium">Yes</div>
+                          <div className="text-lg font-bold">
+                            {(noPrice * 100).toFixed(0)}¢
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            勝利時 +{(((1 / (1 - noPrice)) - 1) * 100).toFixed(0)}%
+                          </div>
                         </button>
                         <button
                           onClick={() => setSelectedOutcome('no')}
-                          className={`p-3 rounded-lg border-2 transition-colors ${selectedOutcome === 'no'
-                              ? 'border-red-500 bg-red-50'
-                              : 'border-gray-300 hover:border-gray-400'
-                            }`}
+                          className={`p-3 rounded-lg transition-colors ${
+                            selectedOutcome === 'no'
+                              ? 'bg-red-500 text-white'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
                         >
-                          <p className="font-medium text-gray-900 text-sm">NO</p>
-                          <p className="text-lg font-bold text-red-600">
-                            {(noPrice * 100).toFixed(0)}%
-                          </p>
+                          <div className="text-sm font-medium">No</div>
+                          <div className="text-lg font-bold">
+                            {(yesPrice * 100).toFixed(0)}¢
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            勝利時 +{(((1 / yesPrice) - 1) * 100).toFixed(0)}%
+                          </div>
                         </button>
                       </div>
                     </div>
                   )}
 
-                  {/* Amount Input */}
-                  <div className="mb-4">
-                    <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-2">
-                      {tradeType === 'buy' ? '購入金額' : '売却数量'}
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="number"
-                        id="amount"
-                        value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
-                        placeholder="0"
-                        className="block w-full pr-12 rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                      />
-                      <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                        <span className="text-gray-500 sm:text-sm">PT</span>
-                      </div>
-                    </div>
-                  </div>
+                  {/* Amount Input - Only show when something is selected */}
+                  {(selectedBuyButton || selectedOutcome) && (
+                    <>
+                      <div className="mb-4">
+                        <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-2">
+                          Amount
+                        </label>
+                        <div className="text-xs text-gray-500 mb-2">Balance ${userBalance.toFixed(2)}</div>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            id="amount"
+                            value={amount}
+                            onChange={(e) => setAmount(e.target.value)}
+                            placeholder="$0"
+                            className="block w-full text-3xl font-bold text-gray-400 border-0 bg-transparent focus:ring-0 focus:outline-none"
+                          />
+                        </div>
 
-                  {/* Expected Payout */}
-                  {amount && selectedProposal && marketData.proposals && (
-                    <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                      <div className="text-sm text-gray-600 mb-1">予想獲得数量</div>
-                      <div className="text-lg font-semibold text-gray-900">
-                        {(() => {
-                          const proposal = marketData.proposals.find(p => p.id === selectedProposal);
-                          const expectedShares = proposal ? parseFloat(amount) / proposal.price : 0;
-                          return expectedShares.toFixed(2);
-                        })()} シェア
+                        {/* Quick Amount Buttons */}
+                        <div className="flex space-x-2 mt-3">
+                          <button
+                            onClick={() => setAmount('1')}
+                            className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+                          >
+                            +$1
+                          </button>
+                          <button
+                            onClick={() => setAmount('20')}
+                            className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+                          >
+                            +$20
+                          </button>
+                          <button
+                            onClick={() => setAmount('100')}
+                            className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+                          >
+                            +$100
+                          </button>
+                          <button
+                            onClick={() => setAmount(userBalance.toFixed(2))}
+                            className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+                          >
+                            Max
+                          </button>
+                        </div>
                       </div>
-                    </div>
+
+                      {/* Trade Cost and Payout Info */}
+                      {amount && (
+                        <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                          <div className="flex justify-between text-sm text-gray-600 mb-2">
+                            <span>支払い金額:</span>
+                            <span>${amount}</span>
+                          </div>
+                          <div className="flex justify-between text-sm text-gray-600 mb-2">
+                            <span>取得トークン:</span>
+                            <span>
+                              {selectedBuyButton
+                                ? (() => {
+                                    const selectedProposal = marketData.proposals?.find(p => p.id === selectedBuyButton.proposalId);
+                                    const tokenPrice = selectedBuyButton.type === 'yes' ? (1 - (selectedProposal?.price || 0)) : (selectedProposal?.price || 0);
+                                    return `${(parseFloat(amount) / tokenPrice).toFixed(2)} shares`;
+                                  })()
+                                : `${(parseFloat(amount) / (selectedOutcome === 'yes' ? yesPrice : noPrice)).toFixed(2)} shares`
+                              }
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-sm font-medium text-gray-900">
+                            <span>勝利時獲得:</span>
+                            <span className="text-green-600">
+                              {selectedBuyButton
+                                ? (() => {
+                                    const selectedProposal = marketData.proposals?.find(p => p.id === selectedBuyButton.proposalId);
+                                    const tokenPrice = selectedBuyButton.type === 'yes' ? (1 - (selectedProposal?.price || 0)) : (selectedProposal?.price || 0);
+                                    return `$${(parseFloat(amount) / tokenPrice).toFixed(2)}`;
+                                  })()
+                                : `$${(parseFloat(amount) / (selectedOutcome === 'yes' ? yesPrice : noPrice)).toFixed(2)}`
+                              }
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Trade Button */}
+                      <button
+                        className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium text-lg"
+                        disabled={!amount}
+                      >
+                        {selectedBuyButton
+                          ? `Buy ${selectedBuyButton.type === 'yes' ? 'Yes' : 'No'}`
+                          : `Buy ${selectedOutcome === 'yes' ? 'Yes' : 'No'}`
+                        }
+                      </button>
+
+                      {/* <div className="mt-4 text-xs text-gray-500 text-center">
+                        By trading, you agree to the <span className="underline">Terms of Use</span>.
+                      </div> */}
+                    </>
                   )}
 
-                  {/* Trade Button */}
-                  <button
-                    className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                    disabled={!amount || (!selectedProposal && !selectedOutcome)}
-                  >
-                    {tradeType === 'buy' ? '購入' : '売却'}
-                  </button>
 
                   <div className="mt-4 text-xs text-gray-500">
                     <p>※ 取引手数料: 0.5%</p>
                     <p>※ 最低取引額: 10 PT</p>
+                    <p>※ 勝利時は 1 PT で償還されます</p>
                   </div>
                 </div>
               </div>
@@ -655,6 +792,6 @@ export default function MarketDetailPage() {
           Modal open: {isWalletModalOpen ? 'true' : 'false'}
         </div>
       )}
-    </>
+    </div>
   );
 }
