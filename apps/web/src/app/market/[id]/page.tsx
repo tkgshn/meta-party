@@ -310,7 +310,10 @@ export default function MarketDetailPage() {
 
                   {/* Deposit Button */}
                   <button
-                    onClick={() => setIsWalletModalOpen(true)}
+                    onClick={() => {
+                      console.log('Deposit button clicked!');
+                      setIsWalletModalOpen(true);
+                    }}
                     className="w-full mb-4 inline-flex justify-center items-center rounded-md bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-200 transition-colors"
                   >
                     <WalletIcon className="h-4 w-4 mr-2" />
@@ -477,8 +480,18 @@ export default function MarketDetailPage() {
       {/* Wallet Modal */}
       <WalletModal
         isOpen={isWalletModalOpen}
-        onClose={() => setIsWalletModalOpen(false)}
+        onClose={() => {
+          console.log('Closing wallet modal');
+          setIsWalletModalOpen(false);
+        }}
       />
+      
+      {/* Debug info */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="fixed bottom-4 right-4 bg-black text-white p-2 rounded text-xs">
+          Modal open: {isWalletModalOpen ? 'true' : 'false'}
+        </div>
+      )}
     </>
   );
 }
