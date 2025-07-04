@@ -217,15 +217,17 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                   />
                 </form>
                 {/* 仕組みについてボタン */}
-                <button
-                  className="ml-4 flex items-center text-blue-600 hover:underline text-sm font-medium transition-colors focus:outline-none"
-                  onClick={() => { setAboutStep(0); setAboutOpen(true); }}
-                  type="button"
-                  style={{ background: 'none', border: 'none', padding: 0 }}
-                >
-                  <InformationCircleIcon className="w-5 h-5 mr-1" />
-                  仕組みについて
-                </button>
+                {!account && (
+                  <button
+                    className="ml-4 flex items-center text-blue-600 hover:underline text-sm font-medium transition-colors focus:outline-none"
+                    onClick={() => { setAboutStep(0); setAboutOpen(true); }}
+                    type="button"
+                    style={{ background: 'none', border: 'none', padding: 0 }}
+                  >
+                    <InformationCircleIcon className="w-5 h-5 mr-1" />
+                    仕組みについて
+                  </button>
+                )}
               </div>
             )}
           </div>
