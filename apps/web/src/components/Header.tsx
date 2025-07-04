@@ -28,7 +28,7 @@ interface HeaderProps {
 /**
  * プラットフォーム概要を3ステップで表示するモーダル
  */
-function AboutModal({ open, onClose, step, setStep }: { open: boolean; onClose: () => void; step: number; setStep: (n: number) => void }) {
+function AboutModal({ open, onClose, step, setStep, account }: { open: boolean; onClose: () => void; step: number; setStep: (n: number) => void; account: string | null }) {
   const steps = [
     {
       title: '予測市場で社会課題を解決',
@@ -68,7 +68,7 @@ function AboutModal({ open, onClose, step, setStep }: { open: boolean; onClose: 
             className="ml-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
             onClick={() => step < steps.length - 1 ? setStep(step + 1) : onClose()}
           >
-            {step < steps.length - 1 ? '次へ' : '閉じる'}
+            {step < steps.length - 1 ? '次へ' : (account ? '閉じる' : 'はじめる')}
           </button>
         </div>
       </div>
@@ -351,7 +351,7 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
       </div>
 
       {/* Aboutモーダル */}
-      <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} step={aboutStep} setStep={setAboutStep} />
+      <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} step={aboutStep} setStep={setAboutStep} account={account} />
 
       {/* Mobile Search */}
       {showSearch && (
