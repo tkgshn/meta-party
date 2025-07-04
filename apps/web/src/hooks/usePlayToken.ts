@@ -59,6 +59,12 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
       return;
     }
 
+    // Add validation for PLAY_TOKEN_ADDRESS
+    if (!PLAY_TOKEN_ADDRESS.startsWith('0x') || PLAY_TOKEN_ADDRESS.length !== 42) {
+      console.error('Invalid PLAY_TOKEN_ADDRESS format:', PLAY_TOKEN_ADDRESS);
+      return;
+    }
+
     try {
       // Validate account format
       if (!account.startsWith('0x') || account.length !== 42) {
@@ -116,7 +122,9 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
       }
       
     } catch (error) {
-      console.error('Failed to get balance:', error);
+      console.error('Failed to get balance. Raw error:', error);
+      const err = error as { code?: number; message?: string };
+      console.error(`Balance check failed: ${err.message || 'An unknown error occurred.'}`);
       setBalanceWei(BigInt(0));
       setBalance('0');
     }
