@@ -41,6 +41,7 @@ export default function HomePage() {
   const [sortBy, setSortBy] = useState<'newest' | 'volume' | 'trending' | 'ending'>('trending');
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [hoveredButton, setHoveredButton] = useState<{ proposalId: string; type: 'yes' | 'no' } | null>(null);
 
   // Handle search from Header component
   const handleSearch = (query: string) => {
@@ -183,7 +184,7 @@ export default function HomePage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <h2 className="text-lg font-medium text-gray-900">
-                {selectedCategory === 'all' ? 'すべての市場' : categories.find(c => c.id === selectedCategory)?.name}
+                {selectedCategory === 'all' ? 'すべて' : categories.find(c => c.id === selectedCategory)?.name}
               </h2>
               <span className="text-sm text-gray-500">
                 {filteredAndSortedMarkets.length}件の市場
@@ -258,32 +259,42 @@ export default function HomePage() {
                     {/* Proposals Preview or YES/NO */}
                     <div className="mb-4 h-32 flex items-center justify-center">
                       {Array.isArray(market.proposals) && market.proposals.length > 0 ? (
-                        <div className="w-full h-full overflow-y-auto space-y-1.5">
-                          {market.proposals.slice(0, 3).map((proposal: import('@/data/miraiMarkets').Proposal, index: number) => {
-                            const colors = [
-                              { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700', price: 'text-blue-600' },
-                              { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700', price: 'text-green-600' },
-                              { bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700', price: 'text-purple-600' }
-                            ];
-                            const color = colors[index % 3];
-
-                            return (
-                              <div key={proposal.id} className={`${color.bg} rounded-lg p-2.5 border ${color.border}`}>
-                                <div className="flex items-center justify-between">
-                                  <div className="flex-1 min-w-0">
-                                    <h4 className={`font-medium text-sm ${color.text} truncate`}>
-                                      {proposal.name}
-                                    </h4>
-                                  </div>
-                                  <div className="text-right ml-3 flex-shrink-0">
-                                    <div className={`text-lg font-bold ${color.price}`}>
-                                      {(proposal.price * 100).toFixed(0)}%
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
+                        <div className="w-full h-full overflow-y-auto space-y-2">
+                          {market.proposals.slice(0, 3).map((proposal: import('@/data/miraiMarkets').Proposal) => (
+                            <div
+                              key={proposal.id}
+                              className="flex items-center justify-between py-2 min-h-[40px]"
+                            >
+                              <span className="text-base font-medium text-gray-900 truncate">
+                                {proposal.name}
+                              </span>
+                              <span className="flex items-center ml-3 space-x-2">
+                                <span className="text-base font-bold text-gray-700">
+                                  {(proposal.price * 100).toFixed(0)}%
+                                </span>
+                                <button
+                                  className="px-2 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded hover:bg-green-200 transition-colors min-w-[40px]"
+                                  onMouseEnter={() => setHoveredButton({ proposalId: proposal.id, type: 'yes' })}
+                                  onMouseLeave={() => setHoveredButton(null)}
+                                  type="button"
+                                >
+                                  {hoveredButton?.proposalId === proposal.id && hoveredButton?.type === 'yes' 
+                                    ? `${(proposal.price * 100).toFixed(0)}%`
+                                    : 'YES'}
+                                </button>
+                                <button
+                                  className="px-2 py-1 bg-red-100 text-red-700 text-xs font-semibold rounded hover:bg-red-200 transition-colors min-w-[40px]"
+                                  onMouseEnter={() => setHoveredButton({ proposalId: proposal.id, type: 'no' })}
+                                  onMouseLeave={() => setHoveredButton(null)}
+                                  type="button"
+                                >
+                                  {hoveredButton?.proposalId === proposal.id && hoveredButton?.type === 'no' 
+                                    ? `${((1 - proposal.price) * 100).toFixed(0)}%`
+                                    : 'NO'}
+                                </button>
+                              </span>
+                            </div>
+                          ))}
                           {market.proposals.length > 3 && (
                             <div className="text-center py-1">
                               <span className="text-xs text-gray-500">他 {market.proposals.length - 3} 件</span>
@@ -296,11 +307,12 @@ export default function HomePage() {
                           {/* Pie Chart */}
                           <div className="relative w-24 h-24 flex-shrink-0">
                             <ResponsiveContainer width="100%" height="100%">
+
                               <PieChart>
                                 <Pie
                                   data={[
                                     { name: 'YES', value: market.topPrice, color: '#10b981' },
-                                    { name: 'NO', value: 1 - market.topPrice, color: '#ef4444' }
+                                    { name: 'NO', value: 1 - market.topPrice, color: '#d1d5db' }
                                   ]}
                                   cx="50%"
                                   cy="50%"
@@ -311,14 +323,17 @@ export default function HomePage() {
                                   endAngle={450}
                                 >
                                   <Cell fill="#10b981" />
-                                  <Cell fill="#ef4444" />
+                                  <Cell fill="#d1d5db" />
                                 </Pie>
                               </PieChart>
                             </ResponsiveContainer>
-                            {/* Center label */}
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <span className="text-sm font-bold text-gray-700">
+                            {/* Center label with token name */}
+                            <div className="absolute inset-0 flex flex-col items-center justify-center">
+                              <span className="text-sm font-bold text-green-600">
                                 {(market.topPrice * 100).toFixed(0)}%
+                              </span>
+                              <span className="text-xs font-semibold text-gray-600 mt-0.5 tracking-wide">
+                                YES
                               </span>
                             </div>
                           </div>
@@ -334,7 +349,7 @@ export default function HomePage() {
                                 <span className="text-sm font-bold text-green-600">
                                   {(market.topPrice * 100).toFixed(0)}%
                                 </span>
-                                <span className={`text-xs flex items-center ${market.change24h >= 0 ? 'text-green-600' : 'text-red-600'
+                                {/* <span className={`text-xs flex items-center ${market.change24h >= 0 ? 'text-green-600' : 'text-red-600'
                                   }`}>
                                   {market.change24h >= 0 ? (
                                     <ArrowTrendingUpIcon className="w-3 h-3 mr-0.5" />
@@ -342,7 +357,7 @@ export default function HomePage() {
                                     <ArrowTrendingUpIcon className="w-3 h-3 mr-0.5 rotate-180" />
                                   )}
                                   {Math.abs(market.change24h * 100).toFixed(1)}%
-                                </span>
+                                </span> */}
                               </div>
                             </div>
                             <div className="flex items-center justify-between">
@@ -354,7 +369,7 @@ export default function HomePage() {
                                 <span className="text-sm font-bold text-red-600">
                                   {((1 - market.topPrice) * 100).toFixed(0)}%
                                 </span>
-                                <span className={`text-xs flex items-center ${-market.change24h >= 0 ? 'text-green-600' : 'text-red-600'
+                                {/* <span className={`text-xs flex items-center ${-market.change24h >= 0 ? 'text-green-600' : 'text-red-600'
                                   }`}>
                                   {-market.change24h >= 0 ? (
                                     <ArrowTrendingUpIcon className="w-3 h-3 mr-0.5" />
@@ -362,7 +377,7 @@ export default function HomePage() {
                                     <ArrowTrendingUpIcon className="w-3 h-3 mr-0.5 rotate-180" />
                                   )}
                                   {Math.abs(-market.change24h * 100).toFixed(1)}%
-                                </span>
+                                </span> */}
                               </div>
                             </div>
                           </div>
