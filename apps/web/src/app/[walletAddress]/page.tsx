@@ -28,14 +28,24 @@ export default function UserProfilePage() {
   return (
     <>
       <Header/>
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-4">User Profile</h1>
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Wallet Information</h2>
-          <p className="text-gray-700"><strong>Wallet Address:</strong> {walletAddress}</p>
-          <p className="text-gray-700"><strong>Play Token Balance:</strong> {Number(balance).toLocaleString()} PT</p>
+      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+        <div className="space-y-6">
+          <h1 className="text-3xl font-bold text-gray-900">ユーザープロフィール</h1>
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">ウォレット情報</h2>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                <span className="text-gray-600">ウォレットアドレス</span>
+                <span className="font-mono text-sm text-gray-900">{walletAddress}</span>
+              </div>
+              <div className="flex items-center justify-between py-3">
+                <span className="text-gray-600">Play Token 残高</span>
+                <span className="text-xl font-semibold text-blue-600">{Number(balance).toLocaleString()} PT</span>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      </main>
     </>
   );
 }

@@ -92,7 +92,8 @@ export default function HomePage() {
         searchQuery={searchQuery}
         showSearch={true}
       />
-      <div className="space-y-8 mt-8">
+      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+        <div className="space-y-8">
         {/* Header Section
       // <div className="flex justify-between items-center">
       //   <div>
@@ -470,7 +471,8 @@ export default function HomePage() {
           </p>
         </div>
       </div> */}
-      </div>
+        </div>
+      </main>
     </>
   );
 }

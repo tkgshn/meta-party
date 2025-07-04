@@ -234,8 +234,9 @@ export default function PortfolioPage() {
 
   return (
     <>
-      <Header />
-      <div className="max-w-4xl mx-auto space-y-6 p-4">
+      <Header/>
+      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+        <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold text-gray-900">ポートフォリオ</h1>
@@ -597,7 +598,8 @@ export default function PortfolioPage() {
             </div>
           </div>
         </div>
-      </div>
+        </div>
+      </main>
     </>
   );
 }

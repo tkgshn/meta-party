@@ -16,7 +16,8 @@ import {
   ArrowTrendingUpIcon,
   ArrowTrendingDownIcon,
   ClockIcon,
-  BanknotesIcon
+  BanknotesIcon,
+  WalletIcon
 } from '@heroicons/react/24/outline';
 import {
   LineChart,
@@ -35,6 +36,7 @@ import {
 
 import { miraiMarkets, type Market } from '@/data/miraiMarkets';
 import Header from '@/components/Header';
+import WalletModal from '@/components/WalletModal';
 
 // Helper function to get market data by ID
 const getMarketById = (id: string) => {
@@ -64,6 +66,7 @@ export default function MarketDetailPage() {
   const [selectedOutcome, setSelectedOutcome] = useState<'yes' | 'no'>('yes');
   const [tradeType, setTradeType] = useState<'buy' | 'sell'>('buy');
   const [amount, setAmount] = useState('');
+  const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
 
   // Get the actual market data
   const marketData = getMarketById(marketId);
@@ -79,15 +82,15 @@ export default function MarketDetailPage() {
   if (!marketData) {
     return (
       <>
-        <Header showSearch={false} />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <Header/>
+        <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">市場が見つかりません</h1>
             <Link href="/" className="text-blue-600 hover:text-blue-500">
               市場一覧に戻る
             </Link>
           </div>
-        </div>
+        </main>
       </>
     );
   }
@@ -97,8 +100,8 @@ export default function MarketDetailPage() {
 
   return (
     <>
-      <Header showSearch={false} />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <Header/>
+      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
         {/* Breadcrumb */}
         <Link
           href="/"
@@ -305,6 +308,15 @@ export default function MarketDetailPage() {
                 <div className="p-6">
                   <h2 className="text-lg font-semibold text-gray-900 mb-4">取引</h2>
 
+                  {/* Deposit Button */}
+                  <button
+                    onClick={() => setIsWalletModalOpen(true)}
+                    className="w-full mb-4 inline-flex justify-center items-center rounded-md bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-200 transition-colors"
+                  >
+                    <WalletIcon className="h-4 w-4 mr-2" />
+                    デポジット
+                  </button>
+
                   {/* Trade Type Selection */}
                   <div className="mb-4">
                     <div className="flex rounded-lg shadow-sm">
@@ -460,7 +472,13 @@ export default function MarketDetailPage() {
             </div>
           </div>
         </div>
-      </div>
+      </main>
+
+      {/* Wallet Modal */}
+      <WalletModal
+        isOpen={isWalletModalOpen}
+        onClose={() => setIsWalletModalOpen(false)}
+      />
     </>
   );
 }
