@@ -1,759 +1,410 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { 
+  ArrowPathIcon, 
+  CheckCircleIcon, 
+  ExclamationTriangleIcon,
+  InformationCircleIcon,
+  CogIcon
+} from '@heroicons/react/24/outline';
 
-// Extend Window interface for ethereum
-declare global {
-  interface Window {
-    ethereum?: {
-      request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
-      isMetaMask?: boolean;
-    };
-  }
-}
+import OnboardingFlow from '@/components/OnboardingFlow';
+import { useMetaMask } from '@/hooks/useMetaMask';
+import { usePlayToken } from '@/hooks/usePlayToken';
+import '@/types/ethereum';
 
-// Play Token Contract function selectors
-const CLAIM_FUNCTION_SELECTOR = '0x4e71d92d';
+export default function DashboardPage() {
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [txMonitoring, setTxMonitoring] = useState<{
+    hash: string;
+    status: 'pending' | 'confirmed' | 'failed';
+  } | null>(null);
 
-const PLAY_TOKEN_ADDRESS = process.env.NEXT_PUBLIC_PLAY_TOKEN_ADDRESS as `0x${string}`;
+  // MetaMask state management
+  const {
+    account,
+    chainId,
+    isConnected,
+    isCorrectNetwork,
+    isMetaMaskAvailable,
+    isInitialized,
+    connect,
+    disconnect,
+    switchToAmoy,
+    addAmoyNetwork,
+    refreshConnection,
+  } = useMetaMask();
 
-function DashboardPage() {
-  const [account, setAccount] = useState<string | null>(null);
-  const [chainId, setChainId] = useState<number | null>(null);
-  const [balance, setBalance] = useState<string>('0');
-  const [hasClaimed, setHasClaimed] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  const [lastTxHash, setLastTxHash] = useState<string | null>(null);
-  const [txStatus, setTxStatus] = useState<'pending' | 'success' | 'failed' | null>(null);
-  const [isLoadingData, setIsLoadingData] = useState(false);
-  const [lastTransactionAttempt, setLastTransactionAttempt] = useState<number>(0);
-  const [cooldownTime, setCooldownTime] = useState<number>(0);
-  
-  // Fix hydration by ensuring component is mounted on client
+  // Play Token state management
+  const {
+    balance,
+    hasClaimed,
+    isLoading: isTokenLoading,
+    lastClaimTxHash,
+    claimHistory,
+    refreshBalance,
+    refreshClaimStatus,
+    claimTokens,
+    addTokenToMetaMask,
+    checkTransactionStatus,
+  } = usePlayToken(account);
+
+  // Determine if user needs onboarding
+  const needsOnboarding = isInitialized && (
+    !isMetaMaskAvailable ||
+    !isConnected ||
+    !isCorrectNetwork ||
+    parseFloat(balance) === 0
+  );
+
+  // Auto-refresh data periodically
   useEffect(() => {
-    setMounted(true);
-  }, []);
-  
-  // Switch to Polygon Amoy network
-  const switchToAmoy = async () => {
-    if (typeof window !== 'undefined' && window.ethereum) {
-      try {
-        // Try to switch to Polygon Amoy
-        await window.ethereum?.request({
-          method: 'wallet_switchEthereumChain',
-          params: [{ chainId: '0x13882' }], // 80002 in hex
-        });
-      } catch (switchError: unknown) {
-        // If the network doesn't exist, add it
-        if ((switchError as { code?: number }).code === 4902) {
-          try {
-            await window.ethereum?.request({
-              method: 'wallet_addEthereumChain',
-              params: [
-                {
-                  chainId: '0x13882',
-                  chainName: 'Polygon Amoy',
-                  nativeCurrency: {
-                    name: 'POL',
-                    symbol: 'POL',
-                    decimals: 18,
-                  },
-                  rpcUrls: ['https://polygon-amoy.g.alchemy.com/v2/Jmm9344uth8TJQi0gNCbs'],
-                  blockExplorerUrls: ['https://amoy.polygonscan.com/'],
-                },
-              ],
-            });
-          } catch (addError) {
-            console.error('Failed to add network:', addError);
-          }
-        } else {
-          console.error('Failed to switch network:', switchError);
-        }
-      }
-    }
-  };
-
-  // Connect wallet function
-  const connectWallet = async () => {
-    if (typeof window !== 'undefined' && window.ethereum) {
-      try {
-        const accounts = await window.ethereum?.request({
-          method: 'eth_requestAccounts',
-        });
-        setAccount((accounts as string[])[0]);
-        
-        // Get chain ID
-        const chainId = await window.ethereum?.request({
-          method: 'eth_chainId',
-        });
-        setChainId(parseInt(chainId as string, 16));
-      } catch (error) {
-        console.error('Failed to connect wallet:', error);
-      }
-    }
-  };
-  
-  // Check if already connected and load balance
-  useEffect(() => {
-    if (typeof window !== 'undefined' && window.ethereum && mounted) {
-      window.ethereum?.request({ method: 'eth_accounts' })
-        .then((accounts) => {
-          const accountsArray = accounts as string[];
-          if (accountsArray.length > 0) {
-            setAccount(accountsArray[0]);
-            
-            // Get chain ID
-            return window.ethereum?.request({ method: 'eth_chainId' });
-          }
-        })
-        .then((chainId) => {
-          if (chainId) {
-            setChainId(parseInt(chainId as string, 16));
-          }
-        });
-    }
-  }, [mounted]);
-
-  // This useEffect will be moved after function declarations
-
-  // Update cooldown timer
-  useEffect(() => {
-    if (lastTransactionAttempt > 0) {
+    if (account && isCorrectNetwork) {
       const interval = setInterval(() => {
-        const remaining = Math.max(0, 5000 - (Date.now() - lastTransactionAttempt));
-        setCooldownTime(remaining);
-        if (remaining <= 0) {
-          clearInterval(interval);
-        }
-      }, 100);
+        refreshBalance();
+        refreshClaimStatus();
+      }, 30000); // Refresh every 30 seconds
 
       return () => clearInterval(interval);
     }
-  }, [lastTransactionAttempt]);
+  }, [account, isCorrectNetwork, refreshBalance, refreshClaimStatus]);
 
-  // Function selectors are pre-calculated
-
-  // Check balance with improved error handling
-  const loadBalance = useCallback(async () => {
-    if (!account || !PLAY_TOKEN_ADDRESS) return;
-    
-    try {
-      // balanceOf(address) selector: 0x70a08231
-      const paddedAddress = account.slice(2).padStart(64, '0');
-      const balance = await window.ethereum?.request({
-        method: 'eth_call',
-        params: [
-          {
-            to: PLAY_TOKEN_ADDRESS,
-            data: '0x70a08231' + paddedAddress,
-          },
-          'latest'
-        ],
-      });
-      
-      if (balance && balance !== '0x' && balance !== '0x0') {
-        // Convert from wei to PT (assuming 18 decimals)
-        const balanceInPT = parseInt(balance as string, 16) / Math.pow(10, 18);
-        const balanceStr = balanceInPT.toFixed(0);
-        console.log('Balance loaded successfully:', { raw: balance, parsed: balanceStr });
-        setBalance(balanceStr);
-      } else {
-        console.log('Balance is zero or empty');
-        setBalance('0');
-      }
-    } catch (error) {
-      console.log('Balance loading error (non-critical):', (error as { message?: string }).message);
-      setBalance('0');
-    }
-  }, [account]);
-
-  // Check if already claimed - with improved error handling
-  const checkClaimStatus = useCallback(async () => {
-    if (!account || !PLAY_TOKEN_ADDRESS) return;
-    
-    try {
-      const paddedAddress = account.slice(2).padStart(64, '0');
-      
-      // Try hasClaimed(address) function first - correct selector: 0x73b2e80e
-      try {
-        const result = await window.ethereum?.request({
-          method: 'eth_call',
-          params: [
-            {
-              to: PLAY_TOKEN_ADDRESS,
-              data: '0x73b2e80e' + paddedAddress, // hasClaimed(address) - correct selector
-            },
-            'latest'
-          ],
-        });
-        
-        // Parse boolean result
-        const claimed = result === '0x0000000000000000000000000000000000000000000000000000000000000001';
-        console.log('Claim status check successful:', { result, claimed });
-        setHasClaimed(claimed);
-        return;
-      } catch {
-        console.log('hasClaimed function failed, trying fallback approach...');
-      }
-      
-      // Fallback: Try claimed mapping directly - correct selector: 0xc884ef83
-      try {
-        const result = await window.ethereum?.request({
-          method: 'eth_call',
-          params: [
-            {
-              to: PLAY_TOKEN_ADDRESS,
-              data: '0xc884ef83' + paddedAddress, // claimed(address) mapping
-            },
-            'latest'
-          ],
-        });
-        
-        const claimed = result === '0x0000000000000000000000000000000000000000000000000000000000000001';
-        console.log('Mapping check successful:', { result, claimed });
-        setHasClaimed(claimed);
-        return;
-      } catch {
-        console.log('Mapping check failed, using balance fallback...');
-      }
-      
-      // Final fallback: if balance > 0, likely claimed
-      if (balance && parseInt(balance) > 0) {
-        console.log('Using balance fallback - balance > 0, assuming claimed');
-        setHasClaimed(true);
-      } else {
-        console.log('All checks failed, defaulting to not claimed');
-        setHasClaimed(false);
-      }
-      
-    } catch (error) {
-      console.log('Claim status check error (non-critical):', (error as { message?: string }).message);
-      setHasClaimed(false);
-    }
-  }, [account, balance]);
-
-  // Load balance and claim status when account and chainId are available - with delay
+  // Monitor pending transactions
   useEffect(() => {
-    if (account && chainId === 80002 && mounted) {
-      setIsLoadingData(true);
-      
-      // Add small delay to ensure wallet is ready and avoid initial RPC errors
-      const timer = setTimeout(() => {
-        loadBalance();
-        // Add additional delay for claim status to reduce RPC error chances
-        setTimeout(() => {
-          checkClaimStatus();
-          setIsLoadingData(false);
-        }, 500);
-      }, 1000);
-
-      return () => {
-        clearTimeout(timer);
-        setIsLoadingData(false);
-      };
-    }
-  }, [account, chainId, mounted, loadBalance, checkClaimStatus]);
-  
-  // Prevent hydration mismatch
-  if (!mounted) {
-    return (
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-gray-900">マイページ</h1>
-          <div className="h-10 w-24 bg-gray-200 rounded animate-pulse"></div>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="animate-pulse space-y-4">
-            <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-            <div className="h-8 bg-gray-200 rounded w-3/4"></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Wait for transaction confirmation
-  const waitForTransaction = async (txHash: string) => {
-    setTxStatus('pending');
-    let attempts = 0;
-    const maxAttempts = 40; // 2 minutes max
-    
-    console.log(`Waiting for transaction: ${txHash}`);
-    
-    while (attempts < maxAttempts) {
-      try {
-        const receipt = await window.ethereum?.request({
-          method: 'eth_getTransactionReceipt',
-          params: [txHash],
-        });
-        
-        if (receipt) {
-          if ((receipt as { status?: string }).status === '0x1') {
-            setTxStatus('success');
-            console.log('Transaction confirmed successfully!');
-            // Reload balance and claim status
+    if (txMonitoring && txMonitoring.status === 'pending') {
+      const checkTx = async () => {
+        const { confirmed, success } = await checkTransactionStatus(txMonitoring.hash);
+        if (confirmed) {
+          setTxMonitoring(prev => prev ? {
+            ...prev,
+            status: success ? 'confirmed' : 'failed'
+          } : null);
+          
+          if (success) {
+            // Refresh data after successful transaction
             setTimeout(() => {
-              loadBalance();
-              checkClaimStatus();
+              refreshBalance();
+              refreshClaimStatus();
             }, 2000);
-            return true;
-          } else {
-            setTxStatus('failed');
-            console.log('Transaction failed');
-            return false;
           }
         }
-      } catch (error: unknown) {
-        // Handle specific RPC errors
-        const err = error as { code?: number };
-        if (err.code === -32603 || err.code === -32000) {
-          console.log('Block not found yet, transaction still pending...');
-        } else {
-          console.error('Error checking transaction:', error);
-        }
-      }
-      
-      console.log(`Checking transaction... attempt ${attempts + 1}/${maxAttempts}`);
-      await new Promise(resolve => setTimeout(resolve, 3000)); // Wait 3 seconds
-      attempts++;
+      };
+
+      const interval = setInterval(checkTx, 3000);
+      return () => clearInterval(interval);
     }
-    
-    console.log('Transaction timeout - checking one more time...');
-    
-    // One final check
-    try {
-      const receipt = await window.ethereum?.request({
-        method: 'eth_getTransactionReceipt',
-        params: [txHash],
-      });
-      
-      if (receipt && (receipt as { status?: string }).status === '0x1') {
-        setTxStatus('success');
-        setTimeout(() => {
-          loadBalance();
-          checkClaimStatus();
-        }, 2000);
-        return true;
+  }, [txMonitoring, checkTransactionStatus, refreshBalance, refreshClaimStatus]);
+
+  // Handle manual refresh
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await Promise.all([
+      refreshConnection(),
+      refreshBalance(),
+      refreshClaimStatus(),
+    ]);
+    setLastRefresh(new Date());
+    setIsRefreshing(false);
+  };
+
+  // Handle claim tokens
+  const handleClaimTokens = async () => {
+    if (!isCorrectNetwork) {
+      const switched = await switchToAmoy();
+      if (!switched) {
+        await addAmoyNetwork();
       }
+      return;
+    }
+
+    const result = await claimTokens();
+    
+    if (result.success && result.txHash) {
+      setTxMonitoring({
+        hash: result.txHash,
+        status: 'pending'
+      });
+    } else if (result.error) {
+      alert(result.error);
+    }
+  };
+
+  // Handle auto-setup (network + token)
+  const handleAutoSetup = async () => {
+    try {
+      // Add/switch to Amoy network
+      const switched = await switchToAmoy();
+      if (!switched) {
+        await addAmoyNetwork();
+      }
+      
+      // Add PT token to MetaMask
+      await addTokenToMetaMask();
+      
+      alert('✅ セットアップが完了しました！');
     } catch (error) {
-      console.error('Final check failed:', error);
-    }
-    
-    // Transaction may still be pending but we've timed out
-    console.log('Transaction may still be pending. Check manually on block explorer.');
-    alert('Transaction is taking longer than expected. Please check the block explorer link below for status.');
-    return false;
-  };
-
-  // Transaction checking handled by monitoring
-
-  // Add PlayToken to MetaMask
-  const addTokenToMetaMask = async () => {
-    if (!window.ethereum) {
-      alert('MetaMaskが見つかりません。');
-      return;
-    }
-
-    try {
-      const wasAdded = await window.ethereum?.request({
-        method: 'wallet_watchAsset',
-        params: [{
-          type: 'ERC20',
-          options: {
-            address: process.env.NEXT_PUBLIC_PLAY_TOKEN_ADDRESS,
-            symbol: 'PT',
-            decimals: 18,
-            image: '', // You can add a token image URL here
-          },
-        }],
-      });
-
-      if (wasAdded) {
-        alert('Play Token (PT) がMetaMaskに追加されました！');
-      } else {
-        alert('トークンの追加がキャンセルされました。');
-      }
-    } catch (error) {
-      console.error('Error adding token to MetaMask:', error);
-      alert('トークンの追加に失敗しました。');
+      console.error('Auto-setup failed:', error);
+      alert('❌ セットアップに失敗しました。手動で設定してください。');
     }
   };
 
-  // Claim Play Tokens with duplicate prevention
-  const claimPlayTokens = async () => {
-    if (!account || chainId !== 80002) {
-      alert('Please connect to Polygon Amoy network');
-      return;
-    }
-    
-    if (isLoading) {
-      alert('Transaction already in progress. Please wait.');
-      return;
-    }
-    
-    // Prevent rapid clicking (5 second cooldown)
-    const now = Date.now();
-    if (now - lastTransactionAttempt < 5000) {
-      alert('Please wait 5 seconds between transaction attempts.');
-      return;
-    }
-    setLastTransactionAttempt(now);
-    
-    setIsLoading(true);
-    setTxStatus(null);
-    
-    try {
-      console.log('Starting claim transaction...');
-      
-      // Get fresh nonce to avoid conflicts
-      const nonce = await window.ethereum?.request({
-        method: 'eth_getTransactionCount',
-        params: [account, 'latest'], // Use 'latest' to avoid pending conflicts
-      });
-      
-      // Get current gas price and add buffer
-      const gasPrice = await window.ethereum?.request({
-        method: 'eth_gasPrice',
-      });
-      const bufferedGasPrice = '0x' + Math.floor(parseInt(gasPrice as string, 16) * 2).toString(16); // Increased to 2x
-      
-      console.log('Transaction parameters:', {
-        nonce: parseInt(nonce as string, 16),
-        gasPrice: parseInt(bufferedGasPrice, 16).toLocaleString(),
-        from: account,
-        to: process.env.NEXT_PUBLIC_PLAY_TOKEN_ADDRESS
-      });
-      
-      // Send transaction with explicit parameters to prevent duplicates
-      const txHash = await window.ethereum?.request({
-        method: 'eth_sendTransaction',
-        params: [{
-          from: account,
-          to: process.env.NEXT_PUBLIC_PLAY_TOKEN_ADDRESS,
-          data: CLAIM_FUNCTION_SELECTOR, // claim() function signature
-          gas: '0x1adb0', // 110000 gas limit
-          gasPrice: bufferedGasPrice,
-          nonce: nonce,
-        }],
-      });
-      
-      console.log('Transaction submitted successfully:', txHash);
-      setLastTxHash(txHash as string);
-      setHasClaimed(true); // Optimistically set to true
-      
-      // Start monitoring transaction
-      waitForTransaction(txHash as string);
-      
-    } catch (error: unknown) {
-      // Improved error logging
-      const err = error as { code?: number; message?: string };
-      console.error('Claim transaction error:', {
-        code: err.code,
-        message: err.message,
-        data: (error as { data?: unknown }).data
-      });
-      
-      setTxStatus('failed');
-      setHasClaimed(false); // Reset on error
-      
-      // Handle specific error cases
-      if (err.code === -4001) {
-        alert('トランザクションがユーザーによって拒否されました。');
-      } else if (err.code === -32000) {
-        if (err.message && err.message.includes('already known')) {
-          alert('同じトランザクションが既に送信されています。少し待ってから確認してください。');
-          // Don't reset hasClaimed in this case
-          setHasClaimed(true);
-        } else if (err.message && err.message.includes('insufficient funds')) {
-          alert('ガス代が不足しています。POLトークンを取得してください。');
-        } else if (err.message && err.message.includes('nonce')) {
-          alert('ノンスエラーが発生しました。しばらく待ってから再試行してください。');
-        } else {
-          alert('トランザクションが拒否されました。ガス価格を上げて再試行してください。');
-        }
-      } else if (err.code === -32603) {
-        alert('トランザクションが失敗しました。既にトークンを受け取っている可能性があります。');
-      } else {
-        const errorMsg = err.message || String(error) || 'Unknown error';
-        alert(`トークンの取得に失敗しました: ${errorMsg}`);
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  if (!account) {
+  // Show onboarding if needed
+  if (needsOnboarding && showOnboarding) {
     return (
-      <div className="max-w-2xl mx-auto space-y-6">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">マイページ</h1>
-          <p className="text-gray-600 mb-8">
-            ウォレットを接続してPlay Tokenを取得し、予測市場に参加しましょう
-          </p>
-          <button
-            onClick={connectWallet}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            Connect Wallet
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (chainId !== 80002) {
-    return (
-      <div className="max-w-2xl mx-auto space-y-6">
-        <h1 className="text-3xl font-bold text-gray-900">マイページ</h1>
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-yellow-800">
-                ネットワークを切り替えてください
-              </h3>
-              <div className="mt-2 text-sm text-yellow-700">
-                <p>
-                  Polygon Amoy テストネット（チェーンID: 80002）に接続してください。
-                  <br />
-                  現在のチェーンID: {chainId || '不明'}
-                </p>
-                <button
-                  onClick={switchToAmoy}
-                  className="mt-2 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700"
-                >
-                  Polygon Amoy に切り替え
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+      <div className="min-h-screen bg-gray-50 py-8">
+        <OnboardingFlow onComplete={() => setShowOnboarding(false)} />
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6 p-4">
       {/* Header */}
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900">マイページ</h1>
-        <div className="flex items-center space-x-4">
-          <span className="text-sm text-gray-600">
-            {account?.slice(0, 6)}...{account?.slice(-4)}
-          </span>
+        <div className="flex items-center space-x-2">
+          {lastRefresh && (
+            <span className="text-sm text-gray-500">
+              最終更新: {lastRefresh.toLocaleTimeString('ja-JP')}
+            </span>
+          )}
           <button
-            onClick={() => setAccount(null)}
-            className="px-4 py-2 text-sm bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="p-2 text-gray-600 hover:text-gray-800 disabled:opacity-50"
+            title="データを更新"
           >
-            Disconnect
+            <ArrowPathIcon className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
 
-      {/* User Info Card */}
+      {/* MetaMask Status Card */}
       <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">ウォレット情報</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <dt className="text-sm font-medium text-gray-500">ウォレットアドレス</dt>
-            <dd className="mt-1 text-sm text-gray-900 font-mono break-all">{account}</dd>
+        <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+          <CogIcon className="w-5 h-5 mr-2" />
+          接続状況
+        </h2>
+        
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-gray-600">MetaMask</span>
+            <div className="flex items-center">
+              {isMetaMaskAvailable ? (
+                <CheckCircleIcon className="w-5 h-5 text-green-600 mr-2" />
+              ) : (
+                <ExclamationTriangleIcon className="w-5 h-5 text-red-600 mr-2" />
+              )}
+              <span className={isMetaMaskAvailable ? 'text-green-600' : 'text-red-600'}>
+                {isMetaMaskAvailable ? '利用可能' : '未インストール'}
+              </span>
+            </div>
           </div>
-          <div>
-            <dt className="text-sm font-medium text-gray-500">ネットワーク</dt>
-            <dd className="mt-1 text-sm text-gray-900">
-              Polygon Amoy (ID: {chainId})
-              {chainId === 80002 && (
-                <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                  接続済み
+
+          <div className="flex items-center justify-between">
+            <span className="text-gray-600">ウォレット接続</span>
+            <div className="flex items-center">
+              {isConnected ? (
+                <CheckCircleIcon className="w-5 h-5 text-green-600 mr-2" />
+              ) : (
+                <ExclamationTriangleIcon className="w-5 h-5 text-red-600 mr-2" />
+              )}
+              <span className={isConnected ? 'text-green-600' : 'text-red-600'}>
+                {isConnected ? '接続済み' : '未接続'}
+              </span>
+              {isConnected && account && (
+                <span className="ml-2 text-xs font-mono text-gray-500">
+                  {account.slice(0, 6)}...{account.slice(-4)}
                 </span>
               )}
-            </dd>
-          </div>
-        </div>
-      </div>
-
-      {/* Transaction Status Card */}
-      {lastTxHash && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">最新のトランザクション</h2>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">ハッシュ:</span>
-              <a 
-                href={`https://amoy.polygonscan.com/tx/${lastTxHash}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:text-blue-800 underline text-sm font-mono"
-              >
-                {lastTxHash.slice(0, 10)}...{lastTxHash.slice(-8)}
-              </a>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">ステータス:</span>
-              <span className={`px-2 py-1 text-xs rounded-full ${
-                txStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                txStatus === 'success' ? 'bg-green-100 text-green-800' :
-                txStatus === 'failed' ? 'bg-red-100 text-red-800' :
-                'bg-gray-100 text-gray-800'
-              }`}>
-                {txStatus === 'pending' ? '確認中...' :
-                 txStatus === 'success' ? '成功' :
-                 txStatus === 'failed' ? '失敗' :
-                 '不明'}
+          </div>
+
+          <div className="flex items-center justify-between">
+            <span className="text-gray-600">ネットワーク</span>
+            <div className="flex items-center">
+              {isCorrectNetwork ? (
+                <CheckCircleIcon className="w-5 h-5 text-green-600 mr-2" />
+              ) : (
+                <ExclamationTriangleIcon className="w-5 h-5 text-red-600 mr-2" />
+              )}
+              <span className={isCorrectNetwork ? 'text-green-600' : 'text-red-600'}>
+                {isCorrectNetwork ? 'Polygon Amoy' : chainId ? `Chain ${chainId}` : '未確認'}
               </span>
             </div>
           </div>
         </div>
-      )}
 
-      {/* Play Token Balance Card */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-medium text-gray-900">Play Token残高</h2>
-          <div className="flex space-x-2">
+        {/* Action buttons */}
+        <div className="mt-4 flex space-x-2">
+          {!isConnected && (
             <button
-              onClick={addTokenToMetaMask}
-              className="px-3 py-1 text-xs bg-orange-100 text-orange-700 rounded hover:bg-orange-200"
-              title="MetaMaskにトークンを追加"
+              onClick={connect}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
             >
-              🦊 追加
+              ウォレット接続
             </button>
-            <button
-              onClick={() => {
-                setIsLoadingData(true);
-                loadBalance();
-                setTimeout(() => {
-                  checkClaimStatus();
-                  setIsLoadingData(false);
-                }, 500);
-              }}
-              disabled={isLoadingData}
-              className="px-3 py-1 text-xs bg-gray-100 text-gray-600 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLoadingData ? '更新中...' : '更新'}
-            </button>
-          </div>
-        </div>
-        <div className="flex items-center justify-between">
-          <div>
-            {isLoadingData ? (
-              <div className="animate-pulse">
-                <div className="h-9 bg-gray-200 rounded w-20 mb-2"></div>
-                <div className="h-4 bg-gray-200 rounded w-32"></div>
-              </div>
-            ) : (
-              <>
-                <p className="text-3xl font-bold text-blue-600">
-                  {balance} PT
-                </p>
-                <p className="text-sm text-gray-500 mt-1">
-                  Play Token（テスト用トークン）
-                </p>
-              </>
-            )}
-          </div>
+          )}
           
-          {/* Claim Button */}
-          <div>
-            {isLoadingData ? (
-              <div className="animate-pulse">
-                <div className="h-10 bg-gray-200 rounded w-32"></div>
-              </div>
-            ) : hasClaimed ? (
-              <div className="space-y-2">
-                <div className="text-sm text-green-600 font-medium">
-                  ✓ 既に受け取り済み
-                </div>
-                {lastTxHash && (
-                  <div className="text-xs text-gray-500">
-                    <a 
-                      href={`https://amoy.polygonscan.com/tx/${lastTxHash}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-800 underline"
-                    >
-                      トランザクションを確認
-                    </a>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <button
-                onClick={claimPlayTokens}
-                disabled={isLoading || cooldownTime > 0}
-                className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-              >
-                {isLoading ? (
-                  <span className="flex items-center">
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    送信中...
-                  </span>
-                ) : cooldownTime > 0 ? (
-                  `待機中... (${Math.ceil(cooldownTime / 1000)}秒)`
-                ) : (
-                  '1,000 PT を受け取る'
-                )}
-              </button>
-            )}
-          </div>
-        </div>
-        
-        {/* MetaMask Info */}
-        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <div className="flex items-start">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-blue-800">
-                MetaMaskでトークンを確認
-              </h3>
-              <div className="mt-1 text-sm text-blue-700">
-                <p>
-                  MetaMaskにPlay Token (PT) が表示されない場合は「🦊 追加」ボタンをクリックしてください。
-                  トークンがウォレットに追加され、残高を確認できるようになります。
-                </p>
-              </div>
-            </div>
-          </div>
+          {isConnected && (
+            <button
+              onClick={disconnect}
+              className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+            >
+              切断
+            </button>
+          )}
+
+          {!isCorrectNetwork && isConnected && (
+            <button
+              onClick={handleAutoSetup}
+              className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
+            >
+              🔧 ワンクリック設定
+            </button>
+          )}
+
+          {needsOnboarding && (
+            <button
+              onClick={() => setShowOnboarding(true)}
+              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+            >
+              📚 ガイドを見る
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Instructions Card */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">使い方</h2>
-        <div className="space-y-3">
-          <div className="flex items-start">
-            <div className="flex-shrink-0">
-              <div className="bg-blue-100 rounded-full p-2 w-8 h-8 flex items-center justify-center">
-                <span className="text-blue-600 font-bold text-sm">1</span>
-              </div>
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-gray-900">Play Token を受け取る</h3>
-              <p className="text-sm text-gray-500">
-                初回のみ1,000 PTを無料で受け取ることができます
-              </p>
-            </div>
+      {/* Play Token Balance Card */}
+      {isConnected && isCorrectNetwork && (
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Play Token (PT)</h2>
+          
+          <div className="text-3xl font-bold text-blue-600 mb-2">
+            {balance} PT
           </div>
-          <div className="flex items-start">
-            <div className="flex-shrink-0">
-              <div className="bg-blue-100 rounded-full p-2 w-8 h-8 flex items-center justify-center">
-                <span className="text-blue-600 font-bold text-sm">2</span>
+          
+          <p className="text-gray-600 text-sm mb-4">
+            予測市場で使用できるゲーム内通貨です（実際の金銭的価値はありません）
+          </p>
+
+          {/* Claim status */}
+          <div className="flex items-center mb-4">
+            {hasClaimed ? (
+              <>
+                <CheckCircleIcon className="w-5 h-5 text-green-600 mr-2" />
+                <span className="text-green-600">受け取り済み</span>
+                {lastClaimTxHash && (
+                  <a
+                    href={`https://amoy.polygonscan.com/tx/${lastClaimTxHash}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ml-2 text-xs text-blue-600 hover:underline"
+                  >
+                    トランザクションを確認
+                  </a>
+                )}
+              </>
+            ) : (
+              <>
+                <InformationCircleIcon className="w-5 h-5 text-blue-600 mr-2" />
+                <span className="text-blue-600">1,000 PT を受け取れます</span>
+              </>
+            )}
+          </div>
+
+          {/* Transaction monitoring */}
+          {txMonitoring && (
+            <div className="mb-4 p-3 rounded-lg bg-blue-50 border border-blue-200">
+              <div className="flex items-center">
+                {txMonitoring.status === 'pending' && (
+                  <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2" />
+                )}
+                {txMonitoring.status === 'confirmed' && (
+                  <CheckCircleIcon className="w-4 h-4 text-green-600 mr-2" />
+                )}
+                {txMonitoring.status === 'failed' && (
+                  <ExclamationTriangleIcon className="w-4 h-4 text-red-600 mr-2" />
+                )}
+                <span className="text-sm">
+                  {txMonitoring.status === 'pending' && 'トランザクション確認中...'}
+                  {txMonitoring.status === 'confirmed' && 'トランザクション完了！'}
+                  {txMonitoring.status === 'failed' && 'トランザクション失敗'}
+                </span>
               </div>
+              <a
+                href={`https://amoy.polygonscan.com/tx/${txMonitoring.hash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-blue-600 hover:underline"
+              >
+                {txMonitoring.hash.slice(0, 10)}...{txMonitoring.hash.slice(-8)}
+              </a>
             </div>
-            <div className="ml-3">
+          )}
+
+          {/* Action buttons */}
+          <div className="flex space-x-2">
+            {!hasClaimed && (
+              <button
+                onClick={handleClaimTokens}
+                disabled={isTokenLoading || txMonitoring?.status === 'pending'}
+                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+              >
+                {isTokenLoading || txMonitoring?.status === 'pending' ? '処理中...' : '1,000 PT を受け取る'}
+              </button>
+            )}
+
+            <button
+              onClick={addTokenToMetaMask}
+              className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700"
+            >
+              🦊 MetaMaskに追加
+            </button>
+
+            <button
+              onClick={refreshBalance}
+              className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+            >
+              残高更新
+            </button>
+          </div>
+
+          {/* Claim history */}
+          {claimHistory.length > 0 && (
+            <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+              <h4 className="text-sm font-medium text-gray-700 mb-2">受け取り履歴</h4>
+              {claimHistory.map((txHash, index) => (
+                <div key={txHash} className="text-xs">
+                  <a
+                    href={`https://amoy.polygonscan.com/tx/${txHash}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline"
+                  >
+                    #{index + 1}: {txHash.slice(0, 10)}...{txHash.slice(-8)}
+                  </a>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Next Steps Card */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">次のステップ</h2>
+        
+        <div className="space-y-4">
+          <div className="flex items-start">
+            <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+              <span className="text-blue-600 font-semibold text-sm">1</span>
+            </div>
+            <div className="flex-grow">
               <h3 className="text-sm font-medium text-gray-900">予測市場に参加</h3>
               <p className="text-sm text-gray-500">
                 <Link href="/" className="text-blue-600 hover:text-blue-500 underline">
@@ -763,16 +414,15 @@ function DashboardPage() {
               </p>
             </div>
           </div>
+
           <div className="flex items-start">
-            <div className="flex-shrink-0">
-              <div className="bg-blue-100 rounded-full p-2 w-8 h-8 flex items-center justify-center">
-                <span className="text-blue-600 font-bold text-sm">3</span>
-              </div>
+            <div className="flex-shrink-0 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center mr-3">
+              <span className="text-gray-600 font-semibold text-sm">2</span>
             </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-gray-900">配当を受け取る</h3>
+            <div className="flex-grow">
+              <h3 className="text-sm font-medium text-gray-900">管理者機能（実装予定）</h3>
               <p className="text-sm text-gray-500">
-                予測が当たった場合、配当としてPTを受け取ることができます
+                新しい予測市場の作成や結果の判定
               </p>
             </div>
           </div>
@@ -780,29 +430,32 @@ function DashboardPage() {
       </div>
 
       {/* Troubleshooting Card */}
-      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-        <h2 className="text-lg font-medium text-yellow-800 mb-4">トラブルシューティング</h2>
-        <div className="space-y-3 text-sm">
+      <div className="bg-yellow-50 rounded-lg border border-yellow-200 p-6">
+        <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+          <ExclamationTriangleIcon className="w-5 h-5 text-yellow-600 mr-2" />
+          トラブルシューティング
+        </h2>
+        
+        <div className="space-y-3 text-sm text-gray-700">
           <div>
-            <h3 className="font-medium text-yellow-800">トランザクションが失敗する場合:</h3>
-            <ul className="list-disc list-inside text-yellow-700 mt-1 space-y-1">
+            <strong>トークン受け取りでエラーが出る場合:</strong>
+            <ul className="list-disc list-inside ml-4 mt-1">
+              <li>Polygon AmoyネットワークでPOLトークン（ガス代）が十分にあるか確認</li>
               <li>
                 <a 
-                  href="https://www.alchemy.com/faucets/polygon-amoy" 
-                  target="_blank" 
+                  href="https://www.alchemy.com/faucets/polygon-amoy"
+                  target="_blank"
                   rel="noopener noreferrer"
-                  className="underline hover:text-yellow-600"
+                  className="text-blue-600 hover:underline"
                 >
                   Alchemy Faucet
                 </a>
-                からPOLを取得してガス代を確保
-              </li>
-              <li>
+                または
                 <a 
-                  href="https://faucet.polygon.technology/" 
-                  target="_blank" 
+                  href="https://faucet.polygon.technology/"
+                  target="_blank"
                   rel="noopener noreferrer"
-                  className="underline hover:text-yellow-600"
+                  className="text-blue-600 hover:underline"
                 >
                   Polygon Faucet
                 </a>
@@ -812,20 +465,13 @@ function DashboardPage() {
               <li>MetaMaskでガス価格を手動で上げる</li>
             </ul>
           </div>
+          
           <div>
-            <h3 className="font-medium text-yellow-800">残高が更新されない場合:</h3>
-            <ul className="list-disc list-inside text-yellow-700 mt-1 space-y-1">
-              <li>「更新」ボタンをクリック</li>
-              <li>ページをリロード</li>
-              <li>Polygon Scanでトランザクションの確認</li>
-            </ul>
-          </div>
-          <div>
-            <h3 className="font-medium text-yellow-800">MetaMaskにトークンが表示されない場合:</h3>
-            <ul className="list-disc list-inside text-yellow-700 mt-1 space-y-1">
-              <li>「🦊 追加」ボタンでトークンをインポート</li>
-              <li>手動で追加: コントラクトアドレス `{process.env.NEXT_PUBLIC_PLAY_TOKEN_ADDRESS}`</li>
-              <li>シンボル: PT、小数点: 18</li>
+            <strong>残高が表示されない場合:</strong>
+            <ul className="list-disc list-inside ml-4 mt-1">
+              <li>「🦊 MetaMaskに追加」ボタンでトークンを追加</li>
+              <li>「残高更新」ボタンで最新状態を取得</li>
+              <li>ページを再読み込みして再試行</li>
             </ul>
           </div>
         </div>
@@ -833,5 +479,3 @@ function DashboardPage() {
     </div>
   );
 }
-
-export default DashboardPage;
