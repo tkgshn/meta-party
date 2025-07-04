@@ -125,8 +125,56 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
 
     } catch (error) {
       console.error('Failed to get balance. Raw error:', error);
-      const err = error as { code?: number; message?: string };
-      console.error(`Balance check failed: ${err.message || 'An unknown error occurred.'}`);
+      
+      // Enhanced error handling for MetaMask errors
+      let errorMessage = 'An unknown error occurred.';
+      let errorCode: number | undefined;
+      
+      if (error && typeof error === 'object') {
+        // Handle MetaMask error structure
+        const metaMaskError = error as any;
+        
+        if (metaMaskError.code) {
+          errorCode = metaMaskError.code;
+        }
+        
+        if (metaMaskError.message) {
+          errorMessage = metaMaskError.message;
+        } else if (metaMaskError.data?.message) {
+          errorMessage = metaMaskError.data.message;
+        } else if (metaMaskError.error?.message) {
+          errorMessage = metaMaskError.error.message;
+        }
+        
+        // Handle common MetaMask error codes
+        switch (errorCode) {
+          case 4001:
+            errorMessage = 'User rejected the request';
+            break;
+          case -32603:
+            errorMessage = 'Internal JSON-RPC error';
+            break;
+          case -32002:
+            errorMessage = 'Request pending';
+            break;
+          case -32005:
+            errorMessage = 'Rate limit exceeded';
+            break;
+        }
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      
+      console.error(`Balance check failed: ${errorMessage} (Code: ${errorCode || 'unknown'})`);
+      
+      // Check if it's a network-related error and suggest solutions
+      if (errorMessage.includes('network') || errorMessage.includes('connection') || errorCode === -32603) {
+        console.warn('Network error detected. Please check:');
+        console.warn('1. MetaMask is connected to Polygon Amoy network');
+        console.warn('2. Network connection is stable');
+        console.warn('3. RPC endpoint is accessible');
+      }
+      
       setBalanceWei(BigInt(0));
       setBalance('0');
     }
