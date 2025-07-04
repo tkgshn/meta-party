@@ -302,32 +302,38 @@ Based on the Mirai Master Plan, focusing on:
 - Firebase backend for real-time data (pending)
 - Production deployment to Vercel ✅ COMPLETED
 
-## Recent Updates (2025-07-04) ✅ COMPREHENSIVE UI IMPLEMENTATION
+## Recent Updates (2025-07-04) ✅ COMPREHENSIVE UI IMPLEMENTATION & DATA CONSOLIDATION
 
 ### 🎯 **Major Feature Implementation Complete**
 
-#### 1. **Admin Dashboard** ✅ `/admin`
+#### 1. **Sample Market Data Consolidation** ✅ 
+- **Unified Data Source**: All sample markets consolidated into `apps/web/src/data/miraiMarkets.ts`
+- **11 Total Markets**: Combined Mirai political projects (5) + social challenge markets (6)
+- **Single Source of Truth**: Eliminated data duplication across files
+- **Consistent Structure**: Standardized market data format with proper TypeScript types
+
+#### 2. **Admin Dashboard** ✅ `/admin`
 - **Market Management**: Create, manage, and resolve prediction markets
 - **Statistics Overview**: Platform-wide metrics and analytics
 - **User-friendly Interface**: Modern tabbed navigation with charts
 - **Market Creation Form**: Comprehensive form with validation
 - **Activity Monitoring**: Real-time platform activity tracking
 
-#### 2. **Market Detail Pages** ✅ `/market/[id]`
+#### 3. **Market Detail Pages** ✅ `/market/[id]`
 - **Interactive Trading Interface**: Buy/sell orders with position management
 - **Real-time Price Charts**: Using Recharts for data visualization
 - **Order Book Display**: Live buy/sell order tracking
 - **Transaction History**: Complete trade history with filtering
 - **Market Information**: Detailed market metadata and resolution criteria
 
-#### 3. **Enhanced Market Listing** ✅ `/`
+#### 4. **Enhanced Market Listing** ✅ `/`
 - **Advanced Search & Filtering**: Real-time search with category filters
 - **Sorting Options**: By trending, volume, newest, ending soon
 - **Featured Markets**: Highlighted high-activity markets
-- **Statistics Dashboard**: Platform-wide performance metrics
+- **Statistics Dashboard**: Platform-wide performance metrics using consolidated data
 - **Responsive Design**: Mobile-optimized grid and list views
 
-#### 4. **Complete UI Architecture**
+#### 5. **Complete UI Architecture**
 - **Modern Design System**: Inspired by Manifold, Polymarket, and Butter
 - **Tailwind CSS v4**: Latest utility-first CSS framework
 - **Heroicons Integration**: Consistent iconography throughout

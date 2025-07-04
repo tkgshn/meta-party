@@ -13,14 +13,24 @@ import MarketCard from '../MarketCard'
 
 describe('MarketCard', () => {
   const mockMarket = {
-    id: '1',
+    id: 'test-1',
     title: 'テスト市場',
     kpiDescription: 'これはテスト用のKPI説明です。',
     deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+    createdAt: new Date(),
     status: 'TRADING' as const,
-    totalVolume: '5,240 PT',
+    category: 'test',
+    totalVolume: 5240,
     numProposals: 3,
+    participants: 50,
     topPrice: 0.65,
+    change24h: 0.05,
+    tags: ['テスト', '市場'],
+    featured: false,
+    liquidity: 1000,
+    priceHistory: [
+      { time: new Date().toISOString(), price: 0.65 }
+    ]
   }
 
   describe('Market Display (市場表示)', () => {
@@ -31,7 +41,7 @@ describe('MarketCard', () => {
       // Assert
       expect(screen.getByText('テスト市場')).toBeInTheDocument()
       expect(screen.getByText('これはテスト用のKPI説明です。')).toBeInTheDocument()
-      expect(screen.getByText('5,240 PT')).toBeInTheDocument()
+      expect(screen.getByText('5,240')).toBeInTheDocument()
       expect(screen.getByText('3件')).toBeInTheDocument()
     })
 
@@ -106,7 +116,7 @@ describe('MarketCard', () => {
       // Assert
       const actionButton = screen.getByRole('link', { name: '参加する' })
       expect(actionButton).toBeInTheDocument()
-      expect(actionButton).toHaveAttribute('href', '/market/1')
+      expect(actionButton).toHaveAttribute('href', '/market/test-1')
       expect(actionButton).toHaveClass('bg-blue-600')
     })
 
@@ -123,7 +133,7 @@ describe('MarketCard', () => {
       // Assert
       const actionButton = screen.getByRole('link', { name: '詳細を見る' })
       expect(actionButton).toBeInTheDocument()
-      expect(actionButton).toHaveAttribute('href', '/market/1')
+      expect(actionButton).toHaveAttribute('href', '/market/test-1')
     })
 
     it('解決済みの市場では詳細を見るボタンが表示される', () => {
@@ -270,7 +280,7 @@ describe('MarketCard', () => {
 
       // Assert
       const actionButton = screen.getByRole('link', { name: '参加する' })
-      expect(actionButton).toHaveAttribute('href', '/market/1')
+      expect(actionButton).toHaveAttribute('href', '/market/test-1')
     })
   })
 
@@ -290,7 +300,7 @@ describe('MarketCard', () => {
       // Arrange
       const markets = Array.from({ length: 100 }, (_, i) => ({
         ...mockMarket,
-        id: i.toString(),
+        id: `test-${i}`,
         title: `Market ${i}`,
       }))
 
