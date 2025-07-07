@@ -1,8 +1,8 @@
-# Ultrathink - Futarchy Platform プロジェクトガイド
+# utarchy Platform プロジェクトガイド
 
 ## 🎯 このプロジェクトは何？
 
-Ultrathinkは「Futarchy（フューターキー）」という予測市場ベースのガバナンスシステムです。簡単に言うと：
+「Futarchy（フューターキー）」という予測市場ベースのガバナンスシステムです。簡単に言うと：
 
 1. **予測市場**: 未来の出来事について、お金を賭けて予測する市場
 2. **ガバナンス**: 組織や社会の意思決定の仕組み
@@ -55,7 +55,8 @@ npm run dev
 ```
 
 - **ホームページ**: http://localhost:3000
-- **ダッシュボード**: http://localhost:3000/dashboard
+- **管理者ページ**: http://localhost:3000/admin
+- **市場詳細**: http://localhost:3000/market/[id]
 
 ### 2. 環境設定 ✅ **すべて完了済み**
 
@@ -67,12 +68,12 @@ npm run dev
 - フロントエンドとコントラクトの連携
 
 2. **スマートコントラクトのデプロイ** ✅ **完了済み**
-   
+
    **デプロイ済みコントラクト（Polygon Amoy テストネット）:**
    - **PlayToken**: `0x237B9E4EEE4AeAf712B5B240Ab03C973310B6bD1`
    - **MarketFactory**: `0x9f1C3f06B201FFa385a4BB3695f78cB1c17c12db`
    - **ConditionalTokens**: `0x0416a4757062c1e61759ADDb6d68Af145919F045`
-   
+
    **フロントエンドの.env.localに追加が必要:**
    ```
    NEXT_PUBLIC_PLAY_TOKEN_ADDRESS=0x237B9E4EEE4AeAf712B5B240Ab03C973310B6bD1
@@ -89,12 +90,12 @@ npm run dev
    - アカウントを作成
 
 ### 2. **アプリでワンクリック設定** ✅ **自動化済み**
-   - http://localhost:3000/dashboard にアクセス
+   - http://localhost:3000 にアクセス
    - 「Connect Wallet」ボタンでMetaMask接続
    - **自動ネットワーク切り替え**: 「Polygon Amoy に切り替え」ボタンをクリック
    - **自動ネットワーク追加**: 設定が自動で完了（手動設定不要）
 
-### 3. **テスト用POLを取得** 
+### 3. **テスト用POLを取得**
    **複数のファウセットが利用可能:**
    - **Alchemy Faucet**: https://www.alchemy.com/faucets/polygon-amoy
    - **Polygon Faucet**: https://faucet.polygon.technology/
@@ -152,7 +153,7 @@ npm run dev
    npm test  # テスト実行
    npm run deploy:testnet  # デプロイ完了
    ```
-   
+
 2. **フロントエンド開発** ✅ **完了済み**
    ```bash
    cd apps/web
@@ -235,12 +236,12 @@ firebase login:ci
 ### 🎉 **完全動作確認済み - 本格運用可能**
 - **フロントエンド**: Next.js 15 アプリが http://localhost:3000 で稼働中
 - **スマートコントラクト**: Polygon Amoy テストネットにデプロイ完了
-- **ダッシュボード**: http://localhost:3000/dashboard でPlay Token請求可能
+- **予測市場**: 11の市場で完全な取引インターフェース実装済み
 - **ウォレット連携**: 直接MetaMask APIで接続機能実装済み（軽量化完了）
 - **トークン管理**: MetaMaskへの自動トークン追加機能実装
 
 ### 🚀 **今すぐできること（実証済み）**
-1. **Play Token を取得**: `/dashboard` でMetaMaskを接続して1,000 PT を無料取得 ✅
+1. **Play Token を取得**: ホームページでMetaMaskを接続して1,000 PT を無料取得 ✅
 2. **MetaMaskに表示**: 🦊ボタンでPlay Token (PT) をMetaMaskに自動追加 ✅
 3. **リアルタイム残高**: 実際のブロックチェーン残高をリアルタイム表示 ✅
 4. **トランザクション監視**: 送信から確認まで完全な状態管理 ✅
@@ -289,7 +290,7 @@ firebase login:ci
 - **エラー回復**: 詳細エラーメッセージと解決策提示
 
 #### 3. **高度な重複防止システム** ✅
-- **マルチ検証方式**: 
+- **マルチ検証方式**:
   - Contract `hasClaimed()` 関数チェック
   - トランザクション履歴スキャン
   - 残高ベース推定
@@ -319,7 +320,7 @@ firebase login:ci
 新規ユーザー → 「Connect Wallet」 → オンボーディング開始
     ↓
 MetaMask確認 → ウォレット接続 → ネットワーク自動設定
-    ↓  
+    ↓
 POL取得ガイド → PTトークン自動追加 → 1000PT自動受け取り
     ↓
 完了！ → ダッシュボードで即座利用可能
@@ -481,7 +482,7 @@ redeemFullSet(): 各YESᵢトークン 1枚ずつ → 1 PT
 - 🔧 高度な裁定取引ツール
 - 🔧 詳細トークン保有状況表示
 
-**設計思想**: 
+**設計思想**:
 - 一般ユーザー向けには直感的な取引に特化
 - 高度な機能は管理者・開発者が必要時に有効化
 - Futarchyの数学的正確性を保ちながらUX simplicity を実現

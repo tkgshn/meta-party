@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createWalletSession, clearWalletSession, validateWalletSession } from '@/utils/walletSession';
 import { NETWORKS, isSupportedChainId } from '@/config/networks';
+import { loadAnvilContracts } from '@/utils/anvil-contracts';
 import '@/types/ethereum';
 
 interface MetaMaskState {
@@ -302,6 +303,11 @@ export function useMetaMask(): MetaMaskState & MetaMaskActions {
     const newChainId = parseInt(chainId as string, 16);
     console.log('Chain changed:', newChainId);
     setChainId(newChainId);
+    
+    // Load Anvil contracts if switched to Anvil network
+    if (newChainId === 31337) {
+      loadAnvilContracts().catch(console.error);
+    }
   }, []);
 
   // Handle disconnect events
@@ -338,6 +344,11 @@ export function useMetaMask(): MetaMaskState & MetaMaskActions {
             setChainId(currentChainId);
             setIsConnected(true);
           }
+        }
+        
+        // Load Anvil contracts if on Anvil network
+        if (currentChainId === 31337) {
+          loadAnvilContracts().catch(console.error);
         }
 
         // Set up event listeners

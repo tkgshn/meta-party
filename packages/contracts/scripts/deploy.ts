@@ -97,8 +97,10 @@ async function main() {
   console.log("==========================");
   
   // Save addresses to file
+  const network = await ethers.provider.getNetwork();
   const addresses = {
-    network: (await ethers.provider.getNetwork()).name,
+    network: network.name,
+    chainId: Number(network.chainId),
     deployer: deployer.address,
     playToken: await playToken.getAddress(),
     conditionalTokens: await conditionalTokens.getAddress(),
@@ -107,13 +109,23 @@ async function main() {
   };
   
   const fs = require('fs');
+  // Save to network-specific file
+  const filename = `deployed-addresses-${network.chainId}.json`;
   fs.writeFileSync(
-    'deployed-addresses.json',
+    filename,
     JSON.stringify(addresses, null, 2)
   );
   
+  // Also update the main deployed-addresses.json if it's Amoy
+  if (Number(network.chainId) === 80002) {
+    fs.writeFileSync(
+      'deployed-addresses.json',
+      JSON.stringify(addresses, null, 2)
+    );
+  }
+  
   console.log("\nDeployment completed successfully!");
-  console.log("Contract addresses saved to deployed-addresses.json");
+  console.log(`Contract addresses saved to ${filename}`);
 }
 
 main().catch((error) => {

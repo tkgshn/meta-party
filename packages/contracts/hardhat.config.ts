@@ -34,6 +34,20 @@ const config: HardhatUserConfig = {
     hardhat: {
       chainId: 1337
     },
+    anvil: {
+      url: process.env.ANVIL_URL || "http://127.0.0.1:8545",
+      chainId: 31337,
+      accounts: process.env.ANVIL_PRIVATE_KEY !== undefined 
+        ? [process.env.ANVIL_PRIVATE_KEY] 
+        : ["0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"] // Default Anvil account #0
+    },
+    "anvil-fork": {
+      url: process.env.ANVIL_URL || "http://127.0.0.1:8545",
+      chainId: 1, // Mainnet fork
+      accounts: process.env.ANVIL_PRIVATE_KEY !== undefined 
+        ? [process.env.ANVIL_PRIVATE_KEY] 
+        : ["0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"]
+    },
     "polygon-amoy": {
       url: process.env.POLYGON_AMOY_URL || "",
       accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],

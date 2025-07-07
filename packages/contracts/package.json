@@ -8,8 +8,13 @@
     "test": "hardhat test",
     "lint": "solhint 'contracts/**/*.sol'",
     "clean": "hardhat clean",
+    "anvil": "anvil --chain-id 31337 --accounts 10 --balance 10000 --host 0.0.0.0",
+    "anvil:fork": "anvil --fork-url https://polygon-rpc.com --chain-id 1 --host 0.0.0.0",
+    "deploy:local": "hardhat run scripts/deploy.ts --network anvil",
+    "deploy:local-fork": "hardhat run scripts/deploy.ts --network anvil-fork",
     "deploy:testnet": "hardhat run scripts/deploy.ts --network polygon-amoy",
-    "deploy:mainnet": "hardhat run scripts/deploy.ts --network polygon"
+    "deploy:mainnet": "hardhat run scripts/deploy.ts --network polygon",
+    "seed:local": "hardhat run scripts/seed-local.ts --network anvil"
   },
   "keywords": [
     "futarchy",

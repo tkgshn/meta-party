@@ -83,6 +83,35 @@ export const NETWORKS: Record<string, NetworkConfig> = {
       maxFeePerGas: '0x1DCD6500', // 500000000 wei (0.5 gwei) - testnet
       maxPriorityFeePerGas: '0x1DCD6500' // 500000000 wei (0.5 gwei)
     }
+  },
+  
+  // Local Anvil Development Network
+  anvil: {
+    chainId: 31337,
+    chainIdHex: '0x7a69',
+    name: 'anvil',
+    displayName: 'Anvil Local',
+    rpcUrls: [
+      'http://127.0.0.1:8545',
+      'http://localhost:8545'
+    ],
+    blockExplorerUrls: [],
+    nativeCurrency: {
+      name: 'Ethereum',
+      symbol: 'ETH',
+      decimals: 18
+    },
+    contracts: {
+      // Contracts will be deployed dynamically during development
+      playToken: undefined,
+      marketFactory: undefined,
+      conditionalTokens: undefined
+    },
+    isTestnet: true,
+    gasSettings: {
+      maxFeePerGas: '0x3B9ACA00', // 1 gwei for local dev
+      maxPriorityFeePerGas: '0x3B9ACA00' // 1 gwei
+    }
   }
 };
 
@@ -114,6 +143,11 @@ export function getCurrencySymbol(networkKey: string): string {
     return 'PT';
   }
   
+  // For Anvil local network, show Play Token when deployed
+  if (networkKey === 'anvil') {
+    return network.contracts.playToken ? 'PT' : 'ETH';
+  }
+  
   // For Polygon mainnet, show native MATIC instead of USDC
   if (networkKey === 'polygon') {
     return 'MATIC';
@@ -134,6 +168,11 @@ export function getCurrencyContract(networkKey: string): string | undefined {
   
   // For Amoy testnet, return Play Token address
   if (networkKey === 'polygonAmoy') {
+    return network.contracts.playToken;
+  }
+  
+  // For Anvil local network, return Play Token address if deployed
+  if (networkKey === 'anvil') {
     return network.contracts.playToken;
   }
   
