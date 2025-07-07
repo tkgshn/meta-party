@@ -1,11 +1,12 @@
-# META PARTY - Futarchy Prediction Market Platform
+# Ultrathink - Futarchy Platform
 
 [![Production](https://img.shields.io/badge/Production-Live-green)](https://web-nqr7kd4vi-taka-shunsuke-takagis-projects.vercel.app)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
 [![Next.js](https://img.shields.io/badge/Next.js-15-black)](https://nextjs.org/)
-[![Polygon](https://img.shields.io/badge/Polygon-Amoy-purple)](https://polygon.technology/)
+[![Polygon](https://img.shields.io/badge/Polygon-Multi--Network-purple)](https://polygon.technology/)
+[![Futarchy](https://img.shields.io/badge/Governance-Futarchy-orange)](https://en.wikipedia.org/wiki/Futarchy)
 
-予測市場ベースのガバナンスシステム（Futarchy）の実装プラットフォーム。Play Tokenを使用した11の社会課題予測市場を提供。
+**The Future of Decision-Making**: 予測市場ベースのガバナンスシステム（Futarchy）の次世代実装プラットフォーム。Play Tokenを使用した11の社会課題予測市場で、集合知による最適な意思決定を実現。
 
 ## 🌐 Live Demo
 
@@ -127,15 +128,16 @@ npm run dev
 - **[ref/Mirai-master-plan.md](./ref/Mirai-master-plan.md)**: 設計思想
 - **[ref/v0.md](./ref/v0.md)**: 初期仕様
 
-## 🔮 Futarchyとは？
+## 🔮 Ultrathink Futarchy とは？
 
-**Futarchy** = **Prediction Markets** + **Governance**
+**Ultrathink Futarchy** = **Prediction Markets** + **Governance** + **Collective Intelligence**
 
 1. **予測市場**: 未来の出来事に投票・取引
 2. **意思決定**: 市場価格が政策の成功確率を反映  
 3. **実行**: 高確率政策を自動採用
+4. **学習**: 結果フィードバックによる継続的改善
 
-→ **集合知による最適な意思決定システム**
+→ **次世代の集合知による自動最適化意思決定システム**
 
 ## 🛠️ 開発コマンド
 
@@ -183,3 +185,7 @@ MIT License - 詳細は [LICENSE](./LICENSE) を参照
 ---
 
 **🎯 質問・バグ報告は [Issues](https://github.com/tkgshn/meta-party/issues) まで！**
+
+---
+
+**⚡ Ultrathink**: Where collective intelligence meets autonomous governance. Experience the future of decision-making through prediction markets.

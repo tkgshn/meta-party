@@ -19,7 +19,7 @@ interface MetaMaskActions {
   addAmoyNetwork: () => Promise<boolean>;
   switchNetwork: (chainId: number) => Promise<boolean>;
   addNetwork: (networkKey: string) => Promise<boolean>;
-  getCurrentChainId: () => Promise<number>;
+  getCurrentChainId: () => Promise<number | null>;
   refreshConnection: () => Promise<void>;
 }
 
@@ -104,13 +104,13 @@ export function useMetaMask(): MetaMaskState & MetaMaskActions {
         return true;
       }
       return false;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to connect to MetaMask:', error);
       
       // Re-throw specific errors for better handling in UI
-      if (error.code === 4001) {
+      if ((error as { code?: number })?.code === 4001) {
         throw new Error('User rejected the connection request');
-      } else if (error.code === -32002) {
+      } else if ((error as { code?: number })?.code === -32002) {
         throw new Error('MetaMask is already processing a connection request');
       }
       
@@ -254,11 +254,11 @@ export function useMetaMask(): MetaMaskState & MetaMaskActions {
         params: [{ chainId: `0x${chainId.toString(16)}` }],
       });
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to switch network:', error);
       
       // If the chain is not added to MetaMask, try to add it
-      if ((error as { code: number }).code === 4902) {
+      if ((error as { code?: number })?.code === 4902) {
         const networkKey = Object.keys(NETWORKS).find(
           key => NETWORKS[key].chainId === chainId
         );
@@ -369,7 +369,8 @@ export function useMetaMask(): MetaMaskState & MetaMaskActions {
     };
   }, [
     checkMetaMaskAvailability,
-    refreshConnection,
+    getCurrentAccount,
+    getCurrentChainId,
     handleAccountsChanged,
     handleChainChanged,
     handleDisconnect,

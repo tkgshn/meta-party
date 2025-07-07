@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Structure
 
-This is a monorepo containing the Ultrathink Futarchy platform - a prediction market-based governance system. The repository includes both reference materials and a full production platform implementation.
+This is a monorepo containing the **Ultrathink Futarchy Platform** - a cutting-edge prediction market-based governance system. The repository includes both reference materials and a full production platform implementation.
 
 ### Main Structure
 ```
@@ -236,7 +236,7 @@ NEXT_PUBLIC_CONDITIONAL_TOKENS_ADDRESS=0x0416a4757062c1e61759ADDb6d68Af145919F04
 
 ## Project Philosophy
 
-Based on the Mirai Master Plan, focusing on:
+Ultrathink is based on the Mirai Master Plan, focusing on:
 - **Knowledge Aggregation**: Collecting distributed expertise through prediction markets
 - **Execution Capability**: Enabling skilled actors to directly implement solutions
 - **Incentive Alignment**: Aligning personal profit with social benefit
@@ -580,4 +580,4 @@ This research-backed foundation ensures our platform aligns with cutting-edge fu
 - **Error Handling**: Comprehensive feedback for network-related issues
 - **Simplified UI**: Complex features hidden to maintain user-friendly experience
 
-This multi-network implementation provides a complete, production-ready prediction market platform with both development and production environments, enhanced with sophisticated futarchy mechanisms.
+This multi-network implementation provides a complete, production-ready **Ultrathink Futarchy Platform** with both development and production environments, enhanced with sophisticated futarchy mechanisms for next-generation governance.

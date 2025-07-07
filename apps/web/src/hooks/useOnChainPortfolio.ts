@@ -266,7 +266,8 @@ export function useOnChainPortfolio(account: string | null): UseOnChainPortfolio
       provider.on('block', blockListener);
 
       // Listen for account changes
-      const accountChangeListener = (accounts: string[]) => {
+      const accountChangeListener = (...args: unknown[]) => {
+        const accounts = args[0] as string[];
         if (mounted) {
           if (accounts.length > 0) {
             refreshPortfolio();
@@ -281,8 +282,10 @@ export function useOnChainPortfolio(account: string | null): UseOnChainPortfolio
         }
       };
 
-      window.ethereum.on('accountsChanged', accountChangeListener);
-      window.ethereum.on('chainChanged', networkChangeListener);
+      if (window.ethereum?.on) {
+        window.ethereum.on('accountsChanged', accountChangeListener);
+        window.ethereum.on('chainChanged', networkChangeListener);
+      }
 
       // Set up periodic refresh (every 30 seconds as backup)
       intervalRef.current = setInterval(() => {
@@ -293,8 +296,10 @@ export function useOnChainPortfolio(account: string | null): UseOnChainPortfolio
 
       return () => {
         provider.removeAllListeners();
-        window.ethereum?.removeListener('accountsChanged', accountChangeListener);
-        window.ethereum?.removeListener('chainChanged', networkChangeListener);
+        if (window.ethereum?.removeListener) {
+          window.ethereum.removeListener('accountsChanged', accountChangeListener);
+          window.ethereum.removeListener('chainChanged', networkChangeListener);
+        }
         if (intervalRef.current) {
           clearInterval(intervalRef.current);
         }

@@ -74,7 +74,7 @@ export async function testPlayTokenContract() {
     
   } catch (error) {
     console.error('❌ Contract test failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
 
@@ -113,7 +113,7 @@ export async function testNetworkConnection() {
     
   } catch (error) {
     console.error('❌ Network test failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
 

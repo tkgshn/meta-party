@@ -56,6 +56,7 @@ export default function PortfolioPage() {
     const detectNetwork = async () => {
       try {
         const chainId = await getCurrentChainId();
+        if (!chainId) return;
         const network = getNetworkByChainId(chainId);
         if (network) {
           const networkKey = Object.keys(NETWORKS).find(

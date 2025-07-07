@@ -1,22 +1,12 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { format } from 'date-fns';
-import { ja } from 'date-fns/locale';
 import {
   MagnifyingGlassIcon,
-  AdjustmentsHorizontalIcon,
-  FunnelIcon,
-  ChevronDownIcon,
-  FireIcon,
-  ArrowTrendingUpIcon,
-  ClockIcon,
-  UserGroupIcon,
-  BanknotesIcon,
-  SparklesIcon
+  ChevronDownIcon
 } from '@heroicons/react/24/outline';
-import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import '@/types/ethereum';
 import { miraiMarkets, type Market } from '@/data/miraiMarkets';
 import Header from '@/components/Header';
@@ -39,8 +29,8 @@ export default function HomePage() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'volume' | 'trending' | 'ending'>('trending');
-  const [showFilters, setShowFilters] = useState(false);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [showFilters] = useState(false);
+  const [viewMode] = useState<'grid' | 'list'>('grid');
   const [hoveredButton, setHoveredButton] = useState<{ proposalId: string; type: 'yes' | 'no' } | null>(null);
 
   // Calculate category counts dynamically
@@ -143,7 +133,7 @@ export default function HomePage() {
                 <div className="relative">
                   <select
                     value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as any)}
+                    onChange={(e) => setSortBy(e.target.value as 'newest' | 'volume' | 'trending' | 'ending')}
                     className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="trending">トレンド順</option>

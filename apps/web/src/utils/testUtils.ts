@@ -5,14 +5,14 @@
  * Provides mocks and utilities for testing wallet interactions
  */
 
-import { jest } from '@jest/globals';
+import { jest, expect } from '@jest/globals';
 
 // Mock Ethereum Provider Interface
 export interface MockEthereumProvider {
   isMetaMask: boolean;
-  request: jest.MockedFunction<(args: { method: string; params?: any[] }) => Promise<any>>;
-  on: jest.MockedFunction<(event: string, handler: (...args: any[]) => void) => void>;
-  removeListener: jest.MockedFunction<(event: string, handler: (...args: any[]) => void) => void>;
+  request: jest.MockedFunction<(args: { method: string; params?: unknown[] }) => Promise<unknown>>;
+  on: jest.MockedFunction<(event: string, handler: (...args: unknown[]) => void) => void>;
+  removeListener: jest.MockedFunction<(event: string, handler: (...args: unknown[]) => void) => void>;
   removeAllListeners: jest.MockedFunction<(event?: string) => void>;
   _state: {
     accounts: string[];
@@ -106,7 +106,7 @@ export function createMockEthereumProvider(
   };
 
   // Setup default request handlers
-  mockProvider.request.mockImplementation(async ({ method, params }) => {
+  mockProvider.request.mockImplementation(async ({ method, params }: { method: string; params?: unknown[] }) => {
     switch (method) {
       case 'eth_accounts':
         return mockProvider._state.accounts;
@@ -121,14 +121,14 @@ export function createMockEthereumProvider(
         return mockProvider._state.chainId;
       
       case 'wallet_switchEthereumChain':
-        if (params?.[0]?.chainId) {
-          mockProvider._state.chainId = params[0].chainId;
+        if (params?.[0] && typeof params[0] === 'object' && params[0] !== null && 'chainId' in params[0]) {
+          mockProvider._state.chainId = (params[0] as { chainId: string }).chainId;
         }
         return null;
       
       case 'wallet_addEthereumChain':
-        if (params?.[0]?.chainId) {
-          mockProvider._state.chainId = params[0].chainId;
+        if (params?.[0] && typeof params[0] === 'object' && params[0] !== null && 'chainId' in params[0]) {
+          mockProvider._state.chainId = (params[0] as { chainId: string }).chainId;
         }
         return null;
       
@@ -137,7 +137,9 @@ export function createMockEthereumProvider(
       
       case 'eth_call':
         // Mock contract calls
-        if (params?.[0]?.data?.startsWith('0x70a08231')) {
+        if (params?.[0] && typeof params[0] === 'object' && params[0] !== null && 'data' in params[0] && 
+            typeof (params[0] as { data: unknown }).data === 'string' && 
+            (params[0] as { data: string }).data.startsWith('0x70a08231')) {
           // balanceOf call
           return '0x3635c9adc5dea00000'; // 1000 tokens with 18 decimals
         }
@@ -195,7 +197,10 @@ export function setupLocalStorageMock(): Storage {
       Object.keys(store).forEach(key => delete store[key]);
     }),
     length: 0,
-    key: jest.fn(),
+    key: jest.fn((index: number): string | null => {
+      const keys = Object.keys(store);
+      return keys[index] || null;
+    }),
   };
 
   Object.defineProperty(window, 'localStorage', {
@@ -319,7 +324,7 @@ export const walletMatchers = {
 };
 
 // Export for use in jest setup
-export default {
+const testUtils = {
   createMockEthereumProvider,
   setupEthereumMock,
   setupLocalStorageMock,
@@ -328,3 +333,5 @@ export default {
   testWalletConnection,
   walletMatchers,
 };
+
+export default testUtils;

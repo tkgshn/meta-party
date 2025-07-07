@@ -1,6 +1,6 @@
-# Futarchy Web App - Multi-Network Prediction Market Platform
+# Ultrathink Web App - Multi-Network Futarchy Platform
 
-A comprehensive prediction market platform built with Next.js 15, supporting both Polygon Mainnet and Amoy Testnet for futarchy-based governance.
+A cutting-edge prediction market platform built with Next.js 15, supporting both Polygon Mainnet and Amoy Testnet for next-generation futarchy-based governance and collective intelligence.
 
 ## 🚀 Quick Start
 
@@ -133,18 +133,20 @@ src/
 
 ## 🔗 Related Documentation
 
-- **[Project README](../../README.md)**: Complete project overview
-- **[CLAUDE.md](../../CLAUDE.md)**: Technical specifications
+- **[Project README](../../README.md)**: Complete Ultrathink platform overview
+- **[CLAUDE.md](../../CLAUDE.md)**: Technical specifications and development guidance
+- **[vibe.md](../../vibe.md)**: Project guide and setup instructions
 - **[Next.js Documentation](https://nextjs.org/docs)**: Framework documentation
 - **[Polygon Documentation](https://polygon.technology/developers)**: Network details
 
 ## 📝 Development Notes
 
-- Use TypeScript throughout for type safety
-- Follow existing code patterns and conventions
-- Test thoroughly on both networks before deploying
-- MetaMask integration uses direct `window.ethereum` API
-- Network configurations are centralized in `src/config/networks.ts`
+- **Ultrathink Platform Standards**: Follow TypeScript patterns for type safety
+- **Code Conventions**: Adhere to existing patterns and futarchy best practices
+- **Multi-Network Testing**: Thoroughly test on both Polygon networks before deploying
+- **MetaMask Integration**: Uses direct `window.ethereum` API for lightweight implementation
+- **Network Configuration**: Centralized in `src/config/networks.ts` for easy management
+- **Futarchy Mathematics**: Implemented in `src/utils/futarchyMath.ts` with LMSR pricing
 
 ## ウォレット接続の多重リクエスト防止とエラーハンドリング
 

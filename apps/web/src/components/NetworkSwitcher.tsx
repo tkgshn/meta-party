@@ -20,6 +20,7 @@ export default function NetworkSwitcher({ onNetworkChange, className = '' }: Net
     const getCurrentNetwork = async () => {
       try {
         const currentChainId = await getCurrentChainId();
+        if (!currentChainId) return;
         const currentNetwork = getNetworkByChainId(currentChainId);
         if (currentNetwork) {
           const networkKey = Object.keys(NETWORKS).find(

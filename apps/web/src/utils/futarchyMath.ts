@@ -211,9 +211,9 @@ export const calculateOdds = (probability: number): number => {
  * 支払った価格に対する利益率を計算
  */
 export const calculateProfitMargin = (
-  purchasePrice: number,
-  tokenType: 'yes' | 'no',
-  outcome: OutcomeToken
+  purchasePrice: number
+  // _tokenType: 'yes' | 'no',
+  // _outcome: OutcomeToken
 ): number => {
   const payoutValue = 1; // 勝利時は必ず 1 PT
   return ((payoutValue - purchasePrice) / purchasePrice) * 100;

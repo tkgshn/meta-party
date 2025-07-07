@@ -11,7 +11,6 @@ import {
   setupEthereumMock,
   setupLocalStorageMock,
   simulateUserActions,
-  waitForAsync,
   MOCK_ADDRESSES,
   MOCK_CHAIN_IDS,
   MOCK_ERRORS,
@@ -49,7 +48,7 @@ describe('useMetaMask', () => {
     jest.restoreAllMocks();
     
     // Clean up global mocks
-    delete (window as any).ethereum;
+    delete (window as Record<string, unknown>).ethereum;
   });
 
   describe('Initialization', () => {
@@ -69,7 +68,7 @@ describe('useMetaMask', () => {
     });
 
     it('should detect when MetaMask is not available', async () => {
-      delete (window as any).ethereum;
+      delete (window as Record<string, unknown>).ethereum;
 
       const { result } = renderHook(() => useMetaMask());
 
@@ -150,7 +149,7 @@ describe('useMetaMask', () => {
     });
 
     it('should handle connection without MetaMask', async () => {
-      delete (window as any).ethereum;
+      delete (window as Record<string, unknown>).ethereum;
 
       const { result } = renderHook(() => useMetaMask());
 
@@ -353,7 +352,7 @@ describe('useMetaMask', () => {
     });
 
     it('should handle missing ethereum object', async () => {
-      delete (window as any).ethereum;
+      delete (window as Record<string, unknown>).ethereum;
 
       const { result } = renderHook(() => useMetaMask());
 
@@ -367,7 +366,7 @@ describe('useMetaMask', () => {
 
   describe('Session Management', () => {
     it('should create session on successful connection', async () => {
-      const { createWalletSession } = require('../../utils/walletSession');
+      const { createWalletSession } = await import('../../utils/walletSession');
       
       mockProvider._state.accounts = [];
       const { result } = renderHook(() => useMetaMask());
@@ -389,7 +388,7 @@ describe('useMetaMask', () => {
     });
 
     it('should clear session on disconnect', async () => {
-      const { clearWalletSession } = require('../../utils/walletSession');
+      const { clearWalletSession } = await import('../../utils/walletSession');
       
       const { result } = renderHook(() => useMetaMask());
 

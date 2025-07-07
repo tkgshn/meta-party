@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { TrophyIcon, CheckCircleIcon, XMarkIcon, CurrencyDollarIcon } from '@heroicons/react/24/outline';
+import { TrophyIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { resolveMarket } from '@/utils/futarchyMath';
 import type { OutcomeToken } from '@/utils/futarchyMath';
 

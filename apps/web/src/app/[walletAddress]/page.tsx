@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { usePlayToken } from '@/hooks/usePlayToken';
 import Header from '@/components/Header';
 
@@ -9,7 +9,7 @@ export default function UserProfilePage() {
   const params = useParams();
   const walletAddress = params.walletAddress as string;
 
-  const [account, setAccount] = useState<string | null>(null);
+  // const [account] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window.ethereum) {
@@ -17,7 +17,8 @@ export default function UserProfilePage() {
         .then((accounts) => {
           const accountsArray = accounts as string[];
           if (accountsArray.length > 0) {
-            setAccount(accountsArray[0]);
+            // setAccount(accountsArray[0]);
+            console.log('Connected account:', accountsArray[0]);
           }
         });
     }

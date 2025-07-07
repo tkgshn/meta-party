@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { 
   XMarkIcon, 
   WalletIcon, 
@@ -67,8 +67,8 @@ export default function WalletModal({ isOpen, onClose }: WalletModalProps) {
   const [amount, setAmount] = useState('');
   const [selectedToken, setSelectedToken] = useState<TokenBalance | null>(null);
   const [isCopied, setIsCopied] = useState(false);
-  const [gasEstimate, setGasEstimate] = useState('$0.21');
-  const [timeEstimate, setTimeEstimate] = useState('<30s');
+  const [gasEstimate] = useState('$0.21');
+  const [timeEstimate] = useState('<30s');
 
   // Get native token balance (POL)
   useEffect(() => {
@@ -94,7 +94,7 @@ export default function WalletModal({ isOpen, onClose }: WalletModalProps) {
   }, [account]);
 
   // Get ERC-20 token balance
-  const getTokenBalance = async (tokenAddress: string, decimals: number) => {
+  const getTokenBalance = useCallback(async (tokenAddress: string, decimals: number) => {
     if (!account || !window.ethereum) return '0';
 
     try {
@@ -121,7 +121,7 @@ export default function WalletModal({ isOpen, onClose }: WalletModalProps) {
       console.warn(`Could not fetch balance for token ${tokenAddress}:`, errorMessage);
       return '0';
     }
-  };
+  }, [account]);
 
   // Fetch all token balances
   useEffect(() => {
@@ -173,23 +173,23 @@ export default function WalletModal({ isOpen, onClose }: WalletModalProps) {
     };
 
     fetchAllTokenBalances();
-  }, [account, nativeBalance, playTokenBalance]);
+  }, [account, nativeBalance, playTokenBalance, getTokenBalance]);
 
   // Add token to MetaMask
   const addTokenToMetaMask = async (token: TokenBalance) => {
     if (!window.ethereum || !token.address) return;
 
     try {
-      await window.ethereum.request({
+      await (window.ethereum.request as (args: unknown) => Promise<unknown>)({
         method: 'wallet_watchAsset',
         params: {
-          type: 'ERC20' as const,
+          type: 'ERC20',
           options: {
             address: token.address,
             symbol: token.symbol,
-            decimals: token.decimals,
+            decimals: token.decimals || 18,
           },
-        } as any,
+        },
       });
     } catch (error) {
       console.error('Failed to add token to MetaMask:', error);

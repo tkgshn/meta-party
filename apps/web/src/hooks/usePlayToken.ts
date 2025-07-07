@@ -494,7 +494,8 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
       provider.on('block', blockListener);
 
       // Listen for account changes
-      const accountChangeListener = (accounts: string[]) => {
+      const accountChangeListener = (...args: unknown[]) => {
+        const accounts = args[0] as string[];
         if (mounted) {
           if (accounts.length === 0) {
             setBalance('0');
@@ -519,8 +520,10 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
         }
       };
 
-      window.ethereum.on('accountsChanged', accountChangeListener);
-      window.ethereum.on('chainChanged', networkChangeListener);
+      if (window.ethereum?.on) {
+        window.ethereum.on('accountsChanged', accountChangeListener);
+        window.ethereum.on('chainChanged', networkChangeListener);
+      }
 
       // Set up periodic refresh as backup
       intervalRef.current = setInterval(() => {
@@ -531,8 +534,10 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
 
       return () => {
         provider.removeAllListeners();
-        window.ethereum?.removeListener('accountsChanged', accountChangeListener);
-        window.ethereum?.removeListener('chainChanged', networkChangeListener);
+        if (window.ethereum?.removeListener) {
+          window.ethereum.removeListener('accountsChanged', accountChangeListener);
+          window.ethereum.removeListener('chainChanged', networkChangeListener);
+        }
         if (intervalRef.current) {
           clearInterval(intervalRef.current);
         }

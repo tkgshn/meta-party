@@ -61,7 +61,7 @@ export function useToken(account: string | null, networkKey?: string): TokenStat
   const currentNetworkKey = networkKey || 'polygon';
   const currentNetwork = NETWORKS[currentNetworkKey];
   const tokenAddress = getCurrencyContract(currentNetworkKey);
-  const tokenDecimals = getCurrencyDecimals(currentNetworkKey);
+  // const tokenDecimals = getCurrencyDecimals(currentNetworkKey);
   const tokenSymbol = getCurrencySymbol(currentNetworkKey);
 
   if (DEBUG_MODE) {
@@ -274,11 +274,12 @@ export function useToken(account: string | null, networkKey?: string): TokenStat
       }
 
       const { contract, provider } = initialized;
+      if (!contract) throw new Error('Contract not initialized');
       const signer = await provider.getSigner();
       const contractWithSigner = contract.connect(signer);
 
       const amountWei = parseUnits(amount, decimals);
-      const tx = await contractWithSigner.transfer(to, amountWei);
+      const tx = await (contractWithSigner as unknown as { transfer: (to: string, amount: bigint) => Promise<{ hash: string; wait: () => Promise<unknown> }> }).transfer(to, amountWei);
 
       if (DEBUG_MODE) {
         console.log('Transfer transaction submitted:', tx.hash);
@@ -307,11 +308,12 @@ export function useToken(account: string | null, networkKey?: string): TokenStat
       }
 
       const { contract, provider } = initialized;
+      if (!contract) throw new Error('Contract not initialized');
       const signer = await provider.getSigner();
       const contractWithSigner = contract.connect(signer);
 
       const amountWei = parseUnits(amount, decimals);
-      const tx = await contractWithSigner.approve(spender, amountWei);
+      const tx = await (contractWithSigner as unknown as { approve: (spender: string, amount: bigint) => Promise<{ hash: string; wait: () => Promise<unknown> }> }).approve(spender, amountWei);
 
       if (DEBUG_MODE) {
         console.log('Approval transaction submitted:', tx.hash);
@@ -348,10 +350,11 @@ export function useToken(account: string | null, networkKey?: string): TokenStat
       }
 
       const { contract, provider } = initialized;
+      if (!contract) throw new Error('Contract not initialized');
       const signer = await provider.getSigner();
       const contractWithSigner = contract.connect(signer);
 
-      const tx = await contractWithSigner.claim();
+      const tx = await (contractWithSigner as unknown as { claim: () => Promise<{ hash: string; wait: () => Promise<unknown> }> }).claim();
 
       if (DEBUG_MODE) {
         console.log('Claim transaction submitted:', tx.hash);
@@ -432,7 +435,8 @@ export function useToken(account: string | null, networkKey?: string): TokenStat
       provider.on('block', blockListener);
 
       // Listen for account changes
-      const accountChangeListener = (accounts: string[]) => {
+      const accountChangeListener = (...args: unknown[]) => {
+        const accounts = args[0] as string[];
         if (mounted) {
           if (accounts.length === 0) {
             setBalance('0');
@@ -455,8 +459,10 @@ export function useToken(account: string | null, networkKey?: string): TokenStat
         }
       };
 
-      window.ethereum.on('accountsChanged', accountChangeListener);
-      window.ethereum.on('chainChanged', networkChangeListener);
+      if (window.ethereum?.on) {
+        window.ethereum.on('accountsChanged', accountChangeListener);
+        window.ethereum.on('chainChanged', networkChangeListener);
+      }
 
       // Set up periodic refresh as backup
       intervalRef.current = setInterval(() => {
@@ -467,8 +473,10 @@ export function useToken(account: string | null, networkKey?: string): TokenStat
 
       return () => {
         provider.removeAllListeners();
-        window.ethereum?.removeListener('accountsChanged', accountChangeListener);
-        window.ethereum?.removeListener('chainChanged', networkChangeListener);
+        if (window.ethereum?.removeListener) {
+          window.ethereum.removeListener('accountsChanged', accountChangeListener);
+          window.ethereum.removeListener('chainChanged', networkChangeListener);
+        }
         if (intervalRef.current) {
           clearInterval(intervalRef.current);
         }
