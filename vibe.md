@@ -46,11 +46,32 @@
 
 ```bash
 # プロジェクトのルートで
+
+# 通常の開発（Web App のみ）
 npm run dev
+
+# フル開発環境（Anvil + Web App 同時起動）
+npm run dev:with-anvil
+
+# Anvil ローカルブロックチェーンのみ
+npm run anvil
 ```
 
-- **ホームページ**: http://localhost:3000
+- **ホームページ**: http://localhost:3000 (または自動割り当てポート)
 - **市場詳細**: http://localhost:3000/market/[id]
+
+### 🔧 **開発環境オプション**
+
+#### **通常開発** (`npm run dev`)
+- ✅ Web アプリケーションのみ起動
+- ✅ Polygon Mainnet/Amoy Testnet 対応
+- ✅ 最軽量・最速起動
+
+#### **フル開発環境** (`npm run dev:with-anvil`) ⭐ **推奨**
+- ✅ Anvil ローカルブロックチェーン + Web App 同時起動
+- ✅ 瞬時取引・ガス代無料のローカル開発
+- ✅ 色分けログ表示（Anvil: 青、Dev: 緑）
+- ⚠️ 要Foundry: `npm run setup:foundry` で自動インストール
 
 ### 2. 環境設定 ✅ **すべて完了済み**
 
@@ -139,6 +160,11 @@ npm run dev
    cd packages/contracts
    npm test  # テスト実行
    npm run deploy:testnet  # デプロイ完了
+   
+   # ローカル開発 (要Foundry)
+   npm run anvil            # Anvil起動
+   npm run deploy:local     # ローカルデプロイ
+   npm run seed:local       # テストデータ投入
    ```
 
 2. **フロントエンド開発** ✅ **完了済み**
@@ -146,6 +172,13 @@ npm run dev
    cd apps/web
    npm run dev  # 開発サーバー稼働中
    npm run build  # ビルド
+   ```
+
+3. **統合開発環境** ✅ **新機能**
+   ```bash
+   # ルートディレクトリで
+   npm run setup:foundry    # Foundry自動インストール（初回のみ）
+   npm run dev:with-anvil   # すべて同時起動
    ```
 
 ## 🎮 このプラットフォームでできること
@@ -515,8 +548,85 @@ redeemFullSet(): 各YESᵢトークン 1枚ずつ → 1 PT
 
 **🎯 結論**: META PARTYは単なる予測市場プラットフォームを超え、数学的に厳密なFutarchyガバナンスシステムとして完成。理論的正確性とユーザビリティを両立した実装により、真の「予測に基づく意思決定」の実現が可能となりました。
 
+## 🔧 **最新開発ワークフロー (2025-07-07)** ✅ **統合開発環境完成**
+
+### 🚀 **ワンコマンド開発環境**
+
+#### **新しいスクリプト追加**
+```bash
+# 初回セットアップ（Foundryインストール）
+npm run setup:foundry
+
+# フル開発環境（Anvil + Web App同時起動）
+npm run dev:with-anvil
+
+# 個別起動
+npm run anvil                # Anvilのみ
+npm run dev                  # Web Appのみ
+```
+
+#### **開発フロー**
+```
+1. 初回セットアップ: npm run setup:foundry
+2. 開発開始: npm run dev:with-anvil
+3. コントラクトデプロイ: cd packages/contracts && npm run deploy:local
+4. テストデータ投入: npm run seed:local
+5. MetaMask接続: Anvil Local (Chain ID: 31337)
+```
+
+### 🎯 **技術実装詳細**
+
+#### **concurrently使用の並行実行**
+- **Anvil**: 青色ログ（ブロックチェーン）
+- **Dev Server**: 緑色ログ（Web App）
+- **統合ログ**: 色分けで識別しやすく
+
+#### **Foundry自動インストール**
+```bash
+npm run setup:foundry
+# ↓ 自動実行される
+curl -L https://foundry.paradigm.xyz | bash
+source ~/.bashrc
+foundryup
+```
+
+#### **NetworkSwitcher UI改良**
+- **Anvil利用可能**: 正常に表示・選択可能
+- **Anvil利用不可**: グレーアウト・警告表示
+- **リアルタイム検出**: 30秒間隔でAnvil状態監視
+- **明確なガイダンス**: `npm run dev:with-anvil` の案内
+
+### 📊 **メリット**
+
+#### **開発者体験向上**
+- ✅ **ワンコマンド起動**: 複雑な手順を自動化
+- ✅ **視覚的ログ**: 色分けで問題特定が容易
+- ✅ **自動セットアップ**: Foundryインストールを簡素化
+- ✅ **柔軟な選択**: 必要に応じて個別起動可能
+
+#### **チーム開発効率**
+- ✅ **統一環境**: 全開発者が同一セットアップ
+- ✅ **ドキュメント統合**: CLAUDE.md, vibe.md, UIガイダンス
+- ✅ **エラー削減**: 設定ミスを大幅減少
+- ✅ **オンボーディング**: 新メンバーの参加障壁低減
+
+### 🌟 **実装成果**
+
+#### **ファイル更新**
+- **package.json**: 新スクリプト追加 + concurrently導入
+- **CLAUDE.md**: 開発ワークフロー更新
+- **vibe.md**: 開発者ガイド拡充 ✅
+- **NetworkSwitcher.tsx**: UI改良 + エラーメッセージ更新
+
+#### **ユーザー体験**
+- **明確な選択肢**: 通常開発 vs フル開発環境
+- **適切なガイダンス**: 状況に応じた指示表示
+- **エラー防止**: Anvil未起動時の適切な警告
+
 ---
 
 **🚀 Ultrathink Futarchy Platform**: 予測市場による意思決定の未来を今すぐ体験してください。
+
+**🔧 開発環境**: `npm run dev:with-anvil` で完全な開発環境をワンコマンド起動！
 
 質問や問題があれば、GitHubのIssuesで報告してください！

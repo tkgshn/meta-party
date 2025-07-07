@@ -233,8 +233,13 @@ export function useMetaMask(): MetaMaskState & MetaMaskActions {
         ],
       });
       return true;
-    } catch (error) {
-      console.error(`Failed to add ${network.displayName}:`, error);
+    } catch (error: any) {
+      console.error(`Failed to add ${network.displayName}:`, {
+        error: error.message || error,
+        code: error.code,
+        networkKey,
+        network: network.displayName
+      });
       return false;
     }
   }, []);
@@ -249,15 +254,21 @@ export function useMetaMask(): MetaMaskState & MetaMaskActions {
         params: [{ chainId: `0x${chainId.toString(16)}` }],
       });
       return true;
-    } catch (error: unknown) {
-      console.error('Failed to switch network:', error);
+    } catch (error: any) {
+      console.error('Failed to switch network:', {
+        error: error.message || error,
+        code: error.code,
+        chainId,
+        chainIdHex: `0x${chainId.toString(16)}`
+      });
       
       // If the chain is not added to MetaMask, try to add it
-      if ((error as { code?: number })?.code === 4902) {
+      if (error.code === 4902) {
         const networkKey = Object.keys(NETWORKS).find(
           key => NETWORKS[key].chainId === chainId
         );
         if (networkKey) {
+          console.log(`Chain ${chainId} not added to MetaMask, attempting to add ${networkKey}`);
           return await addNetwork(networkKey);
         }
       }

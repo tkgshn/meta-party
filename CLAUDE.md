@@ -27,8 +27,17 @@ This is a monorepo containing the **Ultrathink Futarchy Platform** - a cutting-e
 # Install all dependencies
 npm install
 
-# Run all development servers
+# Run all development servers (web app only)
 npm run dev
+
+# Run development servers with Anvil (requires Foundry)
+npm run dev:with-anvil
+
+# Setup Foundry for local development
+npm run setup:foundry
+
+# Run only Anvil blockchain
+npm run anvil
 
 # Build all packages
 npm run build
@@ -50,7 +59,8 @@ npm run build
 # Run tests
 npm run test
 
-# Local Development with Anvil
+# Local Development with Anvil (requires Foundry installation)
+# Install Foundry first: curl -L https://foundry.paradigm.xyz | bash && foundryup
 npm run anvil                    # Start local blockchain
 npm run deploy:local            # Deploy to Anvil
 npm run seed:local              # Seed test data
@@ -494,12 +504,13 @@ This research-backed foundation ensures our platform aligns with cutting-edge fu
 
 ## 🔄 **Latest System Updates (2025-07-07)**
 
-### Anvil Integration for Robust Development ✅ NEW
+### Anvil Integration for Robust Development ⚠️ REQUIRES FOUNDRY
 - **Local Blockchain**: Anvil provides fast, deterministic local development environment
 - **Instant Transactions**: No waiting for block confirmations during development
 - **Fork Mode**: Test against real Polygon mainnet state locally
 - **Test Data Seeding**: Automated script creates markets and simulates trading
 - **Dynamic Contract Loading**: Frontend automatically detects and loads Anvil contracts
+- **Installation Required**: Run `curl -L https://foundry.paradigm.xyz | bash && foundryup` to install Foundry
 
 ### Multi-Network Architecture ✅ FULLY OPERATIONAL
 - **Production Ready**: Complete multi-network support implemented
@@ -538,12 +549,17 @@ This research-backed foundation ensures our platform aligns with cutting-edge fu
 
 This multi-network implementation provides a complete, production-ready **Ultrathink Futarchy Platform** with development, testing, and production environments, enhanced with sophisticated futarchy mechanisms for next-generation governance.
 
-### Local Development Workflow with Anvil ✅ NEW
-1. **Start Anvil**: `cd packages/contracts && npm run anvil`
-2. **Deploy Contracts**: `npm run deploy:local`
-3. **Seed Test Data**: `npm run seed:local` (creates markets and test accounts)
-4. **Run Frontend**: `npm run dev` (from root directory)
+### Local Development Workflow with Anvil ✅ STREAMLINED
+1. **Setup Foundry** (初回のみ): `npm run setup:foundry`
+2. **Start Everything**: `npm run dev:with-anvil` (Anvil + Web App 同時起動)
+3. **Deploy Contracts**: `cd packages/contracts && npm run deploy:local`
+4. **Seed Test Data**: `cd packages/contracts && npm run seed:local`
 5. **Connect MetaMask**: Add Anvil network (Chain ID: 31337, RPC: http://127.0.0.1:8545)
+
+### 簡単起動オプション
+- **通常開発**: `npm run dev` (Web App のみ)
+- **フル開発**: `npm run dev:with-anvil` (Anvil + Web App)
+- **Anvil のみ**: `npm run anvil`
 
 ### Anvil Test Accounts
 - **Account #0**: `0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266` (10,000 ETH)

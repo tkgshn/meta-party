@@ -18,6 +18,9 @@
   },
   "scripts": {
     "dev": "turbo run dev",
+    "dev:with-anvil": "concurrently \"cd packages/contracts && npm run anvil\" \"turbo run dev\" --names \"anvil,dev\" --prefix-colors \"cyan,green\"",
+    "anvil": "cd packages/contracts && npm run anvil",
+    "setup:foundry": "curl -L https://foundry.paradigm.xyz | bash && source ~/.bashrc && foundryup",
     "build": "turbo run build",
     "test": "turbo run test",
     "lint": "turbo run lint",
@@ -30,6 +33,7 @@
     "apps/*"
   ],
   "devDependencies": {
+    "concurrently": "^9.2.0",
     "turbo": "^1.10.0"
   },
   "engines": {

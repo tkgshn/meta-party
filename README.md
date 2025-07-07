@@ -39,12 +39,22 @@ cd meta-party
 npm install
 
 # 3. 開発サーバー起動
-npm run dev
+npm run dev                  # Web App のみ
+npm run dev:with-anvil      # Anvil + Web App (推奨)
+
+# 4. Foundryセットアップ（初回のみ、ローカル開発用）
+npm run setup:foundry
 ```
 
 **アクセス**:
-- **ホームページ**: http://localhost:3000
-- **ダッシュボード**: http://localhost:3000/dashboard  
+- **ホームページ**: http://localhost:3000 (または自動割り当てポート)
+- **ダッシュボード**: http://localhost:3000/dashboard
+
+### 🔧 **開発環境オプション**
+
+- **`npm run dev`**: Web アプリケーションのみ（軽量・高速）
+- **`npm run dev:with-anvil`**: Anvil + Web App 同時起動（完全開発環境）⭐
+- **`npm run anvil`**: Anvil ローカルブロックチェーンのみ  
 
 ## 💎 マルチネットワーク対応
 
@@ -137,6 +147,20 @@ npm run dev
 
 ## 🛠️ 開発コマンド
 
+### **統合開発環境** ✨
+```bash
+# フル開発環境（推奨）
+npm run dev:with-anvil      # Anvil + Web App 同時起動
+
+# 初回セットアップ
+npm run setup:foundry       # Foundry自動インストール
+
+# 個別起動
+npm run dev                 # Web App のみ
+npm run anvil              # Anvil のみ
+```
+
+### **ビルド・テスト**
 ```bash
 # 全体ビルド
 npm run build
@@ -146,11 +170,19 @@ npm run test
 
 # リント
 npm run lint
+```
 
-# スマートコントラクト（packages/contracts/）
+### **スマートコントラクト**
+```bash
 cd packages/contracts
+
+# テストネットデプロイ
 npm run deploy:testnet
 
+# ローカル開発（要Foundry）
+npm run anvil               # Anvil起動
+npm run deploy:local        # ローカルデプロイ
+npm run seed:local          # テストデータ投入
 ```
 
 ## サブモジュール管理
