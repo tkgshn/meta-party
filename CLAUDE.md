@@ -13,7 +13,6 @@ This is a monorepo containing the **Ultrathink Futarchy Platform** - a cutting-e
 │   └── contracts/          # Solidity smart contracts (Hardhat + TypeScript)
 ├── apps/
 │   └── web/               # Next.js 14 frontend application
-├── functions/             # Firebase Cloud Functions
 ├── ref/                   # Reference materials and documentation
 │   ├── futarchy/         # Legacy demo submodule
 │   ├── Mirai-master-plan.md
@@ -82,23 +81,6 @@ npm run start
 npm run lint
 ```
 
-### Firebase Functions (functions/)
-```bash
-cd functions
-
-# Build TypeScript
-npm run build
-
-# Run local emulator
-npm run serve
-
-# Deploy to Firebase
-npm run deploy
-
-# View logs
-npm run logs
-```
-
 ### Legacy Reference App (ref/futarchy/)
 ```bash
 cd ref/futarchy
@@ -149,11 +131,6 @@ git submodule update --remote
 - **Real-time Portfolio**: Live balance checking across supported networks
 - **Tailwind CSS v4**: Latest utility-first CSS framework
 
-### Backend Services
-- **Firebase Firestore**: Real-time database for market data
-- **Firebase Functions**: Serverless functions for market automation
-- **Firebase Auth**: User authentication and authorization
-
 ### Key Features ✅ IMPLEMENTED
 1. **Multi-Network Support**: Polygon Mainnet (MATIC) and Amoy Testnet (Play Token) ✅
 2. **Play Token Claiming**: Users can claim 1,000 PT once per address on Amoy ✅
@@ -162,7 +139,7 @@ git submodule update --remote
 5. **Real-time Portfolio**: Live balance checking and updates across networks ✅
 6. **Transaction Monitoring**: Real-time transaction status and confirmation ✅
 7. **Error Handling**: Comprehensive error messages and troubleshooting ✅
-8. **Market Creation**: Admin interface for creating prediction markets ✅
+8. **Market Creation**: Interface for creating prediction markets ✅
 9. **Prediction Trading**: LMSR-based trading of outcome tokens ✅
 10. **Advanced UI**: Complete prediction market platform with professional-grade interface ✅
 
@@ -172,18 +149,11 @@ git submodule update --remote
 - Node.js 18+
 - npm or yarn
 - MetaMask or compatible wallet
-- Firebase project (for backend)
 
 ### Required Environment Variables
 Copy `apps/web/.env.example` to `apps/web/.env.local` and configure:
 
 ```bash
-# Firebase Configuration
-NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_domain
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
-# ... (see .env.example for full list)
-
 # Multi-Network Configuration ✅ CONFIGURED
 NEXT_PUBLIC_DEFAULT_NETWORK=polygon
 
@@ -210,11 +180,6 @@ NEXT_PUBLIC_CONDITIONAL_TOKENS_ADDRESS=0x0416a4757062c1e61759ADDb6d68Af145919F04
    - Connect to deployed contracts ✅
    - Test wallet integration thoroughly ✅
 
-3. **Backend Integration**
-   - Set up Firebase project
-   - Deploy cloud functions for automation
-   - Configure database security rules
-
 ## Testing Strategy
 
 ### Smart Contracts
@@ -227,18 +192,10 @@ NEXT_PUBLIC_CONDITIONAL_TOKENS_ADDRESS=0x0416a4757062c1e61759ADDb6d68Af145919F04
 - E2E testing with Playwright (planned)
 - Wallet interaction testing
 
-### Backend
-- Firebase Functions unit tests
-- Database rule testing
-- Cloud Function integration tests
-
 ## Deployment Process
 
 1. **Contracts**: Deploy to Polygon Amoy (testnet) ✅, then mainnet (planned)
 2. **Frontend**: Deploy to Vercel or similar platform (ready for deployment)
-3. **Functions**: Deploy to Firebase Cloud Functions (planned)
-4. **Database**: Configure Firestore security rules (planned)
-
 ## Project Philosophy
 
 Ultrathink is based on the Mirai Master Plan, focusing on:
@@ -331,7 +288,6 @@ Ultrathink is based on the Mirai Master Plan, focusing on:
 - Multi-network support (Polygon Mainnet + Amoy) ✅ COMPLETED
 - Complete prediction market UI ✅ COMPLETED
 - Production deployment to Vercel ✅ COMPLETED
-- Firebase backend for real-time data (pending)
 - Mainnet contract deployment (planned)
 
 ## Recent Updates (2025-07-04) ✅ COMPREHENSIVE UI IMPLEMENTATION & DATA CONSOLIDATION
@@ -343,13 +299,6 @@ Ultrathink is based on the Mirai Master Plan, focusing on:
 - **11 Total Markets**: Combined Mirai political projects (5) + social challenge markets (6)
 - **Single Source of Truth**: Eliminated data duplication across files
 - **Consistent Structure**: Standardized market data format with proper TypeScript types
-
-#### 2. **Admin Dashboard** ✅ `/admin`
-- **Market Management**: Create, manage, and resolve prediction markets
-- **Statistics Overview**: Platform-wide metrics and analytics
-- **User-friendly Interface**: Modern tabbed navigation with charts
-- **Market Creation Form**: Comprehensive form with validation
-- **Activity Monitoring**: Real-time platform activity tracking
 
 #### 3. **Market Detail Pages** ✅ `/market/[id]`
 - **Interactive Trading Interface**: Buy/sell orders with position management
@@ -394,12 +343,6 @@ Ultrathink is based on the Mirai Master Plan, focusing on:
 
 ### 📊 **New Pages & Features**
 
-1. **Admin Dashboard** (`/admin`)
-   - Market creation with detailed forms
-   - Statistics overview with platform metrics
-   - Market resolution and management tools
-   - Activity feed with real-time updates
-
 2. **Market Detail Page** (`/market/[id]`)
    - Interactive trading interface with order types
    - Price charts with multiple timeframes
@@ -430,7 +373,7 @@ Ultrathink is based on the Mirai Master Plan, focusing on:
 - **Market Discovery**: Easy browsing with search and filters
 - **Real-time Data**: Live price updates and market statistics
 - **User Onboarding**: Streamlined wallet connection and token claiming
-- **Admin Tools**: Complete market management capabilities
+- **Management Tools**: Complete market management capabilities
 - **Trading Interface**: Professional-grade trading experience
 
 This comprehensive implementation provides a complete prediction market platform with professional-grade UI, ready for production deployment and user adoption.
@@ -571,7 +514,7 @@ This research-backed foundation ensures our platform aligns with cutting-edge fu
 - **Frontend**: Complete multi-network UI with automatic network detection
 - **Portfolio Management**: Real-time balance tracking across both networks
 - **Market Interface**: Full prediction market trading functionality
-- **Admin Tools**: Complete market creation and management system
+- **Management Tools**: Complete market creation and management system
 - **Testing**: 40+ comprehensive tests ensuring reliability
 
 ### N-Outcome Market Implementation ✅ COMPLETED
@@ -583,7 +526,7 @@ This research-backed foundation ensures our platform aligns with cutting-edge fu
 
 ### Advanced Features (Available but Hidden)
 - **Full Set Operations**: Mint (1 PT → n YES tokens) / Burn (n YES tokens → 1 PT)
-- **Market Resolution**: Admin interface for settling markets with automatic payouts
+- **Market Resolution**: Interface for settling markets with automatic payouts
 - **Advanced Analytics**: Real-time arbitrage opportunity detection and profit calculations
 
 ### User Experience

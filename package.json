@@ -3,7 +3,14 @@
   "version": "1.0.0",
   "private": true,
   "description": "Futarchy platform for prediction market governance - fully functional Play Token claiming system",
-  "keywords": ["futarchy", "prediction-markets", "governance", "blockchain", "polygon", "metamask"],
+  "keywords": [
+    "futarchy",
+    "prediction-markets",
+    "governance",
+    "blockchain",
+    "polygon",
+    "metamask"
+  ],
   "author": "tkgshn",
   "repository": {
     "type": "git",
@@ -34,5 +41,12 @@
     "contracts": "✅ Deployed to Polygon Amoy",
     "frontend": "✅ Fully functional",
     "integration": "✅ Complete"
+  },
+  "dependencies": {
+    "@reown/appkit": "^1.7.12",
+    "@reown/appkit-adapter-wagmi": "^1.7.12",
+    "@tanstack/react-query": "^5.81.5",
+    "viem": "^2.31.7",
+    "wagmi": "^2.15.6"
   }
 }

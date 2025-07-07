@@ -21,7 +21,6 @@
 /
 ├── apps/web/          → Webアプリケーション（ユーザーが使う画面）
 ├── packages/contracts/ → スマートコントラクト（ブロックチェーン上のプログラム）
-├── functions/         → バックエンド処理（Firebase）
 └── ref/              → 参考資料（過去のデモや設計書）
 ```
 
@@ -37,10 +36,6 @@
    - MarketFactory.sol: 市場を作る工場
    - Market.sol: 個別の予測市場
 
-3. **functions/**
-   - 市場の自動処理
-   - データベース管理
-
 4. **ref/**
    - 過去のデモアプリ
    - 設計思想の資料
@@ -55,15 +50,11 @@ npm run dev
 ```
 
 - **ホームページ**: http://localhost:3000
-- **管理者ページ**: http://localhost:3000/admin
 - **市場詳細**: http://localhost:3000/market/[id]
 
 ### 2. 環境設定 ✅ **すべて完了済み**
 
 #### ✅ 完了済み
-- Firebase設定ファイル（firebase.json, firestore.rules等）
-- Firebase Functions依存関係のインストール
-- .env.local ファイルの認証情報設定
 - スマートコントラクトのデプロイ
 - フロントエンドとコントラクトの連携
 
@@ -122,10 +113,6 @@ npm run dev
 ### 初心者向け（順番に）
 
 1. **環境構築** ✅ **完了済み**
-   - [x] Firebaseプロジェクト作成
-   - [x] Firebase設定ファイル作成
-   - [x] Firebase Functions依存関係インストール
-   - [x] .env.localファイルに認証情報設定
    - [x] スマートコントラクトアドレス設定
    - [x] npm run devでアプリ起動確認
 
@@ -161,13 +148,6 @@ npm run dev
    npm run build  # ビルド
    ```
 
-3. **Firebase Functions**
-   ```bash
-   cd functions
-   npm run serve  # ローカルエミュレータ
-   npm run deploy  # デプロイ
-   ```
-
 ## 🎮 このプラットフォームでできること
 
 1. **予測市場の作成**（管理者のみ）
@@ -193,15 +173,6 @@ npm install
 npm run dev
 ```
 
-### Firebase認証エラー
-```bash
-# 対話型でログイン
-firebase login
-
-# 非対話型環境の場合
-firebase login:ci
-```
-
 ### MetaMaskが接続できない
 - Polygon Amoyテストネットを選択しているか確認
 - ブラウザの拡張機能が有効か確認
@@ -209,10 +180,6 @@ firebase login:ci
 ### Play Tokenが取得できない
 - スマートコントラクトがデプロイされているか確認
 - .env.localにアドレスが正しく設定されているか確認
-
-### Firebase Functions関連
-- Node.jsバージョンが18の場合、現在Node.js v22.14.0を使用中（警告が出ますが動作します）
-- Firebase Functions dependencies は既にインストール済み
 
 ### スマートコントラクト関連
 - デプロイは Polygon Mumbai ではなく **Polygon Amoy** を使用
@@ -263,7 +230,6 @@ firebase login:ci
 - [x] 実際の予測市場の作成・取引機能 ✅ **完了**
 - [x] より多くの社会課題市場の追加 ✅ **11市場実装**
 - [x] 本番環境へのデプロイ（Vercel等） ✅ **本番稼働中**
-- [ ] Firebase Functions での市場自動化
 - [ ] 実際のKPI測定と結果判定システム
 
 ## 🌟 **大型アップデート (2025-07-04)** ✅ **新規ユーザー体験 完全改善**
@@ -330,7 +296,6 @@ POL取得ガイド → PTトークン自動追加 → 1000PT自動受け取り
 **成功率**: ほぼ100%（自動検証・回復機能）
 
 ### 🔧 **追加実装されたページ**
-- **管理者ダッシュボード** (`/admin`): 市場作成・管理機能
 - **市場詳細ページ** (`/market/[id]`): 個別市場表示・取引インターフェース
 - **改善されたホームページ**: 統計表示・検索・フィルタ機能
 - **統合市場データ**: 11の予測市場（未来日本プロジェクト + 社会課題）

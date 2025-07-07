@@ -11,7 +11,7 @@ import {
   ArrowPathIcon,
   CreditCardIcon
 } from '@heroicons/react/24/outline';
-import { useMetaMask } from '@/hooks/useMetaMask';
+import { useAccount, useBalance, useChainId } from 'wagmi';
 import { usePlayToken } from '@/hooks/usePlayToken';
 
 interface WalletModalProps {
@@ -58,7 +58,11 @@ const COMMON_TOKENS = [
 export default function WalletModal({ isOpen, onClose }: WalletModalProps) {
   console.log('WalletModal rendered with isOpen:', isOpen);
   
-  const { account, chainId } = useMetaMask();
+  const { address: account } = useAccount();
+  const chainId = useChainId();
+  const { data: balanceData } = useBalance({
+    address: account,
+  });
   const { balance: playTokenBalance } = usePlayToken(account || '');
   const [nativeBalance, setNativeBalance] = useState<string>('0');
   const [tokenBalances, setTokenBalances] = useState<TokenBalance[]>([]);
@@ -70,28 +74,13 @@ export default function WalletModal({ isOpen, onClose }: WalletModalProps) {
   const [gasEstimate] = useState('$0.21');
   const [timeEstimate] = useState('<30s');
 
-  // Get native token balance (POL)
+  // Set native token balance from wagmi
   useEffect(() => {
-    const fetchNativeBalance = async () => {
-      if (!account || !window.ethereum) return;
-
-      try {
-        const balance = await window.ethereum.request({
-          method: 'eth_getBalance',
-          params: [account, 'latest']
-        }) as string;
-        
-        // Convert from hex to decimal and format
-        const balanceInWei = parseInt(balance, 16);
-        const balanceInEth = balanceInWei / 1e18;
-        setNativeBalance(balanceInEth.toFixed(4));
-      } catch (error) {
-        console.error('Failed to fetch native balance:', error);
-      }
-    };
-
-    fetchNativeBalance();
-  }, [account]);
+    if (balanceData) {
+      const balance = parseFloat(balanceData.formatted);
+      setNativeBalance(balance.toFixed(4));
+    }
+  }, [balanceData]);
 
   // Get ERC-20 token balance
   const getTokenBalance = useCallback(async (tokenAddress: string, decimals: number) => {

@@ -128,30 +128,30 @@ PoCリリース前に簡易チェック
        ↑↓ (HTTPS)
 [ フロントエンド (React/Next.js) ]
        ↑↓ (API Call)                ↑↓ (Wallet RPC via Wagmi)
-[ バックエンド (Firebase) ]      [ ブロックチェーン (Polygon) ]
-  - ユーザー認証 (Auth)             - PlayToken.sol (ERC20)
-  - DB (Firestore)                  - MarketFactory.sol
-  - 定期実行 (Cloud Scheduler)      - Market.sol
-  - サーバーレス (Functions)        - ConditionalTokens.sol (Gnosis)
-       ↑↓ (Admin SDK)
+[ ブロックチェーン (Polygon) ]
+- PlayToken.sol (ERC20)
+- MarketFactory.sol
+- Market.sol
+- ConditionalTokens.sol (Gnosis)
+       ↑↓ (Direct Integration)
 [ 中央集権型オラクル (管理者ダッシュボード) ]
 
-4.2. オンチェーン・オフチェーン連携フロー
+4.2. オンチェーン・フロントエンド連携フロー
 処理
 
-オフチェーン (Firebase / フロントエンド)
+フロントエンド
 
 オンチェーン (Polygon)
 
 ユーザー登録
 
-① Firebase Authで認証<br>② フロントエンドからclaim()をコール
+フロントエンドからclaim()をコール
 
 PlayToken.claim()が実行され、1,000 PTがミントされる。
 
 市場作成
 
-管理者ダッシュボードから市場パラメータをPOST
+管理者ダッシュボードから市場パラメータを設定
 
 MarketFactory.createMarket()がコールされ、新しいMarketコントラクトがデプロイされる。
 
@@ -163,7 +163,7 @@ Market.buy()が実行され、LMSRに基づき価格が計算され、条件付�
 
 取引終了
 
-Cloud Schedulerがdeadlineを監視し、Functionsをトリガー
+管理者がdeadlineを監視し手動で実行
 
 Market.closeTrading()がコールされ、市場のステータスがCLOSEDに遷移する。
 
@@ -175,7 +175,7 @@ Market.resolve()がコールされ、勝者が確定し、市場がRESOLVEDに�
 
 フロント表示
 
-FirestoreのonSnapshotで市場データをリアルタイム同期。価格はeth_callで直接取得。
+直接ブロックチェーンから市場データを取得。価格はeth_callで直接取得。
 
 -
 
@@ -278,49 +278,30 @@ KPIInfo, PriceChart, ProposalTable, TradePanel
 
 BalanceBox, PositionTable, HistoryTimeline
 
-/admin
 
-管理者用ページ
-
-NewMarketForm, OracleInputTable
-
-6. データモデル (Firestore)
-// users/{uid}
+6. データモデル (On-Chain)
+// PlayToken.sol
 {
-  walletAddress: string,
-  claimed: bool,
-  createdAt: timestamp
+  claimed: mapping(address => bool),
+  balanceOf: mapping(address => uint256)
 }
 
-// markets/{marketId}
+// Market.sol
 {
   title: string,
   kpiDescription: string,
-  deadline: timestamp,
-  resolutionTime: timestamp,
-  factoryAddress: string,
-  marketAddress: string,
-  status: "TRADING" | "CLOSED" | "RESOLVED"
+  deadline: uint64,
+  resolutionTime: uint64,
+  phase: enum Phase { TRADING, CLOSED, RESOLVED },
+  outcomes: uint256[],
+  q: mapping(uint256 => int256) // outcome quantities
 }
 
-// proposals/{proposalId}
+// ConditionalTokens.sol (Gnosis)
 {
-  marketId: string, // FK
-  title: string,
-  details: string,
-  outcomeIndex: number,
-  createdBy: string // uid
-}
-
-// trades/{tradeId}
-{
-  marketId: string, // FK
-  proposalId: string, // FK
-  uid: string, // FK
-  amount: string, // Play Token amount
-  cost: string, // Conditional Token amount
-  txHash: string,
-  timestamp: timestamp
+  balanceOf: mapping(bytes32 => mapping(address => uint256)),
+  conditions: mapping(bytes32 => Condition),
+  positions: mapping(bytes32 => Position)
 }
 
 7. 技術スタック
@@ -342,11 +323,11 @@ Tailwind CSS
 
 迅速なUI構築とカスタマイズの容易さ。
 
-バックエンド/DB
+フロントエンド/バックエンド
 
-Firebase (Auth, Firestore, Functions)
+Direct Blockchain Integration
 
-迅速なPoC開発、リアルタイムDB、サーバーレス機能、スケーラビリティ。
+直接的なブロックチェーン統合により、中間層を排除し分散性を保持。
 
 ブロックチェーン
 
@@ -362,9 +343,9 @@ EVM互換チェーンにおけるスマートコントラクト開発の標準�
 
 ウォレット連携
 
-RainbowKit / Wagmi
+Direct MetaMask Integration
 
-美しいUIと優れた開発者体験を提供し、ウォレット接続を容易にするため。
+軽量で直接的なMetaMask統合により、依存関係を最小化。
 
 8. Solidityコントラクト雛形（抜粋）
 8.1. PlayToken.sol
@@ -491,14 +472,12 @@ contract Market {
 }
 
 9. 次のステップ
-リポジトリセットアップ: Hardhat + TypeScriptのモノレポ (packages/contracts, apps/web, functions) を構築する。
+リポジトリセットアップ: Hardhat + TypeScriptのモノレポ (packages/contracts, apps/web) を構築する。
 
 コントラクト実装 & テスト: 雛形を基に詳細なロジックを実装し、テストを記述する。特にb=1000でのスケールに注意し、オーバーフロー/アンダーフローを検証する。
 
-フロントエンド雛形作成: Next.js 14 (App Router) / Tailwind CSS / Wagmi v2 / RainbowKitで基本構成を作成する。
+フロントエンド雛形作成: Next.js 15 (App Router) / Tailwind CSS / Direct MetaMask Integrationで基本構成を作成する。
 
-Firebaseプロジェクト作成: FirestoreとFunctions (TypeScript) をセットアップする。
-
-デプロイ & QA: Polygon Mumbaiテストネットにデプロイし、一連のフローをテストする。
+デプロイ & QA: Polygon Amoyテストネットにデプロイし、一連のフローをテストする。
 
 ユーザーテスト: 登録→1,000 PT受領→ベット→採択→KPI入力→決済のサイクルを7日間で回し、UXの問題点を洗い出す。

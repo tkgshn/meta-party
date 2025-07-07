@@ -29,37 +29,8 @@ jest.mock('next/router', () => ({
   },
 }))
 
-// Mock wagmi hooks
-jest.mock('wagmi', () => ({
-  useAccount: () => ({
-    address: undefined,
-    isConnected: false,
-    isConnecting: false,
-    isDisconnected: true,
-  }),
-  useConnect: () => ({
-    connect: jest.fn(),
-    connectors: [],
-    error: null,
-    isLoading: false,
-    pendingConnector: null,
-  }),
-  useDisconnect: () => ({
-    disconnect: jest.fn(),
-  }),
-}))
 
-// Mock RainbowKit
-jest.mock('@rainbow-me/rainbowkit', () => ({
-  ConnectButton: () => <button>Connect Wallet</button>,
-}))
 
-// Mock Firebase (since it may not exist)
-jest.mock('@/lib/firebase', () => ({
-  auth: {},
-  db: {},
-  functions: {},
-}), { virtual: true })
 
 // Mock date-fns
 jest.mock('date-fns', () => ({

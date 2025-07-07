@@ -22,7 +22,6 @@
 /
 ├── apps/web/           # Next.js 15 フロントエンド
 ├── packages/contracts/ # Solidity スマートコントラクト  
-├── functions/          # Firebase Cloud Functions
 └── ref/               # 参考資料・設計書
     ├── futarchy/      # Futarchy サブモジュール
     ├── Mirai-master-plan.md
@@ -46,7 +45,6 @@ npm run dev
 **アクセス**:
 - **ホームページ**: http://localhost:3000
 - **ダッシュボード**: http://localhost:3000/dashboard  
-- **管理画面**: http://localhost:3000/admin
 
 ## 💎 マルチネットワーク対応
 
@@ -101,8 +99,6 @@ npm run dev
   - **ConditionalTokens**: `0x0416a4757062c1e61759ADDb6d68Af145919F045`
 
 ### Backend
-- **Firebase** (認証・データベース)
-- **Cloud Functions** (自動処理)
 - **Multi-Network Configuration** (自動ネットワーク検出)
 
 ## 🎯 主要機能
@@ -155,10 +151,6 @@ npm run lint
 cd packages/contracts
 npm run deploy:testnet
 
-# Firebase Functions（functions/）
-cd functions  
-npm run serve    # ローカル
-npm run deploy   # デプロイ
 ```
 
 ## サブモジュール管理

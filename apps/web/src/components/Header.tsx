@@ -15,7 +15,8 @@ import {
   InformationCircleIcon,
 } from '@heroicons/react/24/outline';
 import ClientOnly from './ClientOnly';
-import { useMetaMask } from '@/hooks/useMetaMask';
+import { useAccount, useDisconnect } from 'wagmi';
+import { useAppKit } from '@reown/appkit/react';
 import { useToken } from '@/hooks/useToken';
 import { useOnChainPortfolio } from '@/hooks/useOnChainPortfolio';
 import { NETWORKS, getNetworkByChainId, getCurrencySymbol } from '@/config/networks';
@@ -93,16 +94,10 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
   const [aboutStep, setAboutStep] = useState(0);
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
 
-  // Use enhanced MetaMask hook
-  const {
-    account,
-    chainId,
-    isConnected,
-    isMetaMaskAvailable,
-    isInitialized,
-    connect,
-    disconnect
-  } = useMetaMask();
+  // Use Reown/wagmi hooks
+  const { address: account, isConnected, chainId } = useAccount();
+  const { disconnect } = useDisconnect();
+  const { open } = useAppKit();
 
   // Detect current network
   const [currentNetworkKey, setCurrentNetworkKey] = useState<string>('polygon');
@@ -177,20 +172,10 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
     onSearch?.(searchInput);
   };
 
-  // Handle wallet connection with proper checks
+  // Handle wallet connection with Reown
   const handleConnect = async () => {
-    if (!isMetaMaskAvailable) {
-      alert('MetaMaskがインストールされていません。\n\nMetaMaskをインストールしてから再度お試しください。\n\nhttps://metamask.io/download/');
-      return;
-    }
-    
-    if (!isInitialized) {
-      alert('MetaMaskを初期化中です。もう一度お試しください。');
-      return;
-    }
-    
     try {
-      await connect();
+      await open();
     } catch (error) {
       console.error('Failed to connect wallet:', error);
       alert('ウォレット接続に失敗しました。もう一度お試しください。');
@@ -388,15 +373,10 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
             ) : (
               <button
                 onClick={handleConnect}
-                disabled={!isInitialized}
-                className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg transition-colors ${
-                  !isInitialized 
-                    ? 'text-gray-400 bg-gray-200 cursor-not-allowed' 
-                    : 'text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
-                }`}
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg transition-colors text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 <WalletIcon className="h-4 w-4 mr-2" />
-                {!isInitialized ? '初期化中...' : 'ウォレット接続'}
+                ウォレット接続
               </button>
             )}
             </ClientOnly>
