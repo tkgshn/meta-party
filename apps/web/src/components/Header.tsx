@@ -98,9 +98,10 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
     account,
     chainId,
     isConnected,
+    isMetaMaskAvailable,
+    isInitialized,
     connect,
-    disconnect,
-    getCurrentChainId
+    disconnect
   } = useMetaMask();
 
   // Detect current network
@@ -174,6 +175,26 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSearch?.(searchInput);
+  };
+
+  // Handle wallet connection with proper checks
+  const handleConnect = async () => {
+    if (!isMetaMaskAvailable) {
+      alert('MetaMaskがインストールされていません。\n\nMetaMaskをインストールしてから再度お試しください。\n\nhttps://metamask.io/download/');
+      return;
+    }
+    
+    if (!isInitialized) {
+      alert('MetaMaskを初期化中です。もう一度お試しください。');
+      return;
+    }
+    
+    try {
+      await connect();
+    } catch (error) {
+      console.error('Failed to connect wallet:', error);
+      alert('ウォレット接続に失敗しました。もう一度お試しください。');
+    }
   };
 
   return (
@@ -366,11 +387,16 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
               </div>
             ) : (
               <button
-                onClick={connect}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                onClick={handleConnect}
+                disabled={!isInitialized}
+                className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg transition-colors ${
+                  !isInitialized 
+                    ? 'text-gray-400 bg-gray-200 cursor-not-allowed' 
+                    : 'text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
+                }`}
               >
                 <WalletIcon className="h-4 w-4 mr-2" />
-                ウォレット接続
+                {!isInitialized ? '初期化中...' : 'ウォレット接続'}
               </button>
             )}
             </ClientOnly>

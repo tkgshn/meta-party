@@ -153,49 +153,71 @@ export const miraiMarkets = [
   //   priceHistory: generatePriceHistory(0.41),
   // },
 
-  /** ６．社会保障制度の捕捉率向上プロジェクト */
+  /** ６．社会保障制度キャッチアップ KPI Futarchy */
   {
     id: 'mirai-6',
-    title: '予算1億円で、社会保障制度の捕捉率を10%上げる',
-    kpiDescription: '社会保障制度の対象だが、抜け漏れている人たちの捕捉率を10%向上させることができるか？',
-    deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-    createdAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
-    status: 'TRADING' as const,
+    /* ------- 基本情報 ------- */
+    title: '予算1億円で東京都23区「低所得単身世帯」の社会保障捕捉率を上げる',
+    kpiDescription:
+      '社会保障制度の対象だが、抜け漏れている人たちの捕捉率を10%向上させることができるか？',
     category: 'social',
-    totalVolume: 5240,
+    tags: ['社会保障', '捕捉率', '低所得世帯', 'DX'],
+    /* ------- 取引 & 市場 ------- */
+    createdAt: new Date(),                            // UI 表示用
+    deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 取引期間＝7日
+    status: 'TRADING' as const,
+    totalVolume: 5_240,
+    liquidity: 8_500,
     numProposals: 3,
     participants: 156,
-    topPrice: 0.65,
+    topPrice: 0.42,                                   // Ask 最高案（アスコエ）
     change24h: 0.08,
-    tags: ['社会保障', '格差是正', '政策', '効率化'],
-    featured: true,
-    liquidity: 8500,
-    priceHistory: generatePriceHistory(0.65),
+    priceHistory: generatePriceHistory(0.42),
+    /* ------- KPI & オラクルメタ ------- */
+    meta: {
+      budgetJPY: 100_000_000, // 1 億円
+      targetPopulation: '東京都23区 住民税非課税 単身世帯',
+      kpiFormula: 'NCR = (受給_after - 受給_before) / 推定対象者数',
+      baselineDate: '2025-07-01',
+      measurementDate: '2026-01-31',
+      oracle: {
+        sources: [
+          '各区役所 給付決定 CSV（月次公開）',
+          'Chainlink OCR feed (3 ソース集約)'
+        ],
+        resolutionLagDays: 14   // CSV公開から最大 2 週間で確定
+      },
+      amm: {
+        type: 'LMSR',
+        b: 2_000
+      }
+    },
+    /* ------- 3 提案トークン ------- */
     proposals: [
       {
         id: 'civichat',
-        name: 'civichat',
-        description: 'チャットボットによる市民とのコミュニケーション改善で制度周知を強化',
-        price: 0.35,
-        volume: 1820,
+        name: 'Civichat',
+        description: 'チャットボットで周知＋FAQ自動対応。低コストで広範囲リーチ',
+        price: 0.30,
+        volume: 1_820,
         change24h: 0.12,
         supporters: 62
       },
       {
         id: 'askoe',
         name: 'アスコエ',
-        description: 'デジタル窓口統合により申請手続きの簡素化と自動判定システム構築',
-        price: 0.42,
-        volume: 2150,
+        description: 'デジタル窓口統合＆自動判定。申請完結率を最大化',
+        price: 0.42,  // ← 現在最高
+        volume: 2_150,
         change24h: 0.08,
         supporters: 73
       },
       {
         id: 'graffer',
-        name: 'graffer',
-        description: 'データ分析プラットフォームによる対象者の能動的発見と支援',
-        price: 0.23,
-        volume: 1270,
+        name: 'Graffer',
+        description: 'データ分析＋プッシュ通知で対象者を能動的に発見',
+        price: 0.28,
+        volume: 1_270,
         change24h: -0.04,
         supporters: 41
       }

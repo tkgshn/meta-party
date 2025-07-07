@@ -151,6 +151,7 @@ export default function MarketDetailPage() {
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [timeScope, setTimeScope] = useState<'1h' | '6h' | '1w' | '1m' | 'all'>('1w');
   const [selectedBuyButton, setSelectedBuyButton] = useState<{ proposalId: string; type: 'yes' | 'no' } | null>(null);
+  const [selectedPhase, setSelectedPhase] = useState<'open' | 'decision' | 'resolution' | null>(null);
 
   // User holdings (mock data - in real app this would come from wallet/contracts)
   const [userBalance, setUserBalance] = useState(11.08); // PT balance
@@ -193,6 +194,27 @@ export default function MarketDetailPage() {
       }
     }
   }, [marketData, selectedProposal, selectedBuyButton]);
+
+  // Set default phase based on current date
+  useEffect(() => {
+    if (marketData && selectedPhase === null) {
+      const now = new Date();
+      const deadline = new Date(marketData.deadline);
+      const resolutionDate = new Date(marketData.deadline);
+      resolutionDate.setDate(resolutionDate.getDate() + 90);
+
+      if (now < deadline) {
+        // We're before the deadline, so we're in the decision period
+        setSelectedPhase('open');
+      } else if (now < resolutionDate) {
+        // We're between deadline and resolution, so we're in the evaluation period
+        setSelectedPhase('decision');
+      } else {
+        // We're after resolution
+        setSelectedPhase('resolution');
+      }
+    }
+  }, [marketData, selectedPhase]);
 
   // If market not found, show error
   if (!marketData) {
@@ -453,6 +475,241 @@ export default function MarketDetailPage() {
                   <p className="text-gray-600 leading-relaxed">
                     {marketData.kpiDescription}
                   </p>
+
+                  {/* Market Timeline */}
+                  <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                    <h3 className="text-sm font-semibold text-gray-900 mb-4">市場スケジュール</h3>
+
+                    {/* Timeline */}
+                    <div className="relative">
+                      {/* Timeline Line */}
+                      <div className="absolute top-3 left-0 right-0 h-0.5 bg-gray-300">
+                        <div
+                          className="absolute left-0 h-full bg-green-500 transition-all duration-500"
+                          style={{
+                            width: (() => {
+                              const now = new Date();
+                              const start = new Date(marketData.createdAt);
+                              const deadline = new Date(marketData.deadline);
+                              const resolutionDate = new Date(marketData.deadline);
+                              resolutionDate.setDate(resolutionDate.getDate() + 90);
+
+                              const totalDuration = resolutionDate.getTime() - start.getTime();
+                              const elapsed = now.getTime() - start.getTime();
+                              const progress = Math.min(100, Math.max(0, (elapsed / totalDuration) * 100));
+
+                              return `${progress}%`;
+                            })()
+                          }}
+                        ></div>
+                      </div>
+
+                      {/* Timeline Points */}
+                      <div className="relative flex justify-between">
+                        {/* Open */}
+                        <div className="flex flex-col items-center cursor-pointer group" onClick={() => setSelectedPhase('open')}>
+                          <div className="relative">
+                            <div className={`w-6 h-6 rounded-full border-2 border-white shadow-sm transition-all duration-200 hover:scale-125 hover:shadow-lg ${
+                              selectedPhase === 'open' ? 'scale-125 shadow-lg' : ''
+                            } ${(() => {
+                              const now = new Date();
+                              const start = new Date(marketData.createdAt);
+                              return now >= start ? 'bg-green-500' : 'bg-gray-300';
+                            })()}`}>
+                              {/* Pulsing animation */}
+                              <div className={`absolute inset-0 rounded-full opacity-30 animate-ping ${
+                                new Date() >= new Date(marketData.createdAt) ? 'bg-green-500' : 'bg-gray-300'
+                              }`}></div>
+                            </div>
+                          </div>
+                          <div className="mt-2 text-center">
+                            <p className={`text-xs font-semibold transition-colors ${
+                              selectedPhase === 'open'
+                                ? 'text-green-700'
+                                : new Date() >= new Date(marketData.createdAt)
+                                  ? 'text-green-600 group-hover:text-green-700'
+                                  : 'text-gray-600 group-hover:text-gray-700'
+                            }`}>開始</p>
+                            <p className="text-xs text-gray-600">{format(marketData.createdAt, 'M月d日', { locale: ja })}</p>
+                          </div>
+                        </div>
+
+                        {/* Decision */}
+                        <div className="flex flex-col items-center cursor-pointer group" onClick={() => setSelectedPhase('decision')}>
+                          <div className="relative">
+                            <div className={`w-6 h-6 rounded-full border-2 border-white shadow-sm transition-all duration-200 hover:scale-125 hover:shadow-lg ${
+                              selectedPhase === 'decision' ? 'scale-125 shadow-lg' : ''
+                            } ${(() => {
+                              const now = new Date();
+                              const deadline = new Date(marketData.deadline);
+                              return now >= deadline ? 'bg-green-500' : 'bg-gray-300';
+                            })()}`}>
+                              {/* Pulsing animation */}
+                              <div className={`absolute inset-0 rounded-full opacity-30 animate-ping ${
+                                new Date() >= new Date(marketData.deadline) ? 'bg-green-500' : 'bg-gray-300'
+                              }`}></div>
+                            </div>
+                          </div>
+                          <div className="mt-2 text-center">
+                            <p className={`text-xs font-semibold transition-colors ${
+                              selectedPhase === 'decision'
+                                ? 'text-green-700'
+                                : new Date() >= new Date(marketData.deadline)
+                                  ? 'text-green-600 group-hover:text-green-700'
+                                  : 'text-gray-600 group-hover:text-gray-700'
+                            }`}>決定</p>
+                            <p className="text-xs text-gray-600">{format(marketData.deadline, 'M月d日', { locale: ja })}</p>
+                          </div>
+                        </div>
+
+                        {/* Resolution */}
+                        <div className="flex flex-col items-center cursor-pointer group" onClick={() => setSelectedPhase('resolution')}>
+                          <div className="relative">
+                            <div className={`w-6 h-6 rounded-full border-2 border-white shadow-sm transition-all duration-200 hover:scale-125 hover:shadow-lg ${
+                              selectedPhase === 'resolution' ? 'scale-125 shadow-lg' : ''
+                            } ${(() => {
+                              const now = new Date();
+                              const resolutionDate = new Date(marketData.deadline);
+                              resolutionDate.setDate(resolutionDate.getDate() + 90);
+                              return now >= resolutionDate ? 'bg-green-500' : 'bg-gray-300';
+                            })()}`}>
+                              {/* Pulsing animation */}
+                              <div className={`absolute inset-0 rounded-full opacity-30 animate-ping ${
+                                (() => {
+                                  const now = new Date();
+                                  const resolutionDate = new Date(marketData.deadline);
+                                  resolutionDate.setDate(resolutionDate.getDate() + 90);
+                                  return now >= resolutionDate ? 'bg-green-500' : 'bg-gray-300';
+                                })()
+                              }`}></div>
+                            </div>
+                          </div>
+                          <div className="mt-2 text-center">
+                            <p className={`text-xs font-semibold transition-colors ${
+                              selectedPhase === 'resolution'
+                                ? 'text-green-700'
+                                : (() => {
+                                    const now = new Date();
+                                    const resolutionDate = new Date(marketData.deadline);
+                                    resolutionDate.setDate(resolutionDate.getDate() + 90);
+                                    return now >= resolutionDate
+                                      ? 'text-green-600 group-hover:text-green-700'
+                                      : 'text-gray-600 group-hover:text-gray-700';
+                                  })()
+                            }`}>解決</p>
+                            <p className="text-xs text-gray-600">
+                              {(() => {
+                                const resolutionDate = new Date(marketData.deadline);
+                                resolutionDate.setDate(resolutionDate.getDate() + 90); // 3 months after deadline
+                                return format(resolutionDate, 'M月d日', { locale: ja });
+                              })()}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Period Labels */}
+                      <div className="flex justify-between mt-4 text-xs">
+                        <div className="flex-1 text-center">
+                          <p className="font-medium text-gray-700">決定期間</p>
+                        </div>
+                        <div className="flex-1 text-center">
+                          <p className="font-medium text-gray-700">評価期間</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Phase Details */}
+                    {selectedPhase && (
+                      <div className="mt-4 pt-4 border-t border-gray-200">
+                        <div className="space-y-2">
+                          {selectedPhase === 'open' && (
+                            <>
+                              <div>
+                                <span className="font-semibold text-green-600">開始</span>
+                                <span className="text-sm ml-2 text-gray-600">{format(marketData.createdAt, 'yyyy年M月d日', { locale: ja })}</span>
+                              </div>
+                              <p className="text-sm text-gray-700">
+                                <strong>市場が開始されました。</strong>
+                              </p>
+                              <p className="text-sm text-gray-600">
+                                参加者は各提案に対して予測を行い、トークンを売買できます。市場価格は参加者の集合知を反映し、リアルタイムで変動します。
+                              </p>
+                            </>
+                          )}
+                          {selectedPhase === 'decision' && (
+                            <>
+                              <div>
+                                <span className="font-semibold text-green-600">決定</span>
+                                <span className="text-sm ml-2 text-gray-600">{format(marketData.deadline, 'yyyy年M月d日', { locale: ja })}</span>
+                              </div>
+                              <p className="text-sm text-gray-700">
+                                <strong>予測受付が終了します。</strong>
+                              </p>
+                              <p className="text-sm text-gray-600">
+                                この日以降、新規の取引は停止され、各提案の最終価格が確定します。その後、実際の結果を待つ評価期間に入ります。
+                              </p>
+                            </>
+                          )}
+                          {selectedPhase === 'resolution' && (
+                            <>
+                              <div>
+                                <span className="font-semibold text-green-600">解決</span>
+                                <span className="text-sm ml-2 text-gray-600">
+                                  {(() => {
+                                    const resolutionDate = new Date(marketData.deadline);
+                                    resolutionDate.setDate(resolutionDate.getDate() + 90);
+                                    return format(resolutionDate, 'yyyy年M月d日', { locale: ja });
+                                  })()}
+                                </span>
+                              </div>
+                              <p className="text-sm text-gray-700">
+                                <strong>上位予測者が決定されます。</strong>
+                              </p>
+                              <p className="text-sm text-gray-600">
+                                実際の結果（KPI達成度など）に基づいて市場が解決され、正しい予測をした参加者のトークンが1 PTで償還されます。
+                              </p>
+                              <p className="text-sm text-gray-600 mt-2">
+                                予測の正確性とトークン保有量に応じて、上位予測者には追加報酬が配布されます。
+                              </p>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Oracle Information */}
+                  <div className="mt-4 p-4 bg-white border border-gray-200 rounded-lg">
+                    <h3 className="text-sm font-semibold text-gray-900 mb-3">オラクル情報</h3>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-red-100 rounded flex items-center justify-center">
+                          <span className="text-red-600 font-bold text-xs">UMA</span>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">Resolver</p>
+                          <a
+                            href="https://example.com"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-blue-600 font-mono hover:underline"
+                          >
+                            0x2F5e3684cb...
+                          </a>
+                        </div>
+                      </div>
+                      <button className="px-3 py-1 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                        Propose resolution
+                      </button>
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-gray-100">
+                      <p className="text-xs text-gray-600">
+                        この市場は UMA Optimistic Oracle を使用して解決されます。
+                      </p>
+                    </div>
+                  </div>
+
 
                   {/* Market Stats */}
                   <div className="grid grid-cols-3 gap-4 mt-6">

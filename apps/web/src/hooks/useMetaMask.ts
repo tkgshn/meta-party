@@ -76,9 +76,10 @@ export function useMetaMask(): MetaMaskState & MetaMaskActions {
 
   // Connect to MetaMask
   const connect = useCallback(async (): Promise<boolean> => {
-    if (!window.ethereum) {
+    // Double-check MetaMask availability
+    if (!window.ethereum || !window.ethereum.isMetaMask) {
       console.error('MetaMask not available');
-      return false;
+      throw new Error('MetaMask not available');
     }
 
     try {
@@ -103,9 +104,17 @@ export function useMetaMask(): MetaMaskState & MetaMaskActions {
         return true;
       }
       return false;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to connect to MetaMask:', error);
-      return false;
+      
+      // Re-throw specific errors for better handling in UI
+      if (error.code === 4001) {
+        throw new Error('User rejected the connection request');
+      } else if (error.code === -32002) {
+        throw new Error('MetaMask is already processing a connection request');
+      }
+      
+      throw error;
     }
   }, [getCurrentChainId]);
 
@@ -312,6 +321,9 @@ export function useMetaMask(): MetaMaskState & MetaMaskActions {
     if (typeof window === 'undefined') return;
 
     const initializeMetaMask = async () => {
+      // Add a small delay to ensure window.ethereum is properly available
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       const available = checkMetaMaskAvailability();
       
       if (available) {
