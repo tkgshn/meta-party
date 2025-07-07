@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { CheckCircleIcon, ExclamationTriangleIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
-import '@/types/ethereum';
+import type { EthereumProvider } from '@/types/ethereum';
 
 interface OnboardingStep {
   id: string;
@@ -74,7 +74,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   // Connect wallet
   const connectWallet = async (): Promise<string | null> => {
     try {
-      const accounts = await window.ethereum?.request({
+      const accounts = await (window.ethereum as unknown as EthereumProvider)?.request({
         method: 'eth_requestAccounts',
       });
       return (accounts as string[])?.[0] || null;
@@ -88,7 +88,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const addPolygonAmoy = async (): Promise<boolean> => {
     try {
       // First try to switch
-      await window.ethereum?.request({
+      await (window.ethereum as unknown as EthereumProvider)?.request({
         method: 'wallet_switchEthereumChain',
         params: [{ chainId: '0x13882' }], // 80002 in hex
       });
@@ -98,7 +98,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       // If the network doesn't exist, add it
       if (err.code === 4902) {
         try {
-          await window.ethereum?.request({
+          await (window.ethereum as unknown as EthereumProvider)?.request({
             method: 'wallet_addEthereumChain',
             params: [
               {
@@ -128,7 +128,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   // Check POL balance
   const checkPOLBalance = async (): Promise<string> => {
     try {
-      const accounts = await window.ethereum?.request({
+      const accounts = await (window.ethereum as unknown as EthereumProvider)?.request({
         method: 'eth_accounts',
       });
       
@@ -136,7 +136,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         return '0';
       }
 
-      const balance = await window.ethereum?.request({
+      const balance = await (window.ethereum as unknown as EthereumProvider)?.request({
         method: 'eth_getBalance',
         params: [(accounts as string[])[0], 'latest'],
       });
@@ -155,7 +155,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   // Add PT token to MetaMask
   const addPTToken = async (): Promise<boolean> => {
     try {
-      const wasAdded = await window.ethereum?.request({
+      const wasAdded = await (window.ethereum as unknown as EthereumProvider)?.request({
         method: 'wallet_watchAsset',
         params: [{
           type: 'ERC20',

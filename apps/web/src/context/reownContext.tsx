@@ -1,6 +1,6 @@
 'use client'
 
-import { wagmiAdapter, projectId, networks } from '@/config/wagmi'
+import { wagmiAdapter, projectId } from '@/config/wagmi'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createAppKit } from '@reown/appkit/react'
 import { polygon, polygonAmoy } from '@reown/appkit/networks'
@@ -23,10 +23,10 @@ const metadata = {
 }
 
 // Create the modal
-const modal = createAppKit({
+createAppKit({
   adapters: [wagmiAdapter],
   projectId,
-  networks,
+  networks: [polygon, polygonAmoy],
   defaultNetwork: polygon,
   metadata: metadata,
   features: {

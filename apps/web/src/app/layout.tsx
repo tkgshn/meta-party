@@ -17,12 +17,12 @@ export const metadata: Metadata = {
   description: "Prediction market governance platform for better decision making",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const cookies = headers().get('cookie')
+  const cookies = (await headers()).get('cookie')
 
   return (
     <html lang="ja" className={inter.variable} suppressHydrationWarning>

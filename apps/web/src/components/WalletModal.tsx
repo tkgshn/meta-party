@@ -13,6 +13,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useAccount, useBalance, useChainId } from 'wagmi';
 import { usePlayToken } from '@/hooks/usePlayToken';
+import type { EthereumProvider } from '@/types/ethereum';
 
 interface WalletModalProps {
   isOpen: boolean;
@@ -90,7 +91,7 @@ export default function WalletModal({ isOpen, onClose }: WalletModalProps) {
       // ERC-20 balanceOf function signature
       const balanceOfData = `0x70a08231000000000000000000000000${account.slice(2)}`;
       
-      const result = await window.ethereum.request({
+      const result = await (window.ethereum as unknown as EthereumProvider).request({
         method: 'eth_call',
         params: [{
           to: tokenAddress,

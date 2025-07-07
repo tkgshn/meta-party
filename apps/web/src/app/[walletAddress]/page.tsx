@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation';
 import { useEffect } from 'react';
 import { usePlayToken } from '@/hooks/usePlayToken';
 import Header from '@/components/Header';
+import type { EthereumProvider } from '@/types/ethereum';
 
 export default function UserProfilePage() {
   const params = useParams();
@@ -12,8 +13,8 @@ export default function UserProfilePage() {
   // const [account] = useState<string | null>(null);
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.ethereum) {
-      window.ethereum.request({ method: 'eth_accounts' })
+    if (typeof window !== 'undefined' && window.ethereum && 'request' in window.ethereum) {
+      (window.ethereum as unknown as EthereumProvider).request({ method: 'eth_accounts' })
         .then((accounts) => {
           const accountsArray = accounts as string[];
           if (accountsArray.length > 0) {

@@ -132,14 +132,14 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
     symbol: tokenSymbol,
     isLoading: tokenLoading,
     refreshBalance
-  } = useToken(account, currentNetworkKey);
+  } = useToken(account || null, currentNetworkKey);
 
   // Use on-chain portfolio data
   const {
     positionTokens,
     totalPortfolioValue,
     isLoading: portfolioLoading
-  } = useOnChainPortfolio(account);
+  } = useOnChainPortfolio(account || null);
 
   // Calculate portfolio value using same logic as portfolio page
   const cash = parseFloat(tokenBalance) || 0;
@@ -385,7 +385,7 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
       </div>
 
       {/* Aboutモーダル */}
-      <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} step={aboutStep} setStep={setAboutStep} account={account} />
+      <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} step={aboutStep} setStep={setAboutStep} account={account || null} />
 
       {/* Wallet Modal */}
       <WalletModal
