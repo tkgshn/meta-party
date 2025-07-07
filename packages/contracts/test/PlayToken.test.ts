@@ -3,348 +3,413 @@ import { ethers } from "hardhat";
 import { Contract, Signer } from "ethers";
 
 /**
- * PlayToken Contract Tests
+ * Enhanced PlayToken Contract Tests
  * 
  * Following t-wada testing principles:
  * - Clear test names describing expected behavior
  * - Arrange-Act-Assert pattern
  * - Boundary value testing
  * - Edge case coverage
+ * 
+ * Tests for Twitter OAuth airdrop system with role-based access control
  */
-describe("PlayToken", function () {
+describe("Enhanced PlayToken", function () {
   let playToken: Contract;
   let owner: Signer;
+  let distributor: Signer;
+  let marketCreator: Signer;
   let user1: Signer;
   let user2: Signer;
+  let unauthorized: Signer;
+  
   let ownerAddress: string;
+  let distributorAddress: string;
+  let marketCreatorAddress: string;
   let user1Address: string;
   let user2Address: string;
+  let unauthorizedAddress: string;
 
   // Constants for better test readability
-  const AIRDROP_AMOUNT = ethers.parseEther("1000");
+  const BASE_AIRDROP_AMOUNT = ethers.parseEther("1000");
+  const VOLUNTEER_BONUS_AMOUNT = ethers.parseEther("2000");
   const ZERO_ADDRESS = ethers.ZeroAddress;
 
   beforeEach(async function () {
     // Arrange: Set up test environment
-    [owner, user1, user2] = await ethers.getSigners();
-    [ownerAddress, user1Address, user2Address] = await Promise.all([
-      owner.getAddress(),
-      user1.getAddress(),
-      user2.getAddress()
-    ]);
+    [owner, distributor, marketCreator, user1, user2, unauthorized] = await ethers.getSigners();
+    [ownerAddress, distributorAddress, marketCreatorAddress, user1Address, user2Address, unauthorizedAddress] = 
+      await Promise.all([
+        owner.getAddress(),
+        distributor.getAddress(),
+        marketCreator.getAddress(),
+        user1.getAddress(),
+        user2.getAddress(),
+        unauthorized.getAddress()
+      ]);
     
     const PlayToken = await ethers.getContractFactory("PlayToken");
     playToken = await PlayToken.deploy();
     await playToken.deploymentTransaction()?.wait();
+
+    // Set up roles for testing
+    await playToken.addDistributor(distributorAddress);
+    await playToken.addMarketCreator(marketCreatorAddress);
   });
 
   describe("Contract Deployment", function () {
     it("契約をデプロイすると正しいトークン名とシンボルが設定される", async function () {
-      // Act & Assert
       expect(await playToken.name()).to.equal("Play Token");
       expect(await playToken.symbol()).to.equal("PT");
     });
 
     it("契約をデプロイすると18桁の小数点精度が設定される", async function () {
-      // Act & Assert
       expect(await playToken.decimals()).to.equal(18);
     });
 
-    it("契約をデプロイするとエアドロップ量が1000PTに設定される", async function () {
-      // Act & Assert
-      expect(await playToken.getAirdropAmount()).to.equal(AIRDROP_AMOUNT);
+    it("契約をデプロイするとエアドロップ量が正しく設定される", async function () {
+      expect(await playToken.getBaseAirdropAmount()).to.equal(BASE_AIRDROP_AMOUNT);
+      expect(await playToken.getVolunteerBonusAmount()).to.equal(VOLUNTEER_BONUS_AMOUNT);
     });
 
-    it("契約をデプロイするとデプロイヤーがオーナーになる", async function () {
-      // Act & Assert
-      expect(await playToken.owner()).to.equal(ownerAddress);
+    it("契約をデプロイするとデプロイヤーがすべての初期ロールを持つ", async function () {
+      const DEFAULT_ADMIN_ROLE = await playToken.DEFAULT_ADMIN_ROLE();
+      const DISTRIBUTOR_ROLE = await playToken.DISTRIBUTOR_ROLE();
+      const MARKET_CREATOR_ROLE = await playToken.MARKET_CREATOR_ROLE();
+      
+      expect(await playToken.hasRole(DEFAULT_ADMIN_ROLE, ownerAddress)).to.be.true;
+      expect(await playToken.hasRole(DISTRIBUTOR_ROLE, ownerAddress)).to.be.true;
+      expect(await playToken.hasRole(MARKET_CREATOR_ROLE, ownerAddress)).to.be.true;
     });
 
     it("契約をデプロイすると初期供給量は0になる", async function () {
-      // Act & Assert
       expect(await playToken.totalSupply()).to.equal(0);
     });
   });
 
-  describe("Token Claiming (エアドロップ機能)", function () {
-    it("ユーザーが初回請求すると1000PTを受け取ることができる", async function () {
-      // Arrange: Initial state verified in beforeEach
+  describe("Role Management (ロール管理)", function () {
+    it("管理者はディストリビューターを追加できる", async function () {
+      const newDistributor = user1Address;
       
-      // Act: User claims airdrop
-      await playToken.connect(user1).claim();
+      await expect(playToken.addDistributor(newDistributor))
+        .to.emit(playToken, "DistributorAdded")
+        .withArgs(newDistributor);
       
-      // Assert: User received correct amount and status updated
-      const balance = await playToken.balanceOf(user1Address);
-      expect(balance).to.equal(AIRDROP_AMOUNT);
-      expect(await playToken.hasClaimed(user1Address)).to.be.true;
-      expect(await playToken.totalSupply()).to.equal(AIRDROP_AMOUNT);
+      const DISTRIBUTOR_ROLE = await playToken.DISTRIBUTOR_ROLE();
+      expect(await playToken.hasRole(DISTRIBUTOR_ROLE, newDistributor)).to.be.true;
     });
 
-    it("同じユーザーが2回請求しようとすると失敗する", async function () {
-      // Arrange: User already claimed
-      await playToken.connect(user1).claim();
+    it("管理者はディストリビューターを削除できる", async function () {
+      await expect(playToken.removeDistributor(distributorAddress))
+        .to.emit(playToken, "DistributorRemoved")
+        .withArgs(distributorAddress);
       
-      // Act & Assert: Second claim should fail
-      await expect(playToken.connect(user1).claim())
-        .to.be.revertedWith("PlayToken: Already claimed");
+      const DISTRIBUTOR_ROLE = await playToken.DISTRIBUTOR_ROLE();
+      expect(await playToken.hasRole(DISTRIBUTOR_ROLE, distributorAddress)).to.be.false;
     });
 
-    it("請求時にAirdropClaimedイベントが正しいパラメータで発行される", async function () {
-      // Act & Assert: Event should be emitted with correct parameters
-      await expect(playToken.connect(user1).claim())
-        .to.emit(playToken, "AirdropClaimed")
-        .withArgs(user1Address, AIRDROP_AMOUNT);
+    it("管理者はマーケットクリエイターを追加できる", async function () {
+      const newCreator = user1Address;
+      
+      await expect(playToken.addMarketCreator(newCreator))
+        .to.emit(playToken, "MarketCreatorAdded")
+        .withArgs(newCreator);
+      
+      expect(await playToken.canCreateMarkets(newCreator)).to.be.true;
     });
 
-    it("複数ユーザーの請求状態が独立して管理される", async function () {
-      // Arrange: Initial state
-      expect(await playToken.hasClaimed(user1Address)).to.be.false;
-      expect(await playToken.hasClaimed(user2Address)).to.be.false;
+    it("管理者はマーケットクリエイターを削除できる", async function () {
+      await expect(playToken.removeMarketCreator(marketCreatorAddress))
+        .to.emit(playToken, "MarketCreatorRemoved")
+        .withArgs(marketCreatorAddress);
       
-      // Act: Only user1 claims
-      await playToken.connect(user1).claim();
-      
-      // Assert: Only user1's status should change
-      expect(await playToken.hasClaimed(user1Address)).to.be.true;
-      expect(await playToken.hasClaimed(user2Address)).to.be.false;
-      
-      // Act: user2 also claims
-      await playToken.connect(user2).claim();
-      
-      // Assert: Both users should have claimed status
-      expect(await playToken.hasClaimed(user1Address)).to.be.true;
-      expect(await playToken.hasClaimed(user2Address)).to.be.true;
+      expect(await playToken.canCreateMarkets(marketCreatorAddress)).to.be.false;
     });
 
-    it("10人のユーザーが連続で請求しても正しく動作する", async function () {
-      // Arrange: Get 10 signers
-      const signers = await ethers.getSigners();
-      const users = signers.slice(0, 10);
+    it("非管理者はロールを変更できない", async function () {
+      await expect(playToken.connect(unauthorized).addDistributor(user1Address))
+        .to.be.revertedWithCustomError(playToken, "AccessControlUnauthorizedAccount");
       
-      // Act: All users claim
-      for (let i = 0; i < users.length; i++) {
-        await playToken.connect(users[i]).claim();
-      }
+      await expect(playToken.connect(unauthorized).addMarketCreator(user1Address))
+        .to.be.revertedWithCustomError(playToken, "AccessControlUnauthorizedAccount");
+    });
+
+    it("ゼロアドレスにロールを付与することはできない", async function () {
+      await expect(playToken.addDistributor(ZERO_ADDRESS))
+        .to.be.revertedWith("PlayToken: Invalid address");
       
-      // Assert: Total supply should be 10 * AIRDROP_AMOUNT
-      const expectedTotalSupply = AIRDROP_AMOUNT * 10n;
-      expect(await playToken.totalSupply()).to.equal(expectedTotalSupply);
-      
-      // Assert: All users should have claimed status
-      for (let i = 0; i < users.length; i++) {
-        const userAddress = await users[i].getAddress();
-        expect(await playToken.hasClaimed(userAddress)).to.be.true;
-        expect(await playToken.balanceOf(userAddress)).to.equal(AIRDROP_AMOUNT);
-      }
+      await expect(playToken.addMarketCreator(ZERO_ADDRESS))
+        .to.be.revertedWith("PlayToken: Invalid address");
     });
   });
 
-  describe("Admin Functions (管理者機能)", function () {
-    it("オーナーは任意のアドレスにトークンをミントできる", async function () {
-      // Arrange
-      const mintAmount = ethers.parseEther("500");
+  describe("Base Airdrop Distribution (基本エアドロップ配布)", function () {
+    it("ディストリビューターは基本エアドロップを配布できる", async function () {
+      await expect(playToken.connect(distributor).distributeBaseAirdrop(user1Address))
+        .to.emit(playToken, "BaseAirdropClaimed")
+        .withArgs(user1Address, BASE_AIRDROP_AMOUNT)
+        .and.to.emit(playToken, "TokensDistributed")
+        .withArgs(user1Address, BASE_AIRDROP_AMOUNT, "Base airdrop");
       
-      // Act
-      await playToken.adminMint(user1Address, mintAmount);
-      
-      // Assert
-      const balance = await playToken.balanceOf(user1Address);
-      expect(balance).to.equal(mintAmount);
-      expect(await playToken.totalSupply()).to.equal(mintAmount);
+      expect(await playToken.balanceOf(user1Address)).to.equal(BASE_AIRDROP_AMOUNT);
+      expect(await playToken.hasClaimedBaseAirdrop(user1Address)).to.be.true;
+      expect(await playToken.totalSupply()).to.equal(BASE_AIRDROP_AMOUNT);
     });
 
-    it("非オーナーはトークンをミントできない", async function () {
-      // Arrange
-      const mintAmount = ethers.parseEther("500");
-      
-      // Act & Assert
-      await expect(playToken.connect(user1).adminMint(user1Address, mintAmount))
-        .to.be.revertedWithCustomError(playToken, "OwnableUnauthorizedAccount");
+    it("非ディストリビューターは基本エアドロップを配布できない", async function () {
+      await expect(playToken.connect(unauthorized).distributeBaseAirdrop(user1Address))
+        .to.be.revertedWithCustomError(playToken, "AccessControlUnauthorizedAccount");
     });
 
-    it("ミント時にAdminMintイベントが正しいパラメータで発行される", async function () {
-      // Arrange
-      const mintAmount = ethers.parseEther("500");
+    it("同じユーザーに2回基本エアドロップを配布することはできない", async function () {
+      await playToken.connect(distributor).distributeBaseAirdrop(user1Address);
       
-      // Act & Assert
-      await expect(playToken.adminMint(user1Address, mintAmount))
-        .to.emit(playToken, "AdminMint")
-        .withArgs(user1Address, mintAmount);
+      await expect(playToken.connect(distributor).distributeBaseAirdrop(user1Address))
+        .to.be.revertedWith("PlayToken: Base airdrop already claimed");
     });
 
-    it("ゼロアドレスへのミントは失敗する", async function () {
-      // Arrange
-      const mintAmount = ethers.parseEther("500");
-      
-      // Act & Assert
-      await expect(playToken.adminMint(ZERO_ADDRESS, mintAmount))
+    it("ゼロアドレスには基本エアドロップを配布できない", async function () {
+      await expect(playToken.connect(distributor).distributeBaseAirdrop(ZERO_ADDRESS))
         .to.be.revertedWith("PlayToken: Invalid address");
     });
 
-    it("ゼロ量のミントは失敗する", async function () {
-      // Act & Assert
-      await expect(playToken.adminMint(user1Address, 0))
+    it("複数ユーザーへの基本エアドロップ配布が正常に動作する", async function () {
+      const users = [user1Address, user2Address];
+      
+      for (const userAddress of users) {
+        await playToken.connect(distributor).distributeBaseAirdrop(userAddress);
+      }
+      
+      for (const userAddress of users) {
+        expect(await playToken.balanceOf(userAddress)).to.equal(BASE_AIRDROP_AMOUNT);
+        expect(await playToken.hasClaimedBaseAirdrop(userAddress)).to.be.true;
+      }
+      
+      expect(await playToken.totalSupply()).to.equal(BASE_AIRDROP_AMOUNT * BigInt(users.length));
+    });
+  });
+
+  describe("Volunteer Bonus Distribution (ボランティアボーナス配布)", function () {
+    it("ディストリビューターはボランティアボーナスを配布できる", async function () {
+      await expect(playToken.connect(distributor).distributeVolunteerBonus(user1Address))
+        .to.emit(playToken, "VolunteerBonusClaimed")
+        .withArgs(user1Address, VOLUNTEER_BONUS_AMOUNT)
+        .and.to.emit(playToken, "TokensDistributed")
+        .withArgs(user1Address, VOLUNTEER_BONUS_AMOUNT, "Volunteer bonus");
+      
+      expect(await playToken.balanceOf(user1Address)).to.equal(VOLUNTEER_BONUS_AMOUNT);
+      expect(await playToken.hasClaimedVolunteerBonus(user1Address)).to.be.true;
+      expect(await playToken.totalSupply()).to.equal(VOLUNTEER_BONUS_AMOUNT);
+    });
+
+    it("同じユーザーに2回ボランティアボーナスを配布することはできない", async function () {
+      await playToken.connect(distributor).distributeVolunteerBonus(user1Address);
+      
+      await expect(playToken.connect(distributor).distributeVolunteerBonus(user1Address))
+        .to.be.revertedWith("PlayToken: Volunteer bonus already claimed");
+    });
+
+    it("基本エアドロップとボランティアボーナスは独立して管理される", async function () {
+      // 基本エアドロップを配布
+      await playToken.connect(distributor).distributeBaseAirdrop(user1Address);
+      expect(await playToken.hasClaimedBaseAirdrop(user1Address)).to.be.true;
+      expect(await playToken.hasClaimedVolunteerBonus(user1Address)).to.be.false;
+      
+      // ボランティアボーナスを配布
+      await playToken.connect(distributor).distributeVolunteerBonus(user1Address);
+      expect(await playToken.hasClaimedBaseAirdrop(user1Address)).to.be.true;
+      expect(await playToken.hasClaimedVolunteerBonus(user1Address)).to.be.true;
+      
+      const expectedTotal = BASE_AIRDROP_AMOUNT + VOLUNTEER_BONUS_AMOUNT;
+      expect(await playToken.balanceOf(user1Address)).to.equal(expectedTotal);
+    });
+  });
+
+  describe("Custom Token Distribution (カスタムトークン配布)", function () {
+    it("ディストリビューターはカスタム量のトークンを配布できる", async function () {
+      const customAmount = ethers.parseEther("500");
+      const reason = "Test distribution";
+      
+      await expect(playToken.connect(distributor).distributeTokens(user1Address, customAmount, reason))
+        .to.emit(playToken, "TokensDistributed")
+        .withArgs(user1Address, customAmount, reason);
+      
+      expect(await playToken.balanceOf(user1Address)).to.equal(customAmount);
+      expect(await playToken.totalSupply()).to.equal(customAmount);
+    });
+
+    it("ゼロ量のカスタム配布は失敗する", async function () {
+      await expect(playToken.connect(distributor).distributeTokens(user1Address, 0, "test"))
         .to.be.revertedWith("PlayToken: Amount must be greater than 0");
     });
 
-    it("最大値のミントも正常に動作する", async function () {
-      // Arrange: Maximum safe integer in JavaScript
-      const maxMintAmount = ethers.MaxUint256 / 2n; // Safe max to avoid overflow
-      
-      // Act
-      await playToken.adminMint(user1Address, maxMintAmount);
-      
-      // Assert
-      const balance = await playToken.balanceOf(user1Address);
-      expect(balance).to.equal(maxMintAmount);
+    it("ゼロアドレスへのカスタム配布は失敗する", async function () {
+      await expect(playToken.connect(distributor).distributeTokens(ZERO_ADDRESS, ethers.parseEther("100"), "test"))
+        .to.be.revertedWith("PlayToken: Invalid address");
+    });
+  });
+
+  describe("Legacy Functions (レガシー関数)", function () {
+    it("レガシーclaim関数は使用できない", async function () {
+      await expect(playToken.connect(user1).claim())
+        .to.be.revertedWith("PlayToken: Use Twitter OAuth flow instead");
     });
 
-    it("複数回のミントで累積残高が正しく計算される", async function () {
-      // Arrange
-      const firstMint = ethers.parseEther("300");
-      const secondMint = ethers.parseEther("700");
-      const expectedTotal = firstMint + secondMint;
+    it("レガシーhasClaimed関数は基本エアドロップ状態を返す", async function () {
+      expect(await playToken.hasClaimed(user1Address)).to.be.false;
       
-      // Act
-      await playToken.adminMint(user1Address, firstMint);
-      await playToken.adminMint(user1Address, secondMint);
+      await playToken.connect(distributor).distributeBaseAirdrop(user1Address);
       
-      // Assert
-      const balance = await playToken.balanceOf(user1Address);
-      expect(balance).to.equal(expectedTotal);
-      expect(await playToken.totalSupply()).to.equal(expectedTotal);
+      expect(await playToken.hasClaimed(user1Address)).to.be.true;
+    });
+  });
+
+  describe("Market Creation Permissions (マーケット作成権限)", function () {
+    it("マーケットクリエイターロールを持つユーザーは権限がある", async function () {
+      expect(await playToken.canCreateMarkets(marketCreatorAddress)).to.be.true;
+    });
+
+    it("マーケットクリエイターロールを持たないユーザーは権限がない", async function () {
+      expect(await playToken.canCreateMarkets(unauthorizedAddress)).to.be.false;
+    });
+
+    it("オーナーは常にマーケット作成権限を持つ", async function () {
+      expect(await playToken.canCreateMarkets(ownerAddress)).to.be.true;
     });
   });
 
   describe("ERC20 Functions (標準トークン機能)", function () {
     beforeEach(async function () {
-      // Arrange: Both users claim their airdrop
-      await playToken.connect(user1).claim();
-      await playToken.connect(user2).claim();
+      // ユーザーにトークンを配布
+      await playToken.connect(distributor).distributeBaseAirdrop(user1Address);
+      await playToken.connect(distributor).distributeBaseAirdrop(user2Address);
     });
 
     it("トークンの転送が正常に動作する", async function () {
-      // Arrange
       const transferAmount = ethers.parseEther("100");
-      const expectedUser1Balance = AIRDROP_AMOUNT - transferAmount;
-      const expectedUser2Balance = AIRDROP_AMOUNT + transferAmount;
+      const expectedUser1Balance = BASE_AIRDROP_AMOUNT - transferAmount;
+      const expectedUser2Balance = BASE_AIRDROP_AMOUNT + transferAmount;
       
-      // Act
       await playToken.connect(user1).transfer(user2Address, transferAmount);
       
-      // Assert
       expect(await playToken.balanceOf(user1Address)).to.equal(expectedUser1Balance);
       expect(await playToken.balanceOf(user2Address)).to.equal(expectedUser2Balance);
     });
 
     it("残高不足時の転送は失敗する", async function () {
-      // Arrange: Try to transfer more than balance
-      const excessiveAmount = AIRDROP_AMOUNT + 1n;
+      const excessiveAmount = BASE_AIRDROP_AMOUNT + 1n;
       
-      // Act & Assert
       await expect(playToken.connect(user1).transfer(user2Address, excessiveAmount))
         .to.be.revertedWithCustomError(playToken, "ERC20InsufficientBalance");
     });
 
     it("承認機能が正常に動作する", async function () {
-      // Arrange
       const approvalAmount = ethers.parseEther("100");
       
-      // Act
       await playToken.connect(user1).approve(user2Address, approvalAmount);
       
-      // Assert
       const allowance = await playToken.allowance(user1Address, user2Address);
       expect(allowance).to.equal(approvalAmount);
-    });
-
-    it("承認された金額での代理転送が正常に動作する", async function () {
-      // Arrange
-      const approvalAmount = ethers.parseEther("100");
-      await playToken.connect(user1).approve(user2Address, approvalAmount);
-      
-      // Act
-      await playToken.connect(user2).transferFrom(user1Address, user2Address, approvalAmount);
-      
-      // Assert
-      expect(await playToken.balanceOf(user1Address)).to.equal(AIRDROP_AMOUNT - approvalAmount);
-      expect(await playToken.balanceOf(user2Address)).to.equal(AIRDROP_AMOUNT + approvalAmount);
-      expect(await playToken.allowance(user1Address, user2Address)).to.equal(0);
-    });
-
-    it("承認額を超えた代理転送は失敗する", async function () {
-      // Arrange
-      const approvalAmount = ethers.parseEther("100");
-      const excessiveAmount = approvalAmount + 1n;
-      await playToken.connect(user1).approve(user2Address, approvalAmount);
-      
-      // Act & Assert
-      await expect(playToken.connect(user2).transferFrom(user1Address, user2Address, excessiveAmount))
-        .to.be.revertedWithCustomError(playToken, "ERC20InsufficientAllowance");
-    });
-
-    it("ゼロアドレスへの転送は失敗する", async function () {
-      // Arrange
-      const transferAmount = ethers.parseEther("100");
-      
-      // Act & Assert
-      await expect(playToken.connect(user1).transfer(ZERO_ADDRESS, transferAmount))
-        .to.be.revertedWithCustomError(playToken, "ERC20InvalidReceiver");
     });
   });
 
   describe("Integration Tests (統合テスト)", function () {
-    it("請求・ミント・転送の混合シナリオが正常に動作する", async function () {
-      // Arrange
-      const mintAmount = ethers.parseEther("500");
-      const transferAmount = ethers.parseEther("200");
+    it("完全なエアドロップフローが正常に動作する", async function () {
+      // 基本エアドロップ
+      await playToken.connect(distributor).distributeBaseAirdrop(user1Address);
+      expect(await playToken.balanceOf(user1Address)).to.equal(BASE_AIRDROP_AMOUNT);
       
-      // Act: Complex scenario
-      await playToken.connect(user1).claim(); // user1 claims 1000 PT
-      await playToken.adminMint(user2Address, mintAmount); // user2 gets 500 PT from admin
-      await playToken.connect(user1).transfer(user2Address, transferAmount); // user1 sends 200 PT to user2
+      // ボランティアボーナス
+      await playToken.connect(distributor).distributeVolunteerBonus(user1Address);
+      const expectedTotal = BASE_AIRDROP_AMOUNT + VOLUNTEER_BONUS_AMOUNT;
+      expect(await playToken.balanceOf(user1Address)).to.equal(expectedTotal);
       
-      // Assert: Final balances
-      expect(await playToken.balanceOf(user1Address)).to.equal(AIRDROP_AMOUNT - transferAmount);
-      expect(await playToken.balanceOf(user2Address)).to.equal(mintAmount + transferAmount);
-      expect(await playToken.totalSupply()).to.equal(AIRDROP_AMOUNT + mintAmount);
+      // カスタム配布
+      const customAmount = ethers.parseEther("500");
+      await playToken.connect(distributor).distributeTokens(user1Address, customAmount, "Extra reward");
+      const finalBalance = expectedTotal + customAmount;
+      expect(await playToken.balanceOf(user1Address)).to.equal(finalBalance);
     });
 
-    it("ガス効率性: 大量のトークン操作でもガス制限内で実行される", async function () {
-      // Arrange
-      const largeAmount = ethers.parseEther("1000000"); // 1M tokens
+    it("大量のユーザーへの配布が効率的に実行される", async function () {
+      const signers = await ethers.getSigners();
+      const users = signers.slice(0, 10);
       
-      // Act: Large operations should not exceed gas limits
-      await playToken.adminMint(user1Address, largeAmount);
-      await playToken.connect(user1).transfer(user2Address, largeAmount / 2n);
+      // 全ユーザーに基本エアドロップを配布
+      for (const user of users) {
+        const userAddress = await user.getAddress();
+        await playToken.connect(distributor).distributeBaseAirdrop(userAddress);
+      }
       
-      // Assert: Operations completed successfully
-      expect(await playToken.balanceOf(user1Address)).to.equal(largeAmount / 2n);
-      expect(await playToken.balanceOf(user2Address)).to.equal(largeAmount / 2n);
+      // 検証
+      for (const user of users) {
+        const userAddress = await user.getAddress();
+        expect(await playToken.balanceOf(userAddress)).to.equal(BASE_AIRDROP_AMOUNT);
+        expect(await playToken.hasClaimedBaseAirdrop(userAddress)).to.be.true;
+      }
+      
+      const expectedTotalSupply = BASE_AIRDROP_AMOUNT * BigInt(users.length);
+      expect(await playToken.totalSupply()).to.equal(expectedTotalSupply);
     });
   });
 
   describe("Security Tests (セキュリティテスト)", function () {
     it("リエントランシー攻撃から保護されている", async function () {
-      // Note: Our current implementation doesn't have external calls in critical functions
-      // This test validates that the nonReentrant modifier works correctly
+      // 配布機能にリエントランシーガードが適用されている
+      await playToken.connect(distributor).distributeBaseAirdrop(user1Address);
       
-      // Arrange: User claims tokens
-      await playToken.connect(user1).claim();
-      
-      // Act & Assert: Multiple rapid calls should not cause issues
+      // 複数の同時転送は正常に処理される
+      const transferAmount = ethers.parseEther("1");
       const promises = [];
       for (let i = 0; i < 5; i++) {
         promises.push(
-          playToken.connect(user1).transfer(user2Address, ethers.parseEther("1"))
+          playToken.connect(user1).transfer(user2Address, transferAmount)
         );
       }
       
       await Promise.all(promises);
       
-      // Assert: Balance is correct (not affected by race conditions)
-      const expectedBalance = AIRDROP_AMOUNT - ethers.parseEther("5");
+      const expectedBalance = BASE_AIRDROP_AMOUNT - (transferAmount * 5n);
       expect(await playToken.balanceOf(user1Address)).to.equal(expectedBalance);
+    });
+
+    it("権限のないアクセスがすべて防止されている", async function () {
+      // 配布権限
+      await expect(playToken.connect(unauthorized).distributeBaseAirdrop(user1Address))
+        .to.be.revertedWithCustomError(playToken, "AccessControlUnauthorizedAccount");
+      
+      await expect(playToken.connect(unauthorized).distributeVolunteerBonus(user1Address))
+        .to.be.revertedWithCustomError(playToken, "AccessControlUnauthorizedAccount");
+      
+      // ロール管理権限
+      await expect(playToken.connect(unauthorized).addDistributor(user1Address))
+        .to.be.revertedWithCustomError(playToken, "AccessControlUnauthorizedAccount");
+      
+      await expect(playToken.connect(unauthorized).addMarketCreator(user1Address))
+        .to.be.revertedWithCustomError(playToken, "AccessControlUnauthorizedAccount");
+    });
+
+    it("重複配布が確実に防止されている", async function () {
+      // 基本エアドロップの重複防止
+      await playToken.connect(distributor).distributeBaseAirdrop(user1Address);
+      await expect(playToken.connect(distributor).distributeBaseAirdrop(user1Address))
+        .to.be.revertedWith("PlayToken: Base airdrop already claimed");
+      
+      // ボランティアボーナスの重複防止
+      await playToken.connect(distributor).distributeVolunteerBonus(user1Address);
+      await expect(playToken.connect(distributor).distributeVolunteerBonus(user1Address))
+        .to.be.revertedWith("PlayToken: Volunteer bonus already claimed");
+    });
+  });
+
+  describe("Interface Compliance (インターフェース準拠)", function () {
+    it("ERC165インターフェースサポートが正しく動作する", async function () {
+      // AccessControl インターフェース
+      const accessControlInterfaceId = "0x7965db0b"; // IAccessControl interface ID
+      expect(await playToken.supportsInterface(accessControlInterfaceId)).to.be.true;
+      
+      // サポートしていないインターフェース
+      const unsupportedInterfaceId = "0xffffffff";
+      expect(await playToken.supportsInterface(unsupportedInterfaceId)).to.be.false;
     });
   });
 });

@@ -12,45 +12,8 @@ interface NetworkSwitcherProps {
 
 export default function NetworkSwitcher({ onNetworkChange, className = '' }: NetworkSwitcherProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedNetwork, setSelectedNetwork] = useState('polygon');
-  const [anvilAvailable, setAnvilAvailable] = useState(false);
+  const [selectedNetwork, setSelectedNetwork] = useState('polygonAmoy');
   const { switchNetwork, getCurrentChainId } = useMetaMask();
-
-  // Check if Anvil is available
-  const checkAnvilAvailability = async () => {
-    try {
-      const response = await fetch('http://127.0.0.1:8545', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'eth_chainId',
-          params: [],
-          id: 1,
-        }),
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        // Check if it's actually Anvil (chain ID 31337)
-        setAnvilAvailable(data.result === '0x7a69');
-      } else {
-        setAnvilAvailable(false);
-      }
-    } catch {
-      setAnvilAvailable(false);
-    }
-  };
-
-  // Check Anvil availability on component mount
-  useEffect(() => {
-    checkAnvilAvailability();
-    // Check every 30 seconds in case Anvil is started later
-    const interval = setInterval(checkAnvilAvailability, 30000);
-    return () => clearInterval(interval);
-  }, []);
 
   // Get current network from MetaMask
   useEffect(() => {
@@ -80,12 +43,6 @@ export default function NetworkSwitcher({ onNetworkChange, className = '' }: Net
       const network = NETWORKS[networkKey];
       if (!network) return;
 
-      // Check if trying to switch to Anvil when it's not available
-      if (networkKey === 'anvil' && !anvilAvailable) {
-        alert('Anvil ローカルネットワークは利用できません。\n\nFoundry をインストールし、以下のコマンドでAnvilを起動してください：\n\n初回セットアップ: npm run setup:foundry\n起動コマンド: npm run dev:with-anvil');
-        return;
-      }
-
       // Switch network in MetaMask
       const success = await switchNetwork(network.chainId);
       
@@ -110,9 +67,9 @@ export default function NetworkSwitcher({ onNetworkChange, className = '' }: Net
       >
         <GlobeAltIcon className="h-4 w-4 text-gray-500" />
         <span className="hidden sm:inline">{currentNetwork?.displayName}</span>
-        <span className="sm:hidden">{currencySymbol}</span>
+        <span className="sm:hidden">PT</span>
         <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
-          {currencySymbol}
+          PT
         </span>
         <ChevronDownIcon className="h-4 w-4 text-gray-500" />
       </button>
@@ -130,10 +87,12 @@ export default function NetworkSwitcher({ onNetworkChange, className = '' }: Net
             <div className="p-4">
               <h3 className="text-sm font-semibold text-gray-900 mb-3">ネットワークを選択</h3>
               <div className="space-y-2">
-                {Object.entries(NETWORKS).map(([key, network]) => {
+                {Object.entries(NETWORKS)
+                  .filter(([key]) => key === 'polygonAmoy' || key === 'sepolia') // Only show Polygon Amoy and Sepolia
+                  .map(([key, network]) => {
                   const isSelected = selectedNetwork === key;
-                  const currency = getCurrencySymbol(key);
-                  const isAnvilUnavailable = key === 'anvil' && !anvilAvailable;
+                  const currency = 'PT';
+                  const isAnvilUnavailable = false; // Not applicable for our filtered networks
                   
                   return (
                     <button
@@ -177,13 +136,7 @@ export default function NetworkSwitcher({ onNetworkChange, className = '' }: Net
                       </div>
                       
                       <div className="flex items-center space-x-2">
-                        <span className={`text-xs px-2 py-1 rounded ${
-                          isAnvilUnavailable 
-                            ? 'bg-gray-100 text-gray-400'
-                            : currency === 'USDC' 
-                            ? 'bg-blue-100 text-blue-800' 
-                            : 'bg-gray-100 text-gray-600'
-                        }`}>
+                        <span className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-600">
                           {currency}
                         </span>
                         {isSelected && !isAnvilUnavailable && (
@@ -199,26 +152,11 @@ export default function NetworkSwitcher({ onNetworkChange, className = '' }: Net
                 <div className="text-xs text-gray-600">
                   <div className="font-medium mb-1">現在の設定:</div>
                   <div>ネットワーク: {currentNetwork?.displayName}</div>
-                  <div>通貨: {currencySymbol}</div>
+                  <div>通貨: PT</div>
                   <div>チェーンID: {currentNetwork?.chainId}</div>
                 </div>
               </div>
 
-              {!anvilAvailable && (
-                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <div className="flex items-start space-x-2">
-                    <ExclamationTriangleIcon className="h-4 w-4 text-yellow-600 mt-0.5 flex-shrink-0" />
-                    <div className="text-xs text-yellow-800">
-                      <div className="font-medium mb-1">Anvil ローカルネットワークについて</div>
-                      <div className="space-y-1">
-                        <div>• Foundry のインストールが必要です</div>
-                        <div>• 開発者向けの高速ローカルチェーンです</div>
-                        <div>• 起動コマンド: <code className="bg-yellow-100 px-1 rounded">npm run anvil</code></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         </>

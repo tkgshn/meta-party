@@ -24,8 +24,8 @@ import {
 
 import { miraiMarkets, type Market } from '@/data/miraiMarkets';
 import Header from '@/components/Header';
-import WalletModal from '@/components/WalletModal';
 import { updateMarketState } from '@/utils/futarchyMath';
+import { useAppKit } from '@reown/appkit/react';
 
 // Helper function to get market data by ID
 const getMarketById = (id: string) => {
@@ -135,7 +135,7 @@ export default function MarketDetailPage() {
   const [selectedOutcome, setSelectedOutcome] = useState<'yes' | 'no'>('yes');
   const [tradeType, setTradeType] = useState<'buy' | 'sell'>('buy');
   const [amount, setAmount] = useState('');
-  const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
+  const { open } = useAppKit();
   const [timeScope, setTimeScope] = useState<'1h' | '6h' | '1w' | '1m' | 'all'>('1w');
   const [selectedBuyButton, setSelectedBuyButton] = useState<{ proposalId: string; type: 'yes' | 'no' } | null>(null);
   const [selectedPhase, setSelectedPhase] = useState<'open' | 'decision' | 'resolution' | null>(null);
@@ -1024,21 +1024,6 @@ export default function MarketDetailPage() {
         </div>
       </main>
 
-      {/* Wallet Modal */}
-      <WalletModal
-        isOpen={isWalletModalOpen}
-        onClose={() => {
-          console.log('Closing wallet modal');
-          setIsWalletModalOpen(false);
-        }}
-      />
-
-      {/* Debug info */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="fixed bottom-4 right-4 bg-black text-white p-2 rounded text-xs">
-          Modal open: {isWalletModalOpen ? 'true' : 'false'}
-        </div>
-      )}
     </div>
   );
 }

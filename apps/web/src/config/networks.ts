@@ -57,6 +57,36 @@ export const NETWORKS: Record<string, NetworkConfig> = {
     }
   },
   
+  // Ethereum Sepolia Testnet
+  sepolia: {
+    chainId: 11155111,
+    chainIdHex: '0xaa36a7',
+    name: 'sepolia',
+    displayName: 'Sepolia Testnet',
+    rpcUrls: [
+      'https://rpc.sepolia.org',
+      'https://sepolia.publicnode.com',
+      'https://ethereum-sepolia.publicnode.com'
+    ],
+    blockExplorerUrls: ['https://sepolia.etherscan.io'],
+    nativeCurrency: {
+      name: 'Sepolia Ether',
+      symbol: 'SEP',
+      decimals: 18
+    },
+    contracts: {
+      // TODO: Deploy contracts to Sepolia
+      playToken: process.env.NEXT_PUBLIC_SEPOLIA_PLAY_TOKEN_ADDRESS,
+      marketFactory: process.env.NEXT_PUBLIC_SEPOLIA_MARKET_FACTORY_ADDRESS,
+      conditionalTokens: process.env.NEXT_PUBLIC_SEPOLIA_CONDITIONAL_TOKENS_ADDRESS
+    },
+    isTestnet: true,
+    gasSettings: {
+      maxFeePerGas: '0x2E90EDD00', // 12.5 gwei
+      maxPriorityFeePerGas: '0x1DCD6500' // 0.5 gwei
+    }
+  },
+
   // Polygon Amoy Testnet with Play Token (existing)
   polygonAmoy: {
     chainId: 80002,
@@ -138,6 +168,11 @@ export function getCurrencySymbol(networkKey: string): string {
   const network = NETWORKS[networkKey];
   if (!network) return 'Unknown';
   
+  // For Sepolia testnet, show Play Token if deployed, otherwise SEP
+  if (networkKey === 'sepolia') {
+    return network.contracts.playToken ? 'PT' : 'SEP';
+  }
+  
   // For Polygon Amoy testnet, show Play Token
   if (networkKey === 'polygonAmoy' && network.contracts.playToken) {
     return 'PT';
@@ -164,6 +199,11 @@ export function getCurrencyContract(networkKey: string): string | undefined {
   // For Polygon mainnet, don't return any contract address (use native MATIC)
   if (networkKey === 'polygon') {
     return undefined;
+  }
+  
+  // For Sepolia testnet, return Play Token address if deployed
+  if (networkKey === 'sepolia') {
+    return network.contracts.playToken;
   }
   
   // For Amoy testnet, return Play Token address

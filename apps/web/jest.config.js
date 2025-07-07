@@ -25,6 +25,9 @@ const customJestConfig = {
   transform: {
     '^.+\\.(js|jsx|ts|tsx)$': ['babel-jest', { presets: ['next/babel'] }],
   },
+  transformIgnorePatterns: [
+    'node_modules/(?!(wagmi|@wagmi|@tanstack|@reown|viem|@walletconnect)/)',
+  ],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx'],
   watchPlugins: [
     'jest-watch-typeahead/filename',

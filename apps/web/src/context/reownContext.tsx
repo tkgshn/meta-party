@@ -1,9 +1,8 @@
 'use client'
 
-import { wagmiAdapter, projectId } from '@/config/wagmi'
+import { wagmiAdapter, projectId, networks } from '@/config/wagmi'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createAppKit } from '@reown/appkit/react'
-import { polygon, polygonAmoy } from '@reown/appkit/networks'
 import React, { type ReactNode } from 'react'
 import { cookieToInitialState, WagmiProvider, type Config } from 'wagmi'
 
@@ -26,8 +25,8 @@ const metadata = {
 createAppKit({
   adapters: [wagmiAdapter],
   projectId,
-  networks: [polygon, polygonAmoy],
-  defaultNetwork: polygon,
+  networks,
+  defaultNetwork: networks[0],
   metadata: metadata,
   features: {
     analytics: true, // Optional - defaults to your Cloud configuration

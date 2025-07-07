@@ -3,68 +3,198 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
  * @title PlayToken
- * @dev Play Token (PT) for Futarchy platform - no real monetary value
- * Users can claim 1,000 PT once per address for participating in prediction markets
+ * @dev Enhanced Play Token (PT) for Futarchy platform with Twitter OAuth airdrop
+ * Backend distributes tokens based on verified Twitter authentication
+ * Supports volunteer bonuses and role-based market creation permissions
  */
-contract PlayToken is ERC20, Ownable, ReentrancyGuard {
-    uint256 public constant AIRDROP_AMOUNT = 1_000 * 1e18; // 1,000 PT with 18 decimals
+contract PlayToken is ERC20, Ownable, AccessControl, ReentrancyGuard {
+    /// @dev Role for addresses authorized to distribute tokens
+    bytes32 public constant DISTRIBUTOR_ROLE = keccak256("DISTRIBUTOR_ROLE");
     
-    /// @dev Tracks whether an address has already claimed their airdrop
-    mapping(address => bool) public claimed;
+    /// @dev Role for addresses authorized to create prediction markets
+    bytes32 public constant MARKET_CREATOR_ROLE = keccak256("MARKET_CREATOR_ROLE");
     
-    /// @dev Emitted when a user claims their airdrop
-    event AirdropClaimed(address indexed user, uint256 amount);
+    /// @dev Standard airdrop amount for basic users
+    uint256 public constant BASE_AIRDROP_AMOUNT = 1_000 * 1e18; // 1,000 PT
     
-    /// @dev Emitted when admin mints tokens
-    event AdminMint(address indexed to, uint256 amount);
+    /// @dev Additional bonus for volunteers
+    uint256 public constant VOLUNTEER_BONUS_AMOUNT = 2_000 * 1e18; // 2,000 PT
+    
+    /// @dev Tracks base airdrop claims per address
+    mapping(address => bool) public baseAirdropClaimed;
+    
+    /// @dev Tracks volunteer bonus claims per address
+    mapping(address => bool) public volunteerBonusClaimed;
+    
+    /// @dev Events
+    event BaseAirdropClaimed(address indexed user, uint256 amount);
+    event VolunteerBonusClaimed(address indexed user, uint256 amount);
+    event TokensDistributed(address indexed to, uint256 amount, string reason);
+    event DistributorAdded(address indexed distributor);
+    event DistributorRemoved(address indexed distributor);
+    event MarketCreatorAdded(address indexed creator);
+    event MarketCreatorRemoved(address indexed creator);
 
-    constructor() ERC20("Play Token", "PT") Ownable(msg.sender) {}
-
-    /**
-     * @dev Allows users to claim their one-time airdrop of 1,000 PT
-     * @notice Each address can only claim once
-     */
-    function claim() external nonReentrant {
-        require(!claimed[msg.sender], "PlayToken: Already claimed");
-        require(msg.sender != address(0), "PlayToken: Invalid address");
-        
-        claimed[msg.sender] = true;
-        _mint(msg.sender, AIRDROP_AMOUNT);
-        
-        emit AirdropClaimed(msg.sender, AIRDROP_AMOUNT);
+    constructor() ERC20("Play Token", "PT") Ownable(msg.sender) {
+        // Grant admin roles to deployer
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(DISTRIBUTOR_ROLE, msg.sender);
+        _grantRole(MARKET_CREATOR_ROLE, msg.sender);
     }
 
     /**
-     * @dev Emergency function for admin to mint tokens
-     * @param to Address to mint tokens to
-     * @param amount Amount of tokens to mint
+     * @dev Distributes base airdrop to verified user (called by backend)
+     * @param to Address to distribute tokens to
      */
-    function adminMint(address to, uint256 amount) external onlyOwner {
+    function distributeBaseAirdrop(address to) external onlyRole(DISTRIBUTOR_ROLE) nonReentrant {
+        require(to != address(0), "PlayToken: Invalid address");
+        require(!baseAirdropClaimed[to], "PlayToken: Base airdrop already claimed");
+        
+        baseAirdropClaimed[to] = true;
+        _mint(to, BASE_AIRDROP_AMOUNT);
+        
+        emit BaseAirdropClaimed(to, BASE_AIRDROP_AMOUNT);
+        emit TokensDistributed(to, BASE_AIRDROP_AMOUNT, "Base airdrop");
+    }
+
+    /**
+     * @dev Distributes volunteer bonus to verified volunteer (called by backend)
+     * @param to Address to distribute bonus to
+     */
+    function distributeVolunteerBonus(address to) external onlyRole(DISTRIBUTOR_ROLE) nonReentrant {
+        require(to != address(0), "PlayToken: Invalid address");
+        require(!volunteerBonusClaimed[to], "PlayToken: Volunteer bonus already claimed");
+        
+        volunteerBonusClaimed[to] = true;
+        _mint(to, VOLUNTEER_BONUS_AMOUNT);
+        
+        emit VolunteerBonusClaimed(to, VOLUNTEER_BONUS_AMOUNT);
+        emit TokensDistributed(to, VOLUNTEER_BONUS_AMOUNT, "Volunteer bonus");
+    }
+
+    /**
+     * @dev Distributes custom amount of tokens (admin only)
+     * @param to Address to distribute tokens to
+     * @param amount Amount of tokens to distribute
+     * @param reason Reason for distribution
+     */
+    function distributeTokens(address to, uint256 amount, string calldata reason) 
+        external onlyRole(DISTRIBUTOR_ROLE) nonReentrant {
         require(to != address(0), "PlayToken: Invalid address");
         require(amount > 0, "PlayToken: Amount must be greater than 0");
         
         _mint(to, amount);
-        emit AdminMint(to, amount);
+        emit TokensDistributed(to, amount, reason);
     }
 
     /**
-     * @dev Check if an address has claimed their airdrop
+     * @dev Add a new token distributor (backend service address)
+     * @param distributor Address to grant distributor role
+     */
+    function addDistributor(address distributor) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(distributor != address(0), "PlayToken: Invalid address");
+        _grantRole(DISTRIBUTOR_ROLE, distributor);
+        emit DistributorAdded(distributor);
+    }
+
+    /**
+     * @dev Remove a token distributor
+     * @param distributor Address to revoke distributor role
+     */
+    function removeDistributor(address distributor) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _revokeRole(DISTRIBUTOR_ROLE, distributor);
+        emit DistributorRemoved(distributor);
+    }
+
+    /**
+     * @dev Add a new market creator
+     * @param creator Address to grant market creator role
+     */
+    function addMarketCreator(address creator) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(creator != address(0), "PlayToken: Invalid address");
+        _grantRole(MARKET_CREATOR_ROLE, creator);
+        emit MarketCreatorAdded(creator);
+    }
+
+    /**
+     * @dev Remove a market creator
+     * @param creator Address to revoke market creator role
+     */
+    function removeMarketCreator(address creator) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _revokeRole(MARKET_CREATOR_ROLE, creator);
+        emit MarketCreatorRemoved(creator);
+    }
+
+    /**
+     * @dev Check if an address has claimed their base airdrop
      * @param user Address to check
-     * @return bool Whether the address has claimed
+     * @return bool Whether the address has claimed base airdrop
+     */
+    function hasClaimedBaseAirdrop(address user) external view returns (bool) {
+        return baseAirdropClaimed[user];
+    }
+
+    /**
+     * @dev Check if an address has claimed their volunteer bonus
+     * @param user Address to check
+     * @return bool Whether the address has claimed volunteer bonus
+     */
+    function hasClaimedVolunteerBonus(address user) external view returns (bool) {
+        return volunteerBonusClaimed[user];
+    }
+
+    /**
+     * @dev Check if an address can create markets
+     * @param user Address to check
+     * @return bool Whether the address has market creator role
+     */
+    function canCreateMarkets(address user) external view returns (bool) {
+        return hasRole(MARKET_CREATOR_ROLE, user);
+    }
+
+    /**
+     * @dev Get the base airdrop amount
+     * @return uint256 The base airdrop amount
+     */
+    function getBaseAirdropAmount() external pure returns (uint256) {
+        return BASE_AIRDROP_AMOUNT;
+    }
+
+    /**
+     * @dev Get the volunteer bonus amount
+     * @return uint256 The volunteer bonus amount
+     */
+    function getVolunteerBonusAmount() external pure returns (uint256) {
+        return VOLUNTEER_BONUS_AMOUNT;
+    }
+
+    /**
+     * @dev Legacy claim function for backward compatibility (deprecated)
+     * Users should use Twitter OAuth flow instead
+     */
+    function claim() external view {
+        revert("PlayToken: Use Twitter OAuth flow instead");
+    }
+
+    /**
+     * @dev Legacy hasClaimed function for backward compatibility
+     * @param user Address to check
+     * @return bool Whether the address has claimed base airdrop
      */
     function hasClaimed(address user) external view returns (bool) {
-        return claimed[user];
+        return baseAirdropClaimed[user];
     }
 
     /**
-     * @dev Get the total number of tokens that can be claimed
-     * @return uint256 The airdrop amount
+     * @dev Override required by AccessControl
      */
-    function getAirdropAmount() external pure returns (uint256) {
-        return AIRDROP_AMOUNT;
+    function supportsInterface(bytes4 interfaceId) 
+        public view override(AccessControl) returns (bool) {
+        return super.supportsInterface(interfaceId);
     }
 }

@@ -24,7 +24,7 @@ export default function PortfolioPage() {
 
   // Get current network info
   const currentNetwork = NETWORKS[currentNetworkKey];
-  const currencySymbol = getCurrencySymbol(currentNetworkKey);
+  const currencySymbol = 'PT'; // Play Tokenで固定
 
   // Use token hook for current network
   const {
@@ -113,15 +113,15 @@ export default function PortfolioPage() {
       pnlPercent,
       activePositions: positionTokens.length,
       lastUpdated: tokenLastUpdated || portfolioLastUpdated,
-      currencySymbol: tokenSymbol || currencySymbol,
+      currencySymbol: 'PT', // Play Tokenで固定
       isTestnet: currentNetwork?.isTestnet
     };
-  }, [tokenBalance, positionTokens, totalPortfolioValue, tokenLastUpdated, portfolioLastUpdated, tokenSymbol, currencySymbol, currentNetwork]);
+  }, [tokenBalance, positionTokens, totalPortfolioValue, tokenLastUpdated, portfolioLastUpdated, currentNetwork]);
 
   if (!isConnected) {
     return (
       <>
-        <Header/>
+        <Header />
         <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
           <div className="text-center py-12">
             <WalletIcon className="mx-auto h-16 w-16 text-gray-400 mb-4" />
@@ -137,7 +137,7 @@ export default function PortfolioPage() {
 
   return (
     <>
-      <Header/>
+      <Header />
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
         {/* Page Header */}
         <div className="mb-8">
@@ -216,13 +216,10 @@ export default function PortfolioPage() {
                   </span> */}
                 </div>
                 <p className="text-3xl font-bold text-gray-900">
-                  {portfolioSummary.currencySymbol === 'MATIC'
-                    ? portfolioSummary.portfolioTotal.toFixed(4)
-                    : portfolioSummary.portfolioTotal.toFixed(0)
-                  } {portfolioSummary.currencySymbol}
+                  {portfolioSummary.portfolioTotal.toFixed(2)} PT
                 </p>
                 <p className="text-sm text-gray-500 mt-1">
-                  Cash + ポジション時価評価額
+                  Cash + ポジション時価評価額（PT）
                 </p>
                 {portfolioSummary.lastUpdated && (
                   <p className="text-xs text-gray-400 mt-1">
@@ -247,13 +244,10 @@ export default function PortfolioPage() {
                   </span> */}
                 </div>
                 <p className="text-3xl font-bold text-gray-900">
-                  {portfolioSummary.currencySymbol === 'MATIC'
-                    ? portfolioSummary.cash.toFixed(4)
-                    : portfolioSummary.cash.toFixed(0)
-                  } {portfolioSummary.currencySymbol}
+                  {portfolioSummary.cash.toFixed(2)} PT
                 </p>
                 <p className="text-sm text-gray-500 mt-1">
-                  今すぐ使える{portfolioSummary.currencySymbol}残高
+                  今すぐ使えるPlay Token残高
                 </p>
                 {portfolioSummary.lastUpdated && (
                   <p className="text-xs text-gray-400 mt-1">
@@ -276,7 +270,7 @@ export default function PortfolioPage() {
               <ChartBarIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
               <h3 className="text-lg font-semibold text-gray-900 mb-2">チャート機能は準備中です</h3>
               <p className="text-gray-500">
-                ポートフォリオの過去のパフォーマンスを追跡する機能を開発中です。<br/>
+                ポートフォリオの過去のパフォーマンスを追跡する機能を開発中です。<br />
                 今後のアップデートでご利用いただけるようになります。
               </p>
             </div>
@@ -295,11 +289,10 @@ export default function PortfolioPage() {
                 <button
                   key={tab.id}
                   onClick={() => setSelectedTab(tab.id as 'positions' | 'history' | 'analytics')}
-                  className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm ${
-                    selectedTab === tab.id
+                  className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm ${selectedTab === tab.id
                       ? 'border-blue-500 text-blue-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
+                    }`}
                 >
                   <tab.icon className="h-5 w-5 mr-2" />
                   {tab.name}
@@ -382,7 +375,7 @@ export default function PortfolioPage() {
                   <ClockIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
                   <h4 className="text-lg font-semibold text-gray-900 mb-2">取引履歴は準備中です</h4>
                   <p className="text-gray-500">
-                    オンチェーンの取引履歴追跡機能を開発中です。<br/>
+                    オンチェーンの取引履歴追跡機能を開発中です。<br />
                     今後のアップデートでご利用いただけるようになります。
                   </p>
                 </div>
@@ -396,7 +389,7 @@ export default function PortfolioPage() {
                   <TrophyIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
                   <h4 className="text-lg font-semibold text-gray-900 mb-2">分析機能は準備中です</h4>
                   <p className="text-gray-500">
-                    詳細なポートフォリオ分析機能を開発中です。<br/>
+                    詳細なポートフォリオ分析機能を開発中です。<br />
                     勝率、利益率、リスク分析などの機能を今後追加予定です。
                   </p>
                 </div>

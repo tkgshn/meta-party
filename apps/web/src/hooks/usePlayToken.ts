@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { BrowserProvider, Contract, formatUnits } from 'ethers';
+import { NETWORKS, getNetworkByChainId } from '@/config/networks';
 import '@/types/ethereum';
 
 interface PlayTokenState {
@@ -19,7 +20,6 @@ interface PlayTokenActions {
   checkTransactionStatus: (txHash: string) => Promise<{ confirmed: boolean; success: boolean }>;
 }
 
-const PLAY_TOKEN_ADDRESS = process.env.NEXT_PUBLIC_PLAY_TOKEN_ADDRESS;
 const CLAIM_FUNCTION_SELECTOR = '0x4e71d92d';
 const AIRDROP_AMOUNT = BigInt('1000000000000000000000'); // 1000 * 10^18
 
@@ -32,8 +32,14 @@ const PLAY_TOKEN_ABI = [
   'function claim()'
 ] as const;
 
-// Polygon Amoy chain ID
-const POLYGON_AMOY_CHAIN_ID = 80002;
+// Supported networks for Play Token
+const SUPPORTED_CHAIN_IDS = [80002, 11155111]; // Polygon Amoy, Sepolia
+
+// Get Play Token address for current network
+const getPlayTokenAddress = (chainId: number): string | undefined => {
+  const network = getNetworkByChainId(chainId);
+  return network?.contracts.playToken;
+};
 
 // Debug flag - set to false in production
 const DEBUG_MODE = process.env.NODE_ENV === 'development';
@@ -41,10 +47,9 @@ const DEBUG_MODE = process.env.NODE_ENV === 'development';
 // Debug log to check environment variables
 if (DEBUG_MODE) {
   console.log('PlayToken Hook Environment Check:', {
-    PLAY_TOKEN_ADDRESS,
-    hasAddress: !!PLAY_TOKEN_ADDRESS,
-    addressLength: PLAY_TOKEN_ADDRESS?.length,
-    isValidAddress: PLAY_TOKEN_ADDRESS?.startsWith('0x') && PLAY_TOKEN_ADDRESS?.length === 42,
+    supportedChains: SUPPORTED_CHAIN_IDS,
+    amoyAddress: NETWORKS.polygonAmoy?.contracts.playToken,
+    sepoliaAddress: NETWORKS.sepolia?.contracts.playToken,
   });
 }
 
@@ -62,20 +67,31 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
 
   // Initialize provider and contract
   const initializeProvider = useCallback(async () => {
-    if (!window.ethereum || !account || !PLAY_TOKEN_ADDRESS) return null;
+    if (!window.ethereum || !account) return null;
 
     try {
       const provider = new BrowserProvider(window.ethereum);
       const network = await provider.getNetwork();
+      const chainId = Number(network.chainId);
       
-      if (Number(network.chainId) !== POLYGON_AMOY_CHAIN_ID) {
+      // Check if current network is supported
+      if (!SUPPORTED_CHAIN_IDS.includes(chainId)) {
         if (DEBUG_MODE) {
-          console.log('Not on Polygon Amoy network');
+          console.log('Network not supported for Play Token:', chainId);
         }
         return null;
       }
 
-      const contract = new Contract(PLAY_TOKEN_ADDRESS, PLAY_TOKEN_ABI, provider);
+      // Get Play Token address for current network
+      const playTokenAddress = getPlayTokenAddress(chainId);
+      if (!playTokenAddress) {
+        if (DEBUG_MODE) {
+          console.log('Play Token not deployed on network:', chainId);
+        }
+        return null;
+      }
+
+      const contract = new Contract(playTokenAddress, PLAY_TOKEN_ABI, provider);
       
       providerRef.current = provider;
       contractRef.current = contract;
@@ -91,12 +107,9 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
    * PlayToken残高を取得し、状態を更新する。ethers v6を使用してより安定した実装
    */
   const refreshBalance = useCallback(async () => {
-    if (!account || !PLAY_TOKEN_ADDRESS) {
+    if (!account) {
       if (DEBUG_MODE) {
-        console.log('Missing dependencies for balance check:', {
-          account: !!account,
-          token: !!PLAY_TOKEN_ADDRESS
-        });
+        console.log('Missing account for balance check');
       }
       setBalance('0');
       setBalanceWei(BigInt(0));
@@ -167,14 +180,11 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
 
   // Check if user has claimed tokens - optimized version
   const refreshClaimStatus = useCallback(async () => {
-    if (!account || !PLAY_TOKEN_ADDRESS || !window.ethereum) {
+    if (!account || !window.ethereum) {
       if (DEBUG_MODE) {
         console.log('Missing dependencies for claim status check:', {
           account: !!account,
-          token: !!PLAY_TOKEN_ADDRESS,
-          ethereum: !!window.ethereum,
-          tokenAddress: PLAY_TOKEN_ADDRESS,
-          accountAddress: account
+          ethereum: !!window.ethereum
         });
       }
       return;
@@ -201,11 +211,22 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
       // Verify with contract call only if needed
       if (!claimed) {
         try {
+          // Get current network's Play Token address
+          const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+          const playTokenAddress = getPlayTokenAddress(parseInt(chainId as string, 16));
+          
+          if (!playTokenAddress) {
+            if (DEBUG_MODE) {
+              console.log('Play Token not available on current network');
+            }
+            return;
+          }
+          
           const result = await window.ethereum.request({
             method: 'eth_call',
             params: [
               {
-                to: PLAY_TOKEN_ADDRESS,
+                to: playTokenAddress,
                 data: '0x73b2e80e' + paddedAddress, // hasClaimed(address)
               },
               'latest'
@@ -274,9 +295,13 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
             }[] }).transactions;
 
             for (const tx of transactions) {
+              // Get current network's Play Token address for comparison
+              const chainId = await window.ethereum?.request({ method: 'eth_chainId' });
+              const currentPlayTokenAddress = getPlayTokenAddress(parseInt(chainId as string, 16));
+              
               if (
                 tx.from?.toLowerCase() === address.toLowerCase() &&
-                tx.to?.toLowerCase() === PLAY_TOKEN_ADDRESS?.toLowerCase() &&
+                tx.to?.toLowerCase() === currentPlayTokenAddress?.toLowerCase() &&
                 tx.input === CLAIM_FUNCTION_SELECTOR
               ) {
                 claimTxs.push(tx.hash);
@@ -301,17 +326,22 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
 
   // Claim tokens with duplicate prevention
   const claimTokens = useCallback(async (): Promise<{ success: boolean; txHash?: string; error?: string }> => {
-    if (!account || !PLAY_TOKEN_ADDRESS || !window.ethereum) {
+    if (!account || !window.ethereum) {
       if (DEBUG_MODE) {
         console.log('Missing dependencies for claim tokens:', {
           account: !!account,
-          token: !!PLAY_TOKEN_ADDRESS,
-          ethereum: !!window.ethereum,
-          tokenAddress: PLAY_TOKEN_ADDRESS,
-          accountAddress: account
+          ethereum: !!window.ethereum
         });
       }
-      return { success: false, error: 'ウォレットまたはコントラクトアドレスが設定されていません' };
+      return { success: false, error: 'ウォレットが接続されていません' };
+    }
+
+    // Get current network's Play Token address
+    const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+    const playTokenAddress = getPlayTokenAddress(parseInt(chainId as string, 16));
+    
+    if (!playTokenAddress) {
+      return { success: false, error: '現在のネットワークではPlay Tokenは利用できません' };
     }
 
     // Quick balance check to prevent double claims
@@ -352,7 +382,7 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
         method: 'eth_sendTransaction',
         params: [{
           from: account,
-          to: PLAY_TOKEN_ADDRESS,
+          to: playTokenAddress,
           data: CLAIM_FUNCTION_SELECTOR,
           gas: '0x1adb0', // 110000 gas limit
           gasPrice: bufferedGasPrice,
@@ -418,20 +448,24 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
       return false;
     }
 
-    if (!PLAY_TOKEN_ADDRESS) {
-      console.error('PLAY_TOKEN_ADDRESS not set');
+    // Get current network's Play Token address
+    const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+    const playTokenAddress = getPlayTokenAddress(parseInt(chainId as string, 16));
+    
+    if (!playTokenAddress) {
+      console.error('Play Token not available on current network');
       return false;
     }
 
-    if (!PLAY_TOKEN_ADDRESS.startsWith('0x') || PLAY_TOKEN_ADDRESS.length !== 42) {
-      console.error('Invalid PLAY_TOKEN_ADDRESS format:', PLAY_TOKEN_ADDRESS);
+    if (!playTokenAddress.startsWith('0x') || playTokenAddress.length !== 42) {
+      console.error('Invalid Play Token address format:', playTokenAddress);
       return false;
     }
 
     try {
       if (DEBUG_MODE) {
         console.log('Adding token to MetaMask:', {
-          address: PLAY_TOKEN_ADDRESS,
+          address: playTokenAddress,
           symbol: 'PT',
           decimals: 18,
         });
@@ -442,7 +476,7 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
         params: [{
           type: 'ERC20',
           options: {
-            address: PLAY_TOKEN_ADDRESS,
+            address: playTokenAddress,
             symbol: 'PT',
             decimals: 18,
             image: '',

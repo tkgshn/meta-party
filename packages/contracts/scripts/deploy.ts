@@ -41,8 +41,10 @@ async function main() {
   console.log("\nVerifying deployment...");
   
   // Test PlayToken
-  const airdropAmount = await playToken.getAirdropAmount();
-  console.log("PlayToken airdrop amount:", ethers.formatEther(airdropAmount), "PT");
+  const baseAirdropAmount = await playToken.getBaseAirdropAmount();
+  const volunteerBonusAmount = await playToken.getVolunteerBonusAmount();
+  console.log("PlayToken base airdrop amount:", ethers.formatEther(baseAirdropAmount), "PT");
+  console.log("PlayToken volunteer bonus amount:", ethers.formatEther(volunteerBonusAmount), "PT");
   
   // Test MarketFactory
   const factoryPlayToken = await marketFactory.playToken();
@@ -80,11 +82,11 @@ async function main() {
   
   console.log("Test market created at:", marketAddress);
   
-  // Test claiming PlayTokens
-  console.log("\nTesting PlayToken claim...");
-  await playToken.claim();
+  // Test PlayToken distributor role (deployer has initial distributor role)
+  console.log("\nTesting PlayToken distribution...");
+  await playToken.distributeBaseAirdrop(deployer.address);
   const balance_PT = await playToken.balanceOf(deployer.address);
-  console.log("Deployer PT balance after claim:", ethers.formatEther(balance_PT), "PT");
+  console.log("Deployer PT balance after base airdrop:", ethers.formatEther(balance_PT), "PT");
   
   // Output contract addresses for frontend
   console.log("\n=== DEPLOYMENT SUMMARY ===");
