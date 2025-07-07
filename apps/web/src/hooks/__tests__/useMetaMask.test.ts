@@ -33,6 +33,9 @@ describe('useMetaMask', () => {
     // Reset mocks
     jest.clearAllMocks();
     
+    // Clean up global mocks first
+    delete (window as Record<string, unknown>).ethereum;
+    
     // Setup browser mocks
     mockProvider = setupEthereumMock();
     mockLocalStorage = setupLocalStorageMock();
@@ -68,13 +71,22 @@ describe('useMetaMask', () => {
     });
 
     it('should detect when MetaMask is not available', async () => {
-      delete (window as Record<string, unknown>).ethereum;
+      // Replace the mock with a non-MetaMask provider
+      Object.defineProperty(window, 'ethereum', {
+        writable: true,
+        value: {
+          isMetaMask: false, // This is the key - it's not MetaMask
+          request: jest.fn(),
+          on: jest.fn(),
+          removeListener: jest.fn(),
+        },
+      });
 
       const { result } = renderHook(() => useMetaMask());
 
       await waitFor(() => {
         expect(result.current.isInitialized).toBe(true);
-      });
+      }, { timeout: 1000 });
 
       expect(result.current.isMetaMaskAvailable).toBe(false);
       expect(result.current.isConnected).toBe(false);
@@ -149,13 +161,22 @@ describe('useMetaMask', () => {
     });
 
     it('should handle connection without MetaMask', async () => {
-      delete (window as Record<string, unknown>).ethereum;
+      // Replace the mock with a non-MetaMask provider
+      Object.defineProperty(window, 'ethereum', {
+        writable: true,
+        value: {
+          isMetaMask: false, // This is the key - it's not MetaMask
+          request: jest.fn(),
+          on: jest.fn(),
+          removeListener: jest.fn(),
+        },
+      });
 
       const { result } = renderHook(() => useMetaMask());
 
       await waitFor(() => {
         expect(result.current.isInitialized).toBe(true);
-      });
+      }, { timeout: 1000 });
 
       let connectResult: boolean = true;
       await act(async () => {
@@ -352,13 +373,20 @@ describe('useMetaMask', () => {
     });
 
     it('should handle missing ethereum object', async () => {
+      // Completely remove the ethereum object
       delete (window as Record<string, unknown>).ethereum;
+      
+      // Also ensure it's undefined
+      Object.defineProperty(window, 'ethereum', {
+        writable: true,
+        value: undefined,
+      });
 
       const { result } = renderHook(() => useMetaMask());
 
       await waitFor(() => {
         expect(result.current.isInitialized).toBe(true);
-      });
+      }, { timeout: 1000 });
 
       expect(result.current.isMetaMaskAvailable).toBe(false);
     });

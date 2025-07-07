@@ -79,7 +79,7 @@ export function useMetaMask(): MetaMaskState & MetaMaskActions {
     // Double-check MetaMask availability
     if (!window.ethereum || !window.ethereum.isMetaMask) {
       console.error('MetaMask not available');
-      throw new Error('MetaMask not available');
+      return false;
     }
 
     try {
@@ -107,14 +107,8 @@ export function useMetaMask(): MetaMaskState & MetaMaskActions {
     } catch (error: unknown) {
       console.error('Failed to connect to MetaMask:', error);
       
-      // Re-throw specific errors for better handling in UI
-      if ((error as { code?: number })?.code === 4001) {
-        throw new Error('User rejected the connection request');
-      } else if ((error as { code?: number })?.code === -32002) {
-        throw new Error('MetaMask is already processing a connection request');
-      }
-      
-      throw error;
+      // Return false for user rejection and other errors instead of throwing
+      return false;
     }
   }, [getCurrentChainId]);
 
