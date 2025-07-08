@@ -19,11 +19,13 @@ import ClientOnly from './ClientOnly';
 import { useAccount, useDisconnect } from 'wagmi';
 import { useAppKit } from '@reown/appkit/react';
 import { useToken } from '@/hooks/useToken';
+import { useWagmiToken } from '@/hooks/useWagmiToken';
 import { useOnChainPortfolio } from '@/hooks/useOnChainPortfolio';
 import { usePlayToken } from '@/hooks/usePlayToken';
 import { useSponsoredClaim } from '@/hooks/useSponsoredClaim';
 import { NETWORKS, getNetworkByChainId, getCurrencySymbol } from '@/config/networks';
 import NetworkSwitcher from './NetworkSwitcher';
+import { Button } from '@/components/ui/button';
 
 interface HeaderProps {
   onSearch?: (query: string) => void;
@@ -130,7 +132,18 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
     detectNetwork();
   }, [chainId]);
 
-  // Use token hook for current network (matches portfolio page logic)
+  // Use wagmi token hook for social wallets (Reown/WalletConnect)
+  const {
+    balance: wagmiTokenBalance,
+    refreshBalance: wagmiRefreshBalance,
+    claimTokens: wagmiClaimTokens,
+    hasClaimed: wagmiHasClaimed,
+    canClaim: wagmiCanClaim,
+    isLoading: wagmiLoading,
+    isWagmiAvailable
+  } = useWagmiToken(currentNetworkKey);
+
+  // Use traditional token hook for browser wallets (MetaMask)
   const {
     balance: tokenBalance,
     refreshBalance,
@@ -140,6 +153,15 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
     addTokenToMetaMask: tokenHookAddToMetaMask,
     isLoading: tokenHookLoading
   } = useToken(account || null, currentNetworkKey);
+
+  // Determine which hook to use based on wallet type
+  const isUsingWagmi = isWagmiAvailable && !window.ethereum;
+  const actualBalance = isUsingWagmi ? wagmiTokenBalance : tokenBalance;
+  const actualRefreshBalance = isUsingWagmi ? wagmiRefreshBalance : refreshBalance;
+  const actualClaimTokens = isUsingWagmi ? wagmiClaimTokens : claimFromTokenHook;
+  const actualHasClaimed = isUsingWagmi ? wagmiHasClaimed : tokenHookHasClaimed;
+  const actualCanClaim = isUsingWagmi ? wagmiCanClaim : tokenHookCanClaim;
+  const actualIsLoading = isUsingWagmi ? wagmiLoading : tokenHookLoading;
 
   // Use on-chain portfolio data
   const {
@@ -165,15 +187,15 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
 
   // Calculate portfolio value with Play Token priority
   // Use appropriate balance based on network
-  const displayBalance = parseFloat(tokenBalance) || 0;
-  
+  const displayBalance = parseFloat(actualBalance) || 0;
+
   const positionsValue = positionTokens.reduce((sum, token) => sum + token.value, 0);
   const portfolioValue = isConnected ? (totalPortfolioValue || (displayBalance + positionsValue)) : 0;
   const cashValue = isConnected ? displayBalance : 0;
-  
+
   // Always use PT as the display symbol across all networks
   const displaySymbol = 'PT';
-  
+
   // Use appropriate loading state - only show loading during manual refresh
   const [manualRefreshing, setManualRefreshing] = useState(false);
   const isBalanceLoading = manualRefreshing;
@@ -188,9 +210,9 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
   // Initial load when account changes - for all supported networks
   useEffect(() => {
     if (account) {
-      refreshBalance();
+      actualRefreshBalance();
     }
-  }, [account, currentNetworkKey, refreshBalance]);
+  }, [account, currentNetworkKey, actualRefreshBalance]);
 
   // Handle search input
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -284,50 +306,87 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
 
                 {/* Action Buttons */}
                 <div className="flex items-center space-x-2">
-                  {/* Sponsored Claim Button (Gasless) - show for Sepolia only */}
-                  {currentNetworkKey === 'sepolia' && tokenHookCanClaim && account && (
+                  {/* Unified Claim Button - show for supported networks where tokens can be claimed */}
+                  {actualCanClaim && account && (currentNetworkKey === 'sepolia' || currentNetworkKey === 'polygonAmoy') && (
                     <button
                       onClick={async () => {
                         setManualRefreshing(true);
                         try {
-                          const result = await claimSponsored(account);
+                          // Try sponsored claim first for Sepolia, fallback to regular claim
+                          let result;
+                          if (currentNetworkKey === 'sepolia' && !isUsingWagmi) {
+                            result = await claimSponsored(account);
+                            if (!result.success && actualClaimTokens) {
+                              // Fallback to regular claim
+                              result = await actualClaimTokens();
+                            }
+                          } else if (actualClaimTokens) {
+                            // Use regular claim for other networks or wagmi wallets
+                            result = await actualClaimTokens();
+                          } else {
+                            result = { success: false, error: 'Claim function not available' };
+                          }
+
                           if (!result.success) {
-                            alert(`エラー: ${result.error || 'スポンサークレームに失敗しました'}`);
+                            if (result.error?.includes('ガス代') || result.error?.includes('insufficient funds')) {
+                              let faucetUrl = 'https://faucet.polygon.technology/';
+                              let networkName = 'testnet';
+
+                              // Network-specific faucet URLs
+                              if (currentNetworkKey === 'sepolia') {
+                                faucetUrl = 'https://sepoliafaucet.com/';
+                                networkName = 'Sepolia';
+                              } else if (currentNetworkKey === 'polygonAmoy') {
+                                faucetUrl = 'https://faucet.polygon.technology/';
+                                networkName = 'Polygon Amoy';
+                              }
+
+                              alert(`ガス代が不足しています。${networkName}フォーセットからテストトークンを取得してください: ${faucetUrl}`);
+                            } else {
+                              alert(`エラー: ${result.error || 'トークンの取得に失敗しました'}`);
+                            }
                           } else {
                             // Success - refresh balance and auto-add token to MetaMask
-                            await refreshBalance();
+                            await actualRefreshBalance();
                             setTimeout(async () => {
                               try {
-                                await tokenHookAddToMetaMask();
+                                // Only try to add token if using browser wallet
+                                if (!isUsingWagmi && tokenHookAddToMetaMask) {
+                                  await tokenHookAddToMetaMask();
+                                }
                               } catch (error) {
                                 console.log('MetaMask token add failed (optional):', error);
                               }
                             }, 2000);
-                            alert('🎉 1,000 PT を無料で受け取りました！ガス代はスポンサーが負担しました。');
+
+                            const successMessage = currentNetworkKey === 'sepolia'
+                              ? '🎉 1,000 PT を無料で受け取りました！'
+                              : '🎉 1,000 PT の受け取りが完了しました！';
+                            alert(successMessage);
                           }
                         } catch (error) {
-                          console.error('Sponsored claim failed:', error);
-                          alert('スポンサークレームに失敗しました。通常のクレームをお試しください。');
+                          console.error('Claim failed:', error);
+                          alert('トークンの受け取りに失敗しました。もう一度お試しください。');
                         } finally {
                           setManualRefreshing(false);
                         }
                       }}
-                      disabled={sponsoredClaimLoading || manualRefreshing}
+                      disabled={sponsoredClaimLoading || actualIsLoading || manualRefreshing}
                       className="inline-flex items-center px-3 py-2 border border-purple-600 text-sm font-medium rounded-lg text-white bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 transition-colors"
-                      title="ガス代無料でPlay Tokenを受け取れます（Sepoliaのみ）"
+                      title="1,000 Play Tokenを受け取れます"
                     >
                       <PlusCircleIcon className="h-4 w-4 mr-1" />
                       <span className="hidden sm:inline">
-                        {(sponsoredClaimLoading || manualRefreshing) ? '無料取得中...' : '🎁 無料で1,000 PT'}
+                        {(sponsoredClaimLoading || actualIsLoading || manualRefreshing) ? '取得中...' : '🎁 無料で1,000 PT'}
                       </span>
                       <span className="sm:hidden">
-                        {(sponsoredClaimLoading || manualRefreshing) ? '...' : '🎁 無料'}
+                        {(sponsoredClaimLoading || actualIsLoading || manualRefreshing) ? '...' : '🎁 無料'}
                       </span>
                     </button>
                   )}
 
-                  {/* Play Token Claim Button - show for supported networks where tokens can be claimed */}
-                  {tokenHookCanClaim && claimFromTokenHook && (
+                  {/* Legacy Play Token Claim Button - hidden but kept for reference */}
+                  {false && tokenHookCanClaim && claimFromTokenHook && (
                     <button
                       onClick={async () => {
                         setManualRefreshing(true);
@@ -337,7 +396,7 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                             if (result.error?.includes('ガス代') || result.error?.includes('insufficient funds')) {
                               let faucetUrl = 'https://faucet.polygon.technology/';
                               let networkName = 'testnet';
-                              
+
                               // Network-specific faucet URLs
                               if (currentNetworkKey === 'sepolia') {
                                 faucetUrl = 'https://sepoliafaucet.com/';
@@ -346,17 +405,20 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                                 faucetUrl = 'https://faucet.polygon.technology/';
                                 networkName = 'Polygon Amoy';
                               }
-                              
+
                               alert(`ガス代が不足しています。${networkName}フォーセットからテストトークンを取得してください: ${faucetUrl}`);
                             } else {
                               alert(`エラー: ${result.error || 'トークンの取得に失敗しました'}`);
                             }
                           } else {
                             // Success - refresh balance and auto-add token to MetaMask
-                            await refreshBalance();
+                            await actualRefreshBalance();
                             setTimeout(async () => {
                               try {
-                                await tokenHookAddToMetaMask();
+                                // Only try to add token if using browser wallet
+                                if (!isUsingWagmi && tokenHookAddToMetaMask) {
+                                  await tokenHookAddToMetaMask();
+                                }
                               } catch (error) {
                                 console.log('MetaMask token add failed (optional):', error);
                               }
@@ -384,7 +446,7 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                   )}
 
                   {/* Network Status Message - for unsupported networks */}
-                  {!tokenHookCanClaim && !claimFromTokenHook && currentChainId && (
+                  {!actualCanClaim && !actualClaimTokens && currentChainId && (
                     <div className="flex items-center space-x-2">
                       <div className="inline-flex items-center px-3 py-2 border border-yellow-400 text-sm font-medium rounded-lg text-yellow-700 bg-yellow-50">
                         <InformationCircleIcon className="h-4 w-4 mr-1" />
@@ -501,13 +563,13 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                 </div>
               </div>
             ) : (
-              <button
+              <Button
                 onClick={handleConnect}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg transition-colors text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className="bg-blue-600 hover:bg-blue-700"
               >
                 <WalletIcon className="h-4 w-4 mr-2" />
-                ウォレット接続
-              </button>
+                サインアップ
+              </Button>
             )}
             </ClientOnly>
           </div>

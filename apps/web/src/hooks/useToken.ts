@@ -81,9 +81,20 @@ export function useToken(account: string | null, networkKey?: string): TokenStat
 
   // Initialize provider and contract
   const initializeProvider = useCallback(async () => {
-    if (!window.ethereum || !account || !currentNetwork) return null;
+    if (!account || !currentNetwork) return null;
 
     try {
+      // Check if window.ethereum exists (browser wallet)
+      if (!window.ethereum) {
+        // For Reown/WalletConnect, we need to use wagmi's provider
+        // This will be handled in a separate hook
+        if (DEBUG_MODE) {
+          console.log('No window.ethereum detected, likely using WalletConnect/Reown');
+        }
+        setError('Social wallet detected - use wagmi hooks for transactions');
+        return null;
+      }
+
       const provider = new BrowserProvider(window.ethereum);
       const network = await provider.getNetwork();
       
@@ -439,7 +450,15 @@ export function useToken(account: string | null, networkKey?: string): TokenStat
 
   // Add token to MetaMask
   const addTokenToMetaMask = useCallback(async (): Promise<boolean> => {
-    if (!window.ethereum || !tokenAddress) return false;
+    if (!tokenAddress) return false;
+    
+    // Check if window.ethereum exists (browser wallet)
+    if (!window.ethereum) {
+      if (DEBUG_MODE) {
+        console.log('Cannot add token to wallet - no browser wallet detected');
+      }
+      return false;
+    }
 
     try {
       const wasAdded = await window.ethereum.request({
