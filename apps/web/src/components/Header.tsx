@@ -22,6 +22,7 @@ import { useToken } from '@/hooks/useToken';
 import { useOnChainPortfolio } from '@/hooks/useOnChainPortfolio';
 import { usePlayToken } from '@/hooks/usePlayToken';
 import { NETWORKS, getNetworkByChainId, getCurrencySymbol } from '@/config/networks';
+import NetworkSwitcher from './NetworkSwitcher';
 
 interface HeaderProps {
   onSearch?: (query: string) => void;
@@ -147,7 +148,10 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
     balance: playTokenBalance,
     hasClaimed,
     isLoading: playTokenLoading,
-    claimTokens: claimPlayToken
+    claimTokens: claimPlayToken,
+    isContractsAvailable,
+    currentChainId,
+    networkConfig
   } = playTokenHook;
 
   // Calculate portfolio value with Play Token priority
@@ -274,18 +278,16 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
 
                 {/* Action Buttons */}
                 <div className="flex items-center space-x-2">
-                  {/* Play Token Claim Button - show for users who haven't claimed on supported networks */}
-                  {!hasClaimed && (currentNetworkKey === 'polygonAmoy' || currentNetworkKey === 'sepolia') && (
+                  {/* Play Token Claim Button - show for networks with deployed contracts */}
+                  {!hasClaimed && isContractsAvailable && (
                     <button
                       onClick={async () => {
                         const result = await claimPlayToken();
                         if (!result.success) {
                           if (result.error?.includes('ガス代')) {
-                            const faucetLink = currentNetworkKey === 'sepolia' 
-                              ? 'https://sepoliafaucet.com/' 
-                              : 'https://faucet.polygon.technology/';
-                            const networkName = currentNetworkKey === 'sepolia' ? 'Sepolia' : 'Polygon Amoy';
-                            alert(`ガス代が不足しています。${networkName}フォーセットからテストトークンを取得してください: ${faucetLink}`);
+                            const faucetUrl = networkConfig?.faucetUrl || 'https://faucet.polygon.technology/';
+                            const networkName = networkConfig?.name || 'current network';
+                            alert(`ガス代が不足しています。${networkName}フォーセットからテストトークンを取得してください: ${faucetUrl}`);
                           } else {
                             alert(`エラー: ${result.error || 'トークンの取得に失敗しました'}`);
                           }
@@ -308,9 +310,25 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                       </span>
                     </button>
                   )}
+
+                  {/* Network Status Message - for supported networks without deployed contracts */}
+                  {currentChainId && !isContractsAvailable && networkConfig && (
+                    <div className="flex items-center space-x-2">
+                      <div className="inline-flex items-center px-3 py-2 border border-yellow-400 text-sm font-medium rounded-lg text-yellow-700 bg-yellow-50">
+                        <InformationCircleIcon className="h-4 w-4 mr-1" />
+                        <span className="hidden sm:inline">
+                          {networkConfig.name}は準備中です
+                        </span>
+                        <span className="sm:hidden">
+                          準備中
+                        </span>
+                      </div>
+                      <NetworkSwitcher className="text-sm" />
+                    </div>
+                  )}
                   
-                  {/* Play Token Add to MetaMask Button - show for supported networks */}
-                  {(currentNetworkKey === 'polygonAmoy' || currentNetworkKey === 'sepolia') && (
+                  {/* Play Token Add to MetaMask Button - only show for networks with deployed contracts */}
+                  {isContractsAvailable && (
                     <button
                       onClick={playTokenHook.addTokenToMetaMask}
                       className="inline-flex items-center px-3 py-2 border border-blue-600 text-sm font-medium rounded-lg text-blue-600 bg-white hover:bg-blue-50 transition-colors"

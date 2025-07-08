@@ -10,6 +10,9 @@ interface PlayTokenState {
   lastClaimTxHash: string | null;
   claimHistory: string[];
   balanceWei: bigint | null;
+  isContractsAvailable: boolean;
+  currentChainId: number | null;
+  networkConfig: typeof NETWORK_CONFIGS[keyof typeof NETWORK_CONFIGS] | null;
 }
 
 interface PlayTokenActions {
@@ -35,10 +38,38 @@ const PLAY_TOKEN_ABI = [
 // Supported networks for Play Token
 const SUPPORTED_CHAIN_IDS = [80002, 11155111]; // Polygon Amoy, Sepolia
 
+// Network-specific configurations
+const NETWORK_CONFIGS = {
+  80002: { // Polygon Amoy
+    name: 'Polygon Amoy',
+    contractsDeployed: true,
+    faucetUrl: 'https://faucet.polygon.technology/',
+    blockExplorerUrl: 'https://amoy.polygonscan.com',
+  },
+  11155111: { // Sepolia
+    name: 'Sepolia',
+    contractsDeployed: false, // TODO: Set to true once contracts are deployed
+    faucetUrl: 'https://sepoliafaucet.com/',
+    blockExplorerUrl: 'https://sepolia.etherscan.io',
+  }
+};
+
 // Get Play Token address for current network
 const getPlayTokenAddress = (chainId: number): string | undefined => {
   const network = getNetworkByChainId(chainId);
   return network?.contracts.playToken;
+};
+
+// Check if contracts are deployed and available on network
+const areContractsAvailable = (chainId: number): boolean => {
+  const config = NETWORK_CONFIGS[chainId as keyof typeof NETWORK_CONFIGS];
+  const playTokenAddress = getPlayTokenAddress(chainId);
+  return Boolean(config?.contractsDeployed && playTokenAddress);
+};
+
+// Get network configuration
+const getNetworkConfig = (chainId: number) => {
+  return NETWORK_CONFIGS[chainId as keyof typeof NETWORK_CONFIGS];
 };
 
 // Debug flag - set to false in production
@@ -50,6 +81,7 @@ if (DEBUG_MODE) {
     supportedChains: SUPPORTED_CHAIN_IDS,
     amoyAddress: NETWORKS.polygonAmoy?.contracts.playToken,
     sepoliaAddress: NETWORKS.sepolia?.contracts.playToken,
+    nodeEnv: process.env.NODE_ENV,
   });
 }
 
@@ -60,6 +92,9 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
   const [isLoading, setIsLoading] = useState(false);
   const [lastClaimTxHash, setLastClaimTxHash] = useState<string | null>(null);
   const [claimHistory, setClaimHistory] = useState<string[]>([]);
+  const [isContractsAvailable, setIsContractsAvailable] = useState(false);
+  const [currentChainId, setCurrentChainId] = useState<number | null>(null);
+  const [networkConfig, setNetworkConfig] = useState<typeof NETWORK_CONFIGS[keyof typeof NETWORK_CONFIGS] | null>(null);
   
   const providerRef = useRef<BrowserProvider | null>(null);
   const contractRef = useRef<Contract | null>(null);
@@ -82,11 +117,20 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
         return null;
       }
 
+      // Check if contracts are deployed and available
+      if (!areContractsAvailable(chainId)) {
+        const networkConfig = getNetworkConfig(chainId);
+        if (DEBUG_MODE) {
+          console.log(`Play Token not available on ${networkConfig?.name || 'network'}:`, chainId);
+        }
+        return null;
+      }
+
       // Get Play Token address for current network
       const playTokenAddress = getPlayTokenAddress(chainId);
       if (!playTokenAddress) {
         if (DEBUG_MODE) {
-          console.log('Play Token not deployed on network:', chainId);
+          console.log('Play Token address not configured for network:', chainId);
         }
         return null;
       }
@@ -96,9 +140,18 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
       providerRef.current = provider;
       contractRef.current = contract;
       
-      return { provider, contract };
+      // Update state with current network info
+      setCurrentChainId(chainId);
+      setNetworkConfig(getNetworkConfig(chainId));
+      setIsContractsAvailable(true);
+      
+      return { provider, contract, chainId, networkConfig: getNetworkConfig(chainId) };
     } catch (error) {
       console.error('Failed to initialize provider:', error);
+      // Reset state on error
+      setCurrentChainId(null);
+      setNetworkConfig(null);
+      setIsContractsAvailable(false);
       return null;
     }
   }, [account]);
@@ -120,10 +173,22 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
       const initialized = await initializeProvider();
       if (!initialized) {
         if (DEBUG_MODE) {
-          console.log('Failed to initialize provider');
+          console.log('Failed to initialize provider - contracts not deployed on this network');
         }
         setBalance('0');
         setBalanceWei(BigInt(0));
+        
+        // Update network state even if contracts not available
+        try {
+          const provider = new BrowserProvider(window.ethereum!);
+          const network = await provider.getNetwork();
+          const chainId = Number(network.chainId);
+          setCurrentChainId(chainId);
+          setNetworkConfig(getNetworkConfig(chainId));
+          setIsContractsAvailable(false);
+        } catch (error) {
+          console.error('Failed to get network info:', error);
+        }
         return;
       }
 
@@ -162,7 +227,7 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
         if (err.code === 4001) {
           errorMessage = 'User rejected the request';
         } else if (err.code === -32603) {
-          errorMessage = 'Internal JSON-RPC error';
+          errorMessage = 'Internal JSON-RPC error - possibly contract not deployed';
         } else if (err.message) {
           errorMessage = err.message;
         }
@@ -338,10 +403,25 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
 
     // Get current network's Play Token address
     const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-    const playTokenAddress = getPlayTokenAddress(parseInt(chainId as string, 16));
+    const currentChainId = parseInt(chainId as string, 16);
+    const networkConfig = getNetworkConfig(currentChainId);
+    const playTokenAddress = getPlayTokenAddress(currentChainId);
     
-    if (!playTokenAddress) {
-      return { success: false, error: '現在のネットワークではPlay Tokenは利用できません' };
+    if (!areContractsAvailable(currentChainId)) {
+      const networkName = getNetworkByChainId(currentChainId)?.displayName || 'Unknown Network';
+      if (SUPPORTED_CHAIN_IDS.includes(currentChainId)) {
+        // Network is supported but contracts not deployed yet
+        return { 
+          success: false, 
+          error: `${networkName}ではPlay Tokenの準備中です。現在はPolygon Amoyテストネットをご利用ください。` 
+        };
+      } else {
+        // Network not supported at all
+        return { 
+          success: false, 
+          error: `現在のネットワーク（${networkName}）はサポートされていません。Polygon AmoyまたはSepoliaテストネットに切り替えてください。` 
+        };
+      }
     }
 
     // Quick balance check to prevent double claims
@@ -450,10 +530,12 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
 
     // Get current network's Play Token address
     const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-    const playTokenAddress = getPlayTokenAddress(parseInt(chainId as string, 16));
+    const currentChainId = parseInt(chainId as string, 16);
+    const playTokenAddress = getPlayTokenAddress(currentChainId);
     
-    if (!playTokenAddress) {
-      console.error('Play Token not available on current network');
+    if (!areContractsAvailable(currentChainId)) {
+      const networkName = getNetworkByChainId(currentChainId)?.displayName || 'Unknown Network';
+      console.error(`Play Token not available on current network (${networkName})`);
       return false;
     }
 
@@ -603,6 +685,9 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
     isLoading,
     lastClaimTxHash,
     claimHistory,
+    isContractsAvailable,
+    currentChainId,
+    networkConfig,
 
     // Actions
     refreshBalance,

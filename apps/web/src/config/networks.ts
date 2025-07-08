@@ -132,10 +132,10 @@ export const NETWORKS: Record<string, NetworkConfig> = {
       decimals: 18
     },
     contracts: {
-      // Contracts will be deployed dynamically during development
-      playToken: undefined,
-      marketFactory: undefined,
-      conditionalTokens: undefined
+      // Contracts deployed to local Anvil network
+      playToken: process.env.NEXT_PUBLIC_ANVIL_PLAY_TOKEN_ADDRESS || '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512',
+      marketFactory: process.env.NEXT_PUBLIC_ANVIL_MARKET_FACTORY_ADDRESS || '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0',
+      conditionalTokens: process.env.NEXT_PUBLIC_ANVIL_CONDITIONAL_TOKENS_ADDRESS || '0x5FbDB2315678afecb367f032d93F642f64180aa3'
     },
     isTestnet: true,
     gasSettings: {

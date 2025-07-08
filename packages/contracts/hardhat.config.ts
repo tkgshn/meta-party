@@ -58,10 +58,11 @@ const config: HardhatUserConfig = {
       accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : []
     },
     sepolia: {
-      url: process.env.SEPOLIA_URL || "https://rpc.sepolia.org",
+      url: process.env.SEPOLIA_URL || "https://sepolia.publicnode.com",
       accounts: process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
       chainId: 11155111,
-      gasPrice: "auto"
+      gasPrice: "auto",
+      timeout: 60000
     }
   },
   gasReporter: {
