@@ -48,7 +48,7 @@ const NETWORK_CONFIGS = {
   },
   11155111: { // Sepolia
     name: 'Sepolia',
-    contractsDeployed: false, // TODO: Set to true once contracts are deployed
+    contractsDeployed: true, // ✅ Contracts deployed
     faucetUrl: 'https://sepoliafaucet.com/',
     blockExplorerUrl: 'https://sepolia.etherscan.io',
   }
@@ -555,7 +555,7 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
 
       const wasAdded = await window.ethereum.request({
         method: 'wallet_watchAsset',
-        params: [{
+        params: {
           type: 'ERC20',
           options: {
             address: playTokenAddress,
@@ -563,7 +563,7 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
             decimals: 18,
             image: '',
           },
-        }],
+        },
       });
 
       if (DEBUG_MODE) {

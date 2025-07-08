@@ -21,6 +21,7 @@ import { useAppKit } from '@reown/appkit/react';
 import { useToken } from '@/hooks/useToken';
 import { useOnChainPortfolio } from '@/hooks/useOnChainPortfolio';
 import { usePlayToken } from '@/hooks/usePlayToken';
+import { useSponsoredClaim } from '@/hooks/useSponsoredClaim';
 import { NETWORKS, getNetworkByChainId, getCurrencySymbol } from '@/config/networks';
 import NetworkSwitcher from './NetworkSwitcher';
 
@@ -132,7 +133,12 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
   // Use token hook for current network (matches portfolio page logic)
   const {
     balance: tokenBalance,
-    refreshBalance
+    refreshBalance,
+    claimTokens: claimFromTokenHook,
+    hasClaimed: tokenHookHasClaimed,
+    canClaim: tokenHookCanClaim,
+    addTokenToMetaMask: tokenHookAddToMetaMask,
+    isLoading: tokenHookLoading
   } = useToken(account || null, currentNetworkKey);
 
   // Use on-chain portfolio data
@@ -154,11 +160,12 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
     networkConfig
   } = playTokenHook;
 
+  // Use sponsored claim hook for gasless claiming
+  const { claimSponsored, isLoading: sponsoredClaimLoading } = useSponsoredClaim();
+
   // Calculate portfolio value with Play Token priority
-  // Use Play Token balance for Polygon Amoy, regular token balance for other networks
-  const displayBalance = currentNetworkKey === 'polygonAmoy' 
-    ? parseFloat(playTokenBalance) || 0 
-    : parseFloat(tokenBalance) || 0;
+  // Use appropriate balance based on network
+  const displayBalance = parseFloat(tokenBalance) || 0;
   
   const positionsValue = positionTokens.reduce((sum, token) => sum + token.value, 0);
   const portfolioValue = isConnected ? (totalPortfolioValue || (displayBalance + positionsValue)) : 0;
@@ -178,13 +185,12 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
   };
 
 
-  // Initial load when account changes - for supported Play Token networks
+  // Initial load when account changes - for all supported networks
   useEffect(() => {
-    if (account && (currentNetworkKey === 'polygonAmoy' || currentNetworkKey === 'sepolia')) {
-      playTokenHook.refreshBalance();
-      playTokenHook.refreshClaimStatus();
+    if (account) {
+      refreshBalance();
     }
-  }, [account, currentNetworkKey, playTokenHook]);
+  }, [account, currentNetworkKey, refreshBalance]);
 
   // Handle search input
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -264,79 +270,133 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                     <ChartBarIcon className="h-4 w-4 text-blue-600 flex-shrink-0" />
                     <span className="text-gray-600 group-hover:text-blue-700">ポートフォリオ:</span>
                     <span className="font-semibold text-gray-900 group-hover:text-blue-700">
-                      {isBalanceLoading ? '...' : Math.floor(portfolioValue).toLocaleString()} {displaySymbol}
+                      {isBalanceLoading ? '...' : Math.floor(portfolioValue).toLocaleString()} PT
                     </span>
                   </Link>
                   <Link href="/portfolio" className="flex items-center space-x-1 px-2 py-1 rounded hover:bg-green-50 transition-colors cursor-pointer group whitespace-nowrap">
                     <CurrencyDollarIcon className="h-4 w-4 text-green-600 flex-shrink-0" />
                     <span className="text-gray-600 group-hover:text-green-700">キャッシュ:</span>
                     <span className="font-semibold text-gray-900 group-hover:text-green-700">
-                      {isBalanceLoading ? '...' : Math.floor(cashValue).toLocaleString()} {displaySymbol}
+                      {isBalanceLoading ? '...' : Math.floor(cashValue).toLocaleString()} PT
                     </span>
                   </Link>
                 </div>
 
                 {/* Action Buttons */}
                 <div className="flex items-center space-x-2">
-                  {/* Play Token Claim Button - show for networks with deployed contracts */}
-                  {!hasClaimed && isContractsAvailable && (
+                  {/* Sponsored Claim Button (Gasless) - show for Sepolia only */}
+                  {currentNetworkKey === 'sepolia' && tokenHookCanClaim && account && (
                     <button
                       onClick={async () => {
-                        const result = await claimPlayToken();
-                        if (!result.success) {
-                          if (result.error?.includes('ガス代')) {
-                            const faucetUrl = networkConfig?.faucetUrl || 'https://faucet.polygon.technology/';
-                            const networkName = networkConfig?.name || 'current network';
-                            alert(`ガス代が不足しています。${networkName}フォーセットからテストトークンを取得してください: ${faucetUrl}`);
+                        setManualRefreshing(true);
+                        try {
+                          const result = await claimSponsored(account);
+                          if (!result.success) {
+                            alert(`エラー: ${result.error || 'スポンサークレームに失敗しました'}`);
                           } else {
-                            alert(`エラー: ${result.error || 'トークンの取得に失敗しました'}`);
+                            // Success - refresh balance and auto-add token to MetaMask
+                            await refreshBalance();
+                            setTimeout(async () => {
+                              try {
+                                await tokenHookAddToMetaMask();
+                              } catch (error) {
+                                console.log('MetaMask token add failed (optional):', error);
+                              }
+                            }, 2000);
+                            alert('🎉 1,000 PT を無料で受け取りました！ガス代はスポンサーが負担しました。');
                           }
-                        } else {
-                          // Auto-add token to MetaMask after successful claim
-                          setTimeout(() => {
-                            playTokenHook.addTokenToMetaMask();
-                          }, 2000);
+                        } catch (error) {
+                          console.error('Sponsored claim failed:', error);
+                          alert('スポンサークレームに失敗しました。通常のクレームをお試しください。');
+                        } finally {
+                          setManualRefreshing(false);
                         }
                       }}
-                      disabled={playTokenLoading}
-                      className="inline-flex items-center px-3 py-2 border border-green-600 text-sm font-medium rounded-lg text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-400 transition-colors"
+                      disabled={sponsoredClaimLoading || manualRefreshing}
+                      className="inline-flex items-center px-3 py-2 border border-purple-600 text-sm font-medium rounded-lg text-white bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 transition-colors"
+                      title="ガス代無料でPlay Tokenを受け取れます（Sepoliaのみ）"
                     >
                       <PlusCircleIcon className="h-4 w-4 mr-1" />
                       <span className="hidden sm:inline">
-                        {playTokenLoading ? 'Claiming...' : '1,000 PT受け取る'}
+                        {(sponsoredClaimLoading || manualRefreshing) ? '無料取得中...' : '🎁 無料で1,000 PT'}
                       </span>
                       <span className="sm:hidden">
-                        {playTokenLoading ? '...' : 'Claim'}
+                        {(sponsoredClaimLoading || manualRefreshing) ? '...' : '🎁 無料'}
                       </span>
                     </button>
                   )}
 
-                  {/* Network Status Message - for supported networks without deployed contracts */}
-                  {currentChainId && !isContractsAvailable && networkConfig && (
+                  {/* Play Token Claim Button - show for supported networks where tokens can be claimed */}
+                  {tokenHookCanClaim && claimFromTokenHook && (
+                    <button
+                      onClick={async () => {
+                        setManualRefreshing(true);
+                        try {
+                          const result = await claimFromTokenHook();
+                          if (!result.success) {
+                            if (result.error?.includes('ガス代') || result.error?.includes('insufficient funds')) {
+                              let faucetUrl = 'https://faucet.polygon.technology/';
+                              let networkName = 'testnet';
+                              
+                              // Network-specific faucet URLs
+                              if (currentNetworkKey === 'sepolia') {
+                                faucetUrl = 'https://sepoliafaucet.com/';
+                                networkName = 'Sepolia';
+                              } else if (currentNetworkKey === 'polygonAmoy') {
+                                faucetUrl = 'https://faucet.polygon.technology/';
+                                networkName = 'Polygon Amoy';
+                              }
+                              
+                              alert(`ガス代が不足しています。${networkName}フォーセットからテストトークンを取得してください: ${faucetUrl}`);
+                            } else {
+                              alert(`エラー: ${result.error || 'トークンの取得に失敗しました'}`);
+                            }
+                          } else {
+                            // Success - refresh balance and auto-add token to MetaMask
+                            await refreshBalance();
+                            setTimeout(async () => {
+                              try {
+                                await tokenHookAddToMetaMask();
+                              } catch (error) {
+                                console.log('MetaMask token add failed (optional):', error);
+                              }
+                            }, 2000);
+                            alert('1,000 PT の受け取りが完了しました！');
+                          }
+                        } catch (error) {
+                          console.error('Claim failed:', error);
+                          alert('トークンの受け取りに失敗しました。もう一度お試しください。');
+                        } finally {
+                          setManualRefreshing(false);
+                        }
+                      }}
+                      disabled={tokenHookLoading || manualRefreshing}
+                      className="inline-flex items-center px-3 py-2 border border-green-600 text-sm font-medium rounded-lg text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-400 transition-colors"
+                    >
+                      <PlusCircleIcon className="h-4 w-4 mr-1" />
+                      <span className="hidden sm:inline">
+                        {(tokenHookLoading || manualRefreshing) ? 'Claiming...' : '1,000 PT受け取る'}
+                      </span>
+                      <span className="sm:hidden">
+                        {(tokenHookLoading || manualRefreshing) ? '...' : 'Claim'}
+                      </span>
+                    </button>
+                  )}
+
+                  {/* Network Status Message - for unsupported networks */}
+                  {!tokenHookCanClaim && !claimFromTokenHook && currentChainId && (
                     <div className="flex items-center space-x-2">
                       <div className="inline-flex items-center px-3 py-2 border border-yellow-400 text-sm font-medium rounded-lg text-yellow-700 bg-yellow-50">
                         <InformationCircleIcon className="h-4 w-4 mr-1" />
                         <span className="hidden sm:inline">
-                          {networkConfig.name}は準備中です
+                          サポート対象外のネットワークです
                         </span>
                         <span className="sm:hidden">
-                          準備中
+                          未対応
                         </span>
                       </div>
                       <NetworkSwitcher className="text-sm" />
                     </div>
-                  )}
-                  
-                  {/* Play Token Add to MetaMask Button - only show for networks with deployed contracts */}
-                  {isContractsAvailable && (
-                    <button
-                      onClick={playTokenHook.addTokenToMetaMask}
-                      className="inline-flex items-center px-3 py-2 border border-blue-600 text-sm font-medium rounded-lg text-blue-600 bg-white hover:bg-blue-50 transition-colors"
-                    >
-                      <PlusCircleIcon className="h-4 w-4 mr-1" />
-                      <span className="hidden sm:inline">PT追加</span>
-                      <span className="sm:hidden">Add PT</span>
-                    </button>
                   )}
 
                   <button className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
@@ -360,7 +420,7 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                     {showUserMenu && (
                       <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
                         <div className="px-4 py-3 border-b border-gray-200">
-                          <Link href={`/${account}`} className="text-sm font-medium text-gray-900 hover:underline">
+                          <Link href={`/profile/${account}`} className="text-sm font-medium text-gray-900 hover:underline">
                             {account.slice(0, 6)}...{account.slice(-4)}
                           </Link>
                           <div className="text-xs text-gray-500 mt-1">
@@ -381,13 +441,13 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                         </div> */}
 
                           <Link
-                            href={`/${account}`}
+                            href={`/profile/${account}`}
                             className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                             onClick={() => setShowUserMenu(false)}
                           >
                             <div className="flex items-center">
                               <UserIcon className="h-4 w-4 mr-2" />
-                              マイページ
+                              プロフィール
                             </div>
                           </Link>
 
@@ -403,7 +463,7 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                             </div>
                             <div className="text-right">
                               <div className="font-semibold text-gray-900">
-                                {(portfolioLoading || isBalanceLoading) ? '...' : Math.floor(displayBalance).toLocaleString()} {displaySymbol}
+                                {(portfolioLoading || isBalanceLoading) ? '...' : Math.floor(displayBalance).toLocaleString()} PT
                               </div>
                               <div className="text-xs text-green-600">Live</div>
                             </div>

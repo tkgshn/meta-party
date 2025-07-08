@@ -1,0 +1,12 @@
+{
+  "network": "sepolia",
+  "chainId": 11155111,
+  "deployedAt": "2025-07-08T02:38:37.273Z",
+  "deployer": "0x2c5329fFa2A1f02A241Ec1932b4358bf71e158ae",
+  "contracts": {
+    "PlayToken": "0xBe5cC5b0B4D00f637d58008f3577D4Ef30D65a1D",
+    "ConditionalTokens": "0x322819DD35bF132dfA6b312315b32Cd7B4C81A51",
+    "MarketFactory": "0xCdC015712bC57d097CB2754051E06789f9437601"
+  },
+  "blockExplorer": "https://sepolia.etherscan.io"
+}

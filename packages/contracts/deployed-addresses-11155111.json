@@ -1,0 +1,9 @@
+{
+  "network": "sepolia",
+  "chainId": 11155111,
+  "deployer": "0x2c5329fFa2A1f02A241Ec1932b4358bf71e158ae",
+  "playToken": "0x45d1Fb8fD268E3156D00119C6f195f9ad784C6CE",
+  "conditionalTokens": "0x1d1ddb215F901D0541F588490Aa74f11B09f1e5d",
+  "marketFactory": "0x68eF1D7Fae3067A9E5FcC7Cb3083F6C15e44537d",
+  "testMarket": "0xD1803A3011AD8353B45C64e088C4d01B599B3260"
+}

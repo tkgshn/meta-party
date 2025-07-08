@@ -30,6 +30,7 @@ interface TokenState {
   // Play Token specific
   hasClaimed?: boolean;
   canClaim?: boolean;
+  isTokenAddedToMetaMask?: boolean;
 }
 
 interface TokenActions {
@@ -52,6 +53,7 @@ export function useToken(account: string | null, networkKey?: string): TokenStat
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [hasClaimed, setHasClaimed] = useState<boolean>(false);
+  const [isTokenAddedToMetaMask, setIsTokenAddedToMetaMask] = useState<boolean>(false);
   
   const providerRef = useRef<BrowserProvider | null>(null);
   const contractRef = useRef<Contract | null>(null);
@@ -71,7 +73,9 @@ export function useToken(account: string | null, networkKey?: string): TokenStat
       tokenSymbol,
       isPolygon: currentNetworkKey === 'polygon',
       isAmoy: currentNetworkKey === 'polygonAmoy',
-      shouldHaveContract: currentNetworkKey === 'polygonAmoy'
+      isSepolia: currentNetworkKey === 'sepolia',
+      shouldHaveContract: currentNetworkKey === 'polygonAmoy' || currentNetworkKey === 'sepolia',
+      networkConfig: currentNetwork
     });
   }
 
@@ -244,6 +248,69 @@ export function useToken(account: string | null, networkKey?: string): TokenStat
         }
       }
 
+      // For Sepolia testnet (Chain ID 11155111) with Play Token
+      if (actualChainId === 11155111) {
+        if (!contract) {
+          if (DEBUG_MODE) {
+            console.log('🔍 Debug: No contract available for Sepolia testnet');
+          }
+          setError('Play Token contract not available');
+          return;
+        }
+        if (DEBUG_MODE) {
+          console.log('🔍 Debug: Fetching Play Token balance on Sepolia');
+        }
+        
+        try {
+          // Get Play Token balance
+          const [balanceWei, tokenSymbol, tokenDecimals] = await Promise.all([
+            contract.balanceOf(account),
+            contract.symbol().catch(() => 'PT'),
+            contract.decimals().catch(() => 18)
+          ]);
+
+          if (DEBUG_MODE) {
+            console.log('🔍 Debug: Play Token responses (Sepolia):', {
+              balanceWei: balanceWei.toString(),
+              tokenSymbol,
+              tokenDecimals: tokenDecimals.toString()
+            });
+          }
+
+          const balanceFormatted = formatUnits(balanceWei, tokenDecimals);
+          
+          setBalanceWei(balanceWei);
+          setBalance(balanceFormatted);
+          setSymbol(tokenSymbol);
+          setDecimals(Number(tokenDecimals));
+          setLastUpdated(new Date());
+
+          // Check claim status for Play Token
+          try {
+            const claimed = await contract.hasClaimed(account);
+            setHasClaimed(claimed);
+          } catch (error) {
+            if (DEBUG_MODE) {
+              console.log('🔍 Debug: hasClaimed function error (Sepolia):', error);
+            }
+          }
+
+          if (DEBUG_MODE) {
+            console.log('Play Token balance updated (Sepolia):', {
+              token: tokenSymbol,
+              balance: balanceFormatted,
+              network: currentNetwork.displayName
+            });
+          }
+          
+          return;
+        } catch (error) {
+          console.error('Failed to get Play Token balance (Sepolia):', error);
+          setError(error instanceof Error ? error.message : 'Failed to get Play Token balance');
+          return;
+        }
+      }
+
       // For other networks or when no specific handling, show 0 balance
       if (DEBUG_MODE) {
         console.log('🔍 Debug: No specific handler for chainId:', actualChainId);
@@ -329,10 +396,10 @@ export function useToken(account: string | null, networkKey?: string): TokenStat
     }
   }, [account, tokenAddress, initializeProvider, decimals]);
 
-  // Claim Play Tokens (only for Amoy testnet)
+  // Claim Play Tokens (for supported testnets with deployed contracts)
   const claimTokens = useCallback(async (): Promise<{ success: boolean; txHash?: string; error?: string }> => {
-    if (currentNetworkKey !== 'polygonAmoy') {
-      return { success: false, error: 'Claiming is only available on Amoy testnet' };
+    if (currentNetworkKey !== 'polygonAmoy' && currentNetworkKey !== 'sepolia') {
+      return { success: false, error: 'Claiming is only available on supported testnets (Polygon Amoy or Sepolia)' };
     }
 
     if (!account || !tokenAddress) {
@@ -377,7 +444,7 @@ export function useToken(account: string | null, networkKey?: string): TokenStat
     try {
       const wasAdded = await window.ethereum.request({
         method: 'wallet_watchAsset',
-        params: [{
+        params: {
           type: 'ERC20',
           options: {
             address: tokenAddress,
@@ -385,15 +452,31 @@ export function useToken(account: string | null, networkKey?: string): TokenStat
             decimals: decimals,
             image: '',
           },
-        }],
+        },
       });
+
+      if (wasAdded) {
+        setIsTokenAddedToMetaMask(true);
+        // Store in localStorage for persistence
+        const storageKey = `token_added_${tokenAddress}_${account}`;
+        localStorage.setItem(storageKey, 'true');
+      }
 
       return Boolean(wasAdded);
     } catch (error) {
       console.error('Failed to add token to MetaMask:', error);
       return false;
     }
-  }, [tokenAddress, symbol, decimals]);
+  }, [tokenAddress, symbol, decimals, account]);
+
+  // Check if token is already added to MetaMask on component mount
+  useEffect(() => {
+    if (account && tokenAddress) {
+      const storageKey = `token_added_${tokenAddress}_${account}`;
+      const isAdded = localStorage.getItem(storageKey) === 'true';
+      setIsTokenAddedToMetaMask(isAdded);
+    }
+  }, [account, tokenAddress]);
 
   // Set up real-time updates
   useEffect(() => {
@@ -403,6 +486,7 @@ export function useToken(account: string | null, networkKey?: string): TokenStat
       setSymbol(getCurrencySymbol(currentNetworkKey));
       setDecimals(getCurrencyDecimals(currentNetworkKey));
       setHasClaimed(false);
+      setIsTokenAddedToMetaMask(false);
       setError(null);
       return;
     }
@@ -503,13 +587,14 @@ export function useToken(account: string | null, networkKey?: string): TokenStat
     error,
     lastUpdated,
     hasClaimed,
-    canClaim: currentNetworkKey === 'polygonAmoy' && !hasClaimed,
+    canClaim: (currentNetworkKey === 'polygonAmoy' || currentNetworkKey === 'sepolia') && !hasClaimed,
+    isTokenAddedToMetaMask,
 
     // Actions
     refreshBalance,
     transfer,
     approve,
-    claimTokens: currentNetworkKey === 'polygonAmoy' ? claimTokens : undefined,
+    claimTokens: (currentNetworkKey === 'polygonAmoy' || currentNetworkKey === 'sepolia') ? claimTokens : undefined,
     addTokenToMetaMask
   };
 }

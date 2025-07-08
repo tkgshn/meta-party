@@ -9,6 +9,8 @@ import {
   ChartBarIcon,
   TrophyIcon,
   ClockIcon,
+  PlusCircleIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { useMetaMask } from '@/hooks/useMetaMask';
 import { useToken } from '@/hooks/useToken';
@@ -16,11 +18,13 @@ import { useOnChainPortfolio } from '@/hooks/useOnChainPortfolio';
 import { NETWORKS, getNetworkByChainId, getCurrencySymbol } from '@/config/networks';
 import NetworkSwitcher from '@/components/NetworkSwitcher';
 import Header from '@/components/Header';
+import TwitterVolunteerCard from '@/components/TwitterVolunteerCard';
 
 export default function PortfolioPage() {
   const { account, isConnected, getCurrentChainId } = useMetaMask();
   const [currentNetworkKey, setCurrentNetworkKey] = useState<string>('polygon');
   const [selectedTab, setSelectedTab] = useState<'positions' | 'history' | 'analytics'>('positions');
+  const [showVolunteerModal, setShowVolunteerModal] = useState(false);
 
   // Get current network info
   const currentNetwork = NETWORKS[currentNetworkKey];
@@ -38,6 +42,7 @@ export default function PortfolioPage() {
     canClaim,
     claimTokens,
     addTokenToMetaMask,
+    isTokenAddedToMetaMask,
     refreshBalance
   } = useToken(account, currentNetworkKey);
 
@@ -163,21 +168,40 @@ export default function PortfolioPage() {
                 </p>
               </div>
             </div>
-            {canClaim && (
-              <button
-                onClick={async () => {
-                  if (claimTokens) {
-                    const result = await claimTokens();
-                    if (result.success) {
-                      refreshBalance();
+            <div className="flex items-center space-x-3">
+              {canClaim && (
+                <button
+                  onClick={async () => {
+                    if (claimTokens) {
+                      const result = await claimTokens();
+                      if (result.success) {
+                        refreshBalance();
+                      }
                     }
-                  }
-                }}
-                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                テストトークンを取得
-              </button>
-            )}
+                  }}
+                  className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  サインアップボーナス（1,000PT）を取得
+                </button>
+              )}
+              {!canClaim && !isTokenAddedToMetaMask && (currentNetworkKey === 'polygonAmoy' || currentNetworkKey === 'sepolia') && (
+                <button
+                  onClick={async () => {
+                    try {
+                      await addTokenToMetaMask();
+                      alert('Play TokenをMetaMaskに追加しました！');
+                    } catch (error) {
+                      console.error('Failed to add token to MetaMask:', error);
+                      alert('MetaMaskへのトークン追加に失敗しました。手動で追加してください。');
+                    }
+                  }}
+                  className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors"
+                >
+                  <PlusCircleIcon className="h-4 w-4 mr-2" />
+                  $PTをMetamaskからも可視化
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -221,11 +245,11 @@ export default function PortfolioPage() {
                 <p className="text-sm text-gray-500 mt-1">
                   Cash + ポジション時価評価額（PT）
                 </p>
-                {portfolioSummary.lastUpdated && (
+                {/* {portfolioSummary.lastUpdated && (
                   <p className="text-xs text-gray-400 mt-1">
                     最終更新: {format(portfolioSummary.lastUpdated, 'HH:mm:ss')}
                   </p>
-                )}
+                )} */}
               </div>
               <div className="h-16 w-16 bg-blue-100 rounded-lg flex items-center justify-center">
                 <TrophyIcon className="h-8 w-8 text-blue-600" />
@@ -249,11 +273,22 @@ export default function PortfolioPage() {
                 <p className="text-sm text-gray-500 mt-1">
                   今すぐ使えるPlay Token残高
                 </p>
-                {portfolioSummary.lastUpdated && (
+                {/* {!canClaim && (currentNetworkKey === 'polygonAmoy' || currentNetworkKey === 'sepolia') && (
+                  <div className="mt-3 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                    <p className="text-sm text-purple-800 font-medium mb-1">
+                      🎁 ボランティア特典
+                    </p>
+                    <p className="text-xs text-purple-700">
+                      チームみらいのボランティアに参加している人は<br />
+                      <span className="font-semibold">+2,000PT</span>を追加で配布中！
+                    </p>
+                  </div>
+                )} */}
+                {/* {portfolioSummary.lastUpdated && (
                   <p className="text-xs text-gray-400 mt-1">
                     最終更新: {format(portfolioSummary.lastUpdated, 'HH:mm:ss')}
                   </p>
-                )}
+                )} */}
               </div>
               <div className="h-16 w-16 bg-green-100 rounded-lg flex items-center justify-center">
                 <BanknotesIcon className="h-8 w-8 text-green-600" />
@@ -261,6 +296,53 @@ export default function PortfolioPage() {
             </div>
           </div>
         </div>
+
+        {/* Volunteer Bonus Section - show after cash cards */}
+        {!canClaim && (currentNetworkKey === 'polygonAmoy' || currentNetworkKey === 'sepolia') && (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+            <div className="flex items-center space-x-4">
+              <div className="flex-shrink-0">
+                <div className="h-12 w-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center">
+                  <span className="text-xl">🎁</span>
+                </div>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                  ボランティア特典プログラム
+                </h3>
+                <p className="text-sm text-gray-600 mb-3">
+                  チームみらいのボランティア活動に参加している方限定の特典です
+                </p>
+                <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-purple-800">
+                        追加ボーナス配布中
+                      </p>
+                      <p className="text-xs text-purple-600 mt-1">
+                        対象者には自動的に配布されます
+                      </p>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <div className="text-right">
+                        <div className="text-2xl font-bold text-purple-900">
+                          +2,000
+                        </div>
+                        <div className="text-sm text-purple-700">PT</div>
+                      </div>
+                      <button
+                        onClick={() => setShowVolunteerModal(true)}
+                        className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors"
+                      >
+                        詳細・申請
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Portfolio Performance Chart - Coming Soon */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
@@ -307,21 +389,6 @@ export default function PortfolioPage() {
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-gray-900">現在のポジション</h3>
                   <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => {
-                        refreshBalance();
-                        refreshPortfolio();
-                      }}
-                      className="text-sm text-blue-600 hover:text-blue-800 underline"
-                    >
-                      更新
-                    </button>
-                    <button
-                      onClick={addTokenToMetaMask}
-                      className="text-sm text-green-600 hover:text-green-800 underline"
-                    >
-                      🦊 トークンを追加
-                    </button>
                   </div>
                 </div>
 
@@ -397,6 +464,35 @@ export default function PortfolioPage() {
             )}
           </div>
         </div>
+
+        {/* Volunteer Modal */}
+        {showVolunteerModal && (
+          <div className="fixed inset-0 z-50 overflow-y-auto">
+            <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+              <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setShowVolunteerModal(false)}></div>
+              
+              <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+              
+              <div className="relative inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
+                <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      ボランティア特典プログラム
+                    </h3>
+                    <button
+                      onClick={() => setShowVolunteerModal(false)}
+                      className="text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      <XMarkIcon className="h-6 w-6" />
+                    </button>
+                  </div>
+                  
+                  <TwitterVolunteerCard networkKey={currentNetworkKey} />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </>
   );

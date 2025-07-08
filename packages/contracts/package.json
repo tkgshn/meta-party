@@ -13,6 +13,7 @@
     "deploy:local": "hardhat run scripts/deploy.ts --network anvil",
     "deploy:local-fork": "hardhat run scripts/deploy.ts --network anvil-fork",
     "deploy:testnet": "hardhat run scripts/deploy.ts --network polygon-amoy",
+    "deploy:sepolia": "hardhat run scripts/deploy.ts --network sepolia",
     "deploy:mainnet": "hardhat run scripts/deploy.ts --network polygon",
     "seed:local": "hardhat run scripts/seed-local.ts --network anvil"
   },

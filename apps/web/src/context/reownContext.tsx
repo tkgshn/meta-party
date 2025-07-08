@@ -21,7 +21,7 @@ const metadata = {
   icons: ['https://assets.reown.com/reown-profile-pic.png']
 }
 
-// Create the modal
+// Create the modal with Social Login
 createAppKit({
   adapters: [wagmiAdapter],
   projectId,
@@ -30,6 +30,7 @@ createAppKit({
   metadata: metadata,
   features: {
     analytics: true, // Optional - defaults to your Cloud configuration
+    socials: ['x', 'google', 'discord'], // Enable Twitter (X), Google, Discord
   },
   themeMode: 'light',
   themeVariables: {

@@ -75,10 +75,9 @@ export const NETWORKS: Record<string, NetworkConfig> = {
       decimals: 18
     },
     contracts: {
-      // TODO: Deploy contracts to Sepolia
-      playToken: process.env.NEXT_PUBLIC_SEPOLIA_PLAY_TOKEN_ADDRESS,
-      marketFactory: process.env.NEXT_PUBLIC_SEPOLIA_MARKET_FACTORY_ADDRESS,
-      conditionalTokens: process.env.NEXT_PUBLIC_SEPOLIA_CONDITIONAL_TOKENS_ADDRESS
+      playToken: process.env.NEXT_PUBLIC_SEPOLIA_PLAY_TOKEN_ADDRESS || '0x45d1Fb8fD268E3156D00119C6f195f9ad784C6CE',
+      marketFactory: process.env.NEXT_PUBLIC_SEPOLIA_MARKET_FACTORY_ADDRESS || '0x68eF1D7Fae3067A9E5FcC7Cb3083F6C15e44537d',
+      conditionalTokens: process.env.NEXT_PUBLIC_SEPOLIA_CONDITIONAL_TOKENS_ADDRESS || '0x1d1ddb215F901D0541F588490Aa74f11B09f1e5d'
     },
     isTestnet: true,
     gasSettings: {
