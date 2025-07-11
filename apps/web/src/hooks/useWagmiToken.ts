@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAccount, usePublicClient, useWalletClient, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
-import { formatUnits, parseUnits } from 'viem';
+import { formatUnits } from 'viem';
 import { NETWORKS, getCurrencySymbol, getCurrencyContract, getCurrencyDecimals } from '@/config/networks';
 
 // ERC-20 ABI for token functions

@@ -412,7 +412,6 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
     // Get current network's Play Token address
     const chainId = await window.ethereum.request({ method: 'eth_chainId' });
     const currentChainId = parseInt(chainId as string, 16);
-    const networkConfig = getNetworkConfig(currentChainId);
     const playTokenAddress = getPlayTokenAddress(currentChainId);
     
     if (!areContractsAvailable(currentChainId)) {

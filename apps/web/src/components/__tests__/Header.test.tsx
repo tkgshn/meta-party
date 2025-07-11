@@ -7,7 +7,6 @@ import { useAppKit } from '@reown/appkit/react';
 import { useToken } from '@/hooks/useToken';
 import { useOnChainPortfolio } from '@/hooks/useOnChainPortfolio';
 import { usePlayToken } from '@/hooks/usePlayToken';
-import { NETWORKS } from '@/config/networks';
 
 // Mock modules
 jest.mock('wagmi');
@@ -16,9 +15,11 @@ jest.mock('@/hooks/useToken');
 jest.mock('@/hooks/useOnChainPortfolio');
 jest.mock('@/hooks/usePlayToken');
 jest.mock('next/link', () => {
-  return ({ children, href }: { children: React.ReactNode; href: string }) => (
+  const MockLink = ({ children, href }: { children: React.ReactNode; href: string }) => (
     <a href={href}>{children}</a>
   );
+  MockLink.displayName = 'MockLink';
+  return MockLink;
 });
 
 const mockUseAccount = useAccount as jest.Mock;

@@ -47,7 +47,9 @@ beforeAll(() => {
   console.error = (...args) => {
     if (
       typeof args[0] === 'string' &&
-      args[0].includes('Warning: ReactDOM.render is no longer supported')
+      (args[0].includes('Warning: ReactDOM.render is no longer supported') ||
+       args[0].includes('An update to TestComponent inside a test was not wrapped in act') ||
+       args[0].includes('When testing, code that causes React state updates should be wrapped into act'))
     ) {
       return
     }

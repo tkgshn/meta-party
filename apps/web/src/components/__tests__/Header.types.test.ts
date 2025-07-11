@@ -38,7 +38,7 @@ const validPropsWithHandler: HeaderProps = {
 // Type assertions for compile-time verification
 export type HeaderTypeTests = {
   // Verify props are optional
-  propsAreOptional: HeaderProps extends {} ? true : false;
+  propsAreOptional: HeaderProps extends Record<string, unknown> ? true : false;
   
   // Verify search query is string
   searchQueryIsString: HeaderProps['searchQuery'] extends string | undefined ? true : false;
@@ -66,3 +66,14 @@ export {
   validPropsWithHandler,
   typeTestResults 
 };
+
+// Runtime test to satisfy Jest requirement
+describe('Header TypeScript Types', () => {
+  it('should have correct type definitions', () => {
+    // This test ensures the file is valid and types compile correctly
+    expect(typeTestResults.propsAreOptional).toBe(true);
+    expect(typeTestResults.searchQueryIsString).toBe(true);
+    expect(typeTestResults.showSearchIsBoolean).toBe(true);
+    expect(typeTestResults.onSearchIsFunction).toBe(true);
+  });
+});

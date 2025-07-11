@@ -41,6 +41,11 @@ jest.mock('@/config/networks', () => ({
   },
 }));
 
+interface EthereumRequest {
+  method: string;
+  params?: unknown[];
+}
+
 describe('usePlayToken Hook - Integration Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -51,6 +56,7 @@ describe('usePlayToken Hook - Integration Tests', () => {
     });
 
     // Import the mocked function
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { getNetworkByChainId } = require('@/config/networks');
     
     // Setup mock implementation
@@ -169,7 +175,7 @@ describe('usePlayToken Hook - Integration Tests', () => {
 
   describe('Network-Specific Behavior', () => {
     it('should handle Polygon Amoy network configuration', () => {
-      mockEthereum.request.mockImplementation((params: any) => {
+      mockEthereum.request.mockImplementation((params: EthereumRequest) => {
         if (params.method === 'eth_chainId') {
           return Promise.resolve('0x13882'); // 80002 in hex
         }
@@ -183,7 +189,7 @@ describe('usePlayToken Hook - Integration Tests', () => {
     });
 
     it('should handle Sepolia network configuration', () => {
-      mockEthereum.request.mockImplementation((params: any) => {
+      mockEthereum.request.mockImplementation((params: EthereumRequest) => {
         if (params.method === 'eth_chainId') {
           return Promise.resolve('0xaa36a7'); // 11155111 in hex
         }

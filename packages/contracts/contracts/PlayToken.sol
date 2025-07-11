@@ -174,17 +174,11 @@ contract PlayToken is ERC20, Ownable, AccessControl, ReentrancyGuard {
     }
 
     /**
-     * @dev Direct claim function - allows users to claim 1,000 PT once per address
-     * This provides immediate access without requiring Twitter OAuth flow
+     * @dev Legacy claim function - disabled to enforce Twitter OAuth flow
+     * Users must use the distributeBaseAirdrop function via authenticated backend
      */
-    function claim() external nonReentrant {
-        require(!baseAirdropClaimed[msg.sender], "PlayToken: Already claimed");
-        
-        baseAirdropClaimed[msg.sender] = true;
-        _mint(msg.sender, BASE_AIRDROP_AMOUNT);
-        
-        emit BaseAirdropClaimed(msg.sender, BASE_AIRDROP_AMOUNT);
-        emit TokensDistributed(msg.sender, BASE_AIRDROP_AMOUNT, "Direct claim");
+    function claim() external pure {
+        revert("PlayToken: Use Twitter OAuth flow instead");
     }
 
     /**
