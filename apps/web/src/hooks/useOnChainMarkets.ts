@@ -191,28 +191,40 @@ export function useOnChainMarket(marketAddress: string) {
 
 // Convert OnChainMarket to legacy format for backward compatibility
 export function convertToLegacyMarket(market: OnChainMarket) {
+  const volume = parseFloat(market.volume || '0');
+  const funding = parseFloat(market.totalFunding || '0');
+  
   return {
     id: market.address,
     title: market.title,
     description: market.kpiDescription,
     category: 'governance', // Default category
-    totalVolume: parseFloat(market.volume),
-    participants: market.participants,
+    totalVolume: volume,
+    participants: market.participants || 0,
     endDate: new Date(market.tradingDeadline * 1000),
+    deadline: new Date(market.tradingDeadline * 1000),
     tags: ['futarchy', 'governance'],
-    isFeatured: false,
-    isActive: market.phase === 0, // TRADING phase
+    featured: false,
+    status: (market.phase === 0 ? 'TRADING' : 'CLOSED') as 'TRADING' | 'CLOSED',
     createdAt: new Date(market.createdAt),
     lastTrade: new Date(market.lastUpdated),
-    proposals: market.prices.map((price, index) => ({
-      id: index,
-      title: `提案 ${index + 1}`,
+    topPrice: market.prices && market.prices.length > 0 ? parseFloat(market.prices[0]) : 0.5,
+    change24h: 0.05, // Default value since we don't track 24h changes yet
+    liquidity: funding || volume * 2, // Use funding as liquidity, fallback to 2x volume
+    numProposals: market.numOutcomes || 0,
+    priceHistory: [{
+      time: new Date(market.lastUpdated).toISOString(),
+      price: market.prices && market.prices.length > 0 ? parseFloat(market.prices[0]) : 0.5
+    }],
+    proposals: market.prices && market.prices.length > 0 ? market.prices.map((price, index) => ({
+      id: index.toString(),
+      name: `提案 ${index + 1}`,
       description: `アウトカム ${index + 1}`,
-      probability: Math.round(parseFloat(price) * 100),
-      supporters: Math.floor(market.participants / market.numOutcomes),
-      volume: parseFloat(market.volume) / market.numOutcomes,
-      lastUpdate: new Date(market.lastUpdated)
-    }))
+      price: parseFloat(price) || 0,
+      volume: volume / market.numOutcomes || 0,
+      change24h: 0.02, // Default value
+      supporters: Math.floor((market.participants || 0) / market.numOutcomes) || 1
+    })) : []
   };
 }
 
@@ -253,6 +265,22 @@ export function createSampleMarkets(): OnChainMarket[] {
       volume: '35000',
       participants: 18,
       createdAt: now - oneWeek * 2,
+      lastUpdated: now
+    },
+    {
+      address: '0x3234567890123456789012345678901234567890',
+      title: 'チームみらいが2025年8月31日までに政党要件を満たす',
+      kpiDescription: '「チームみらい」が2025年8月31日までに政治資金規正法第3条に規定する政党要件（所属国会議員5名以上または直近の衆参選挙で全国得票率2%以上）を満たすことができるか？',
+      tradingDeadline: Math.floor(new Date('2025-08-31T23:59:59').getTime() / 1000),
+      resolutionTime: Math.floor(new Date('2025-09-30T23:59:59').getTime() / 1000),
+      numOutcomes: 2, // YES/NO market
+      phase: 0, // TRADING
+      winningOutcome: 0,
+      totalFunding: '50000',
+      prices: ['0.34', '0.66'], // YES: 34%, NO: 66%
+      volume: '25000',
+      participants: 89,
+      createdAt: now - 3 * 24 * 60 * 60 * 1000, // 3 days ago
       lastUpdated: now
     }
   ];

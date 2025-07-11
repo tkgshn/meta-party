@@ -194,16 +194,6 @@ export default function ProfilePage({ params }: ProfilePageProps) {
                       </span>
                     )}
                 </div>
-                <div className="bg-gray-50 rounded-lg px-3 py-2 mb-3">
-                  <a
-                    href={getBlockExplorerUrl(profileAddress)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-gray-600 font-mono hover:text-blue-600 hover:underline cursor-pointer transition-colors"
-                  >
-                    {profileAddress}
-                  </a>
-                </div>
                 <div className="flex items-center space-x-6 text-sm text-gray-500">
                   <span className="flex items-center space-x-2">
                     <WalletIcon className="h-4 w-4" />
@@ -306,7 +296,7 @@ export default function ProfilePage({ params }: ProfilePageProps) {
                     <p className="text-sm font-medium text-gray-600">Portfolio</p>
                   </div>
                   <p className="text-3xl font-bold text-gray-900">
-                    {portfolioLoading ? '...' : Math.floor(calculatedPortfolioValue).toLocaleString()} PT
+                    {portfolioLoading ? '...' : Math.floor(calculatedPortfolioValue || 0).toLocaleString()} PT
                   </p>
                   <p className="text-sm text-gray-500 mt-1">
                     総資産価値（Cash + ポジション）
@@ -328,7 +318,7 @@ export default function ProfilePage({ params }: ProfilePageProps) {
                     <p className="text-sm font-medium text-gray-600">Cash</p>
                   </div>
                   <p className="text-3xl font-bold text-gray-900">
-                    {tokenLoading || portfolioLoading ? '...' : Math.floor(displayBalance).toLocaleString()} PT
+                    {tokenLoading || portfolioLoading ? '...' : Math.floor(displayBalance || 0).toLocaleString()} PT
                   </p>
                   <p className="text-sm text-gray-500 mt-1">
                     今すぐ使えるPlay Token残高

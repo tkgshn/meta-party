@@ -372,7 +372,7 @@ export default function MarketDetailPage() {
                 </span>
                 <span className="inline-flex items-center">
                   <BanknotesIcon className="w-4 h-4 mr-1" />
-                  {marketData.totalVolume.toLocaleString()} PT
+                  {(marketData.totalVolume || 0).toLocaleString()} PT
                 </span>
               </div>
             </div>
@@ -512,7 +512,7 @@ export default function MarketDetailPage() {
                               </div>
                               {/* <p className="text-sm text-gray-600 mb-3">{proposal.description}</p> */}
                               <div className="flex items-center space-x-4 text-xs text-gray-500">
-                                <span>{proposal.volume.toLocaleString()} ボリューム</span>
+                                <span>{(proposal.volume || 0).toLocaleString()} ボリューム</span>
                                 <span className="flex items-center">
                                   {proposal.supporters}人の支持者
                                 </span>
@@ -823,7 +823,7 @@ export default function MarketDetailPage() {
                         <BanknotesIcon className="w-5 h-5" />
                       </div>
                       <div className="text-lg font-semibold text-gray-900">
-                        {marketData.totalVolume.toLocaleString()}
+                        {(marketData.totalVolume || 0).toLocaleString()}
                       </div>
                       <div className="text-xs text-gray-500">取引量 (PT)</div>
                     </div>
