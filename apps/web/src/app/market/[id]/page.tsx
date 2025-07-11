@@ -9,7 +9,8 @@ import {
   CalendarIcon,
   UserGroupIcon,
   ClockIcon,
-  BanknotesIcon
+  BanknotesIcon,
+  ArrowPathIcon
 } from '@heroicons/react/24/outline';
 import {
   LineChart,
@@ -30,9 +31,41 @@ import { useAppKit } from '@reown/appkit/react';
 import { useOnChainPortfolio } from '@/hooks/useOnChainPortfolio';
 import { onChainService } from '@/lib/onChainService';
 
-// Helper function to get market data by ID
+// Helper function to get market data by ID (fallback for sample data)
 const getMarketById = (id: string) => {
-  return miraiMarkets.find(market => market.id === id);
+  // This would be used only if no on-chain market is found
+  const sampleMarkets = [
+    {
+      id: 'sample-1',
+      title: 'サンプル市場',
+      description: 'サンプル市場の説明',
+      category: 'governance',
+      totalVolume: 1000,
+      participants: 10,
+      endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      tags: ['sample'],
+      isFeatured: false,
+      isActive: true,
+      createdAt: new Date(),
+      lastTrade: new Date(),
+      liquidity: 1000,
+      topPrice: 0.5,
+      proposals: [
+        {
+          id: '0',
+          name: '提案 1',
+          description: 'サンプル提案',
+          price: 0.5,
+          probability: 50,
+          supporters: 5,
+          volume: 500,
+          lastUpdate: new Date()
+        }
+      ]
+    }
+  ];
+  return sampleMarkets.find(market => market.id === id);
 };
 
 // Convert on-chain market to legacy format for backward compatibility
@@ -207,6 +240,48 @@ export default function MarketDetailPage() {
   
   // Suppress unused variable warning for now
   console.log('Market state available:', typeof updateMarketState);
+
+  // Handle buy outcome
+  const handleBuyOutcome = async () => {
+    if (!onChainMarket || !account || !amount || !selectedBuyButton) {
+      console.error('Missing required data for trade');
+      return;
+    }
+
+    setIsTrading(true);
+    try {
+      // Get the outcome index based on the selected button
+      const outcomeIndex = selectedBuyButton.type === 'yes' ? 
+        parseInt(selectedBuyButton.proposalId) : 
+        parseInt(selectedBuyButton.proposalId) + onChainMarket.numOutcomes;
+
+      // Execute the trade
+      const txHash = await onChainService.buyOutcome(
+        onChainMarket.address,
+        outcomeIndex,
+        amount,
+        account
+      );
+
+      console.log('Trade executed successfully:', txHash);
+      
+      // Refresh market data
+      await refreshMarket();
+      
+      // Reset form
+      setAmount('');
+      setSelectedBuyButton(null);
+      
+      // Show success message (you could add a toast here)
+      alert('取引が完了しました！');
+      
+    } catch (error) {
+      console.error('Trade failed:', error);
+      alert('取引に失敗しました: ' + (error instanceof Error ? error.message : '不明なエラー'));
+    } finally {
+      setIsTrading(false);
+    }
+  };
 
   // Initialize selected proposal and buy button
   useEffect(() => {
@@ -1035,13 +1110,23 @@ export default function MarketDetailPage() {
 
                       {/* Trade Button */}
                       <button
-                        className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium text-lg"
-                        disabled={!amount}
+                        className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-lg flex items-center justify-center space-x-2"
+                        disabled={!amount || !account || isTrading}
+                        onClick={handleBuyOutcome}
                       >
-                        {selectedBuyButton
-                          ? `Buy ${selectedBuyButton.type === 'yes' ? 'Yes' : 'No'}`
-                          : `Buy ${selectedOutcome === 'yes' ? 'Yes' : 'No'}`
-                        }
+                        {isTrading ? (
+                          <>
+                            <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                            <span>取引中...</span>
+                          </>
+                        ) : (
+                          <span>
+                            {selectedBuyButton
+                              ? `Buy ${selectedBuyButton.type === 'yes' ? 'Yes' : 'No'}`
+                              : `Buy ${selectedOutcome === 'yes' ? 'Yes' : 'No'}`
+                            }
+                          </span>
+                        )}
                       </button>
 
                       {/* <div className="mt-4 text-xs text-gray-500 text-center">

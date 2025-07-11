@@ -11,7 +11,8 @@ import {
   CheckCircleIcon,
 } from '@heroicons/react/24/outline';
 import Header from '@/components/Header';
-import { useAccount } from 'wagmi';
+import { useAppKit } from '@reown/appkit/react';
+import { useOnChainMarkets } from '@/hooks/useOnChainMarkets';
 
 interface AdminStats {
   totalMarkets: number;
@@ -27,15 +28,17 @@ interface AdminStats {
  * - 市場作成、ユーザー管理、統計表示
  */
 export default function AdminDashboard() {
-  const { address: account, isConnected } = useAccount();
-  const [stats, setStats] = useState<AdminStats>({
-    totalMarkets: 0,
-    activeMarkets: 0,
-    totalUsers: 0,
-    totalVolume: 0,
-    marketCreators: 0,
-  });
-  const [loading, setLoading] = useState(true);
+  const { account, isConnected } = useAppKit();
+  const { markets, platformStats, isLoading, error } = useOnChainMarkets();
+  // Use real on-chain data for stats
+  const stats: AdminStats = {
+    totalMarkets: platformStats?.totalMarkets || 0,
+    activeMarkets: platformStats?.activeMarkets || 0,
+    totalUsers: platformStats?.totalParticipants || 0,
+    totalVolume: platformStats ? parseFloat(platformStats.totalVolume) : 0,
+    marketCreators: Math.floor((platformStats?.totalParticipants || 0) / 10), // Estimate
+  };
+  // Loading state comes from on-chain data hook
   const [isAuthorized, setIsAuthorized] = useState(false);
 
   // ホワイトリストされたアドレス
@@ -44,7 +47,6 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (!account) {
       setIsAuthorized(false);
-      setLoading(false);
       return;
     }
 
@@ -52,32 +54,13 @@ export default function AdminDashboard() {
     const checkAuthorization = () => {
       const isWhitelisted = account.toLowerCase() === whitelistedAddress.toLowerCase();
       setIsAuthorized(isWhitelisted);
-      setLoading(false);
     };
 
     checkAuthorization();
   }, [account]);
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        // Mock stats for now
-        setStats({
-          totalMarkets: 11,
-          activeMarkets: 11,
-          totalUsers: 142,
-          totalVolume: 25780,
-          marketCreators: 1,
-        });
-      } catch (err) {
-        console.error('Failed to fetch stats:', err);
-      }
-    };
-
-    if (isAuthorized) {
-      fetchStats();
-    }
-  }, [isAuthorized]);
+  // Stats are now derived from on-chain data above
+  // No need for separate useEffect to fetch stats
 
   // 未接続時の表示
   if (!isConnected || !account) {
@@ -101,8 +84,8 @@ export default function AdminDashboard() {
     );
   }
 
-  // 認証中のローディング
-  if (loading) {
+  // データ読み込み中のローディング
+  if (isLoading) {
     return (
       <>
         <Header />
