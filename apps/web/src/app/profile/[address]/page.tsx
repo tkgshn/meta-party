@@ -202,6 +202,21 @@ export default function ProfilePage({ params }: ProfilePageProps) {
                     <WalletIcon className="h-4 w-4" />
                     <span>{currentNetwork?.displayName || 'Unknown Network'}</span>
                   </span>
+                  {/* Twitter account information */}
+                  {((isOwnProfile && currentUser.twitterUsername) || 
+                    (!isOwnProfile && externalUserProfile?.twitterUsername)) && (
+                    <a
+                      href={`https://x.com/${isOwnProfile ? currentUser.twitterUsername : externalUserProfile?.twitterUsername}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center space-x-2 text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+                    >
+                      <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                      </svg>
+                      <span>@{isOwnProfile ? currentUser.twitterUsername : externalUserProfile?.twitterUsername}</span>
+                    </a>
+                  )}
                 </div>
               </div>
             </div>
@@ -225,6 +240,21 @@ export default function ProfilePage({ params }: ProfilePageProps) {
               <div className="text-xs text-gray-500">
                 アドレス: {shortAddress}
               </div>
+              {/* Twitter account link in network info */}
+              {((isOwnProfile && currentUser.twitterUsername) || 
+                (!isOwnProfile && externalUserProfile?.twitterUsername)) && (
+                <a
+                  href={`https://x.com/${isOwnProfile ? currentUser.twitterUsername : externalUserProfile?.twitterUsername}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center space-x-1 text-xs text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+                >
+                  <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                  </svg>
+                  <span>@{isOwnProfile ? currentUser.twitterUsername : externalUserProfile?.twitterUsername}</span>
+                </a>
+              )}
             </div>
           </div>
         </div>
