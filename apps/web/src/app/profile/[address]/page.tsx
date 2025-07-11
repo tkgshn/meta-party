@@ -52,7 +52,7 @@ export default function ProfilePage({ params }: ProfilePageProps) {
   // 現在のネットワーク情報を取得
   const currentChainId = getCurrentChainId();
   const currentNetwork = currentChainId ? Object.values(NETWORKS).find(network => network.chainId === currentChainId) : null;
-  const currentNetworkKey = currentNetwork ? Object.keys(NETWORKS).find(key => NETWORKS[key].chainId === currentChainId) || 'polygonAmoy' : 'polygonAmoy';
+  const currentNetworkKey = currentNetwork ? Object.keys(NETWORKS).find(key => NETWORKS[key].chainId === currentChainId) || 'sepolia' : 'sepolia';
 
   const { 
     positionTokens, 
@@ -65,16 +65,15 @@ export default function ProfilePage({ params }: ProfilePageProps) {
   // Block explorer URLを動的に生成
   const getBlockExplorerUrl = (address: string) => {
     if (!currentNetwork?.blockExplorer) {
-      // デフォルトはPolygon Amoy
-      return `https://amoy.polygonscan.com/address/${address}`;
+      // デフォルトはSepolia
+      return `https://sepolia.etherscan.io/address/${address}`;
     }
     return `${currentNetwork.blockExplorer}/address/${address}`;
   };
 
   const getBlockExplorerName = () => {
-    if (currentChainId === 137) return 'PolygonScan'; // Polygon Mainnet
-    if (currentChainId === 80002) return 'PolygonScan (Amoy)'; // Polygon Amoy
     if (currentChainId === 11155111) return 'Etherscan (Sepolia)'; // Sepolia
+    if (currentChainId === 31337) return 'Local Explorer'; // Anvil
     return 'BlockExplorer';
   };
 
@@ -84,15 +83,14 @@ export default function ProfilePage({ params }: ProfilePageProps) {
   return (
     <>
       <Header showSearch={false} />
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full"
-        style={{ backgroundColor: '#f9fafb' }}>
+      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
         {/* プロフィールヘッダー */}
         <Card className="mb-6">
           <CardContent className="p-6">
             <div className="flex items-start justify-between">
               <div className="flex items-center space-x-6">
                 <div className="flex-shrink-0">
-                  <div className="h-20 w-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
+                  <div className="h-20 w-20 bg-gray-900 rounded-full flex items-center justify-center shadow-lg">
                     <UserCircleIcon className="h-12 w-12 text-white" />
                   </div>
                 </div>
@@ -142,60 +140,60 @@ export default function ProfilePage({ params }: ProfilePageProps) {
         <Card className="mb-6">
           <CardContent className="p-6">
             <div className="flex items-center space-x-3 mb-6">
-              <ChartBarIcon className="h-6 w-6 text-blue-600" />
+              <ChartBarIcon className="h-6 w-6 text-gray-600" />
               <h2 className="text-xl font-semibold text-gray-900">
                 ポートフォリオ概要
               </h2>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-6 border border-blue-200 shadow-sm">
+              <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-sm text-blue-600 font-medium mb-2">
+                    <div className="text-sm text-gray-600 font-medium mb-2">
                       キャッシュ
                     </div>
-                    <div className="text-3xl font-bold text-blue-900 mb-1">
+                    <div className="text-3xl font-bold text-gray-900 mb-1">
                       {portfolioLoading ? '...' : Math.floor(Number(tokenBalance)).toLocaleString()}
                     </div>
-                    <div className="text-sm text-blue-700 font-medium">PT</div>
+                    <div className="text-sm text-gray-600 font-medium">PT</div>
                   </div>
-                  <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <WalletIcon className="h-6 w-6 text-blue-600" />
+                  <div className="h-12 w-12 bg-gray-100 rounded-lg flex items-center justify-center">
+                    <WalletIcon className="h-6 w-6 text-gray-600" />
                   </div>
                 </div>
               </div>
               
-              <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-6 border border-green-200 shadow-sm">
+              <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-sm text-green-600 font-medium mb-2">
+                    <div className="text-sm text-gray-600 font-medium mb-2">
                       ポジション数
                     </div>
-                    <div className="text-3xl font-bold text-green-900 mb-1">
+                    <div className="text-3xl font-bold text-gray-900 mb-1">
                       {positionTokens.length}
                     </div>
-                    <div className="text-sm text-green-700 font-medium">マーケット</div>
+                    <div className="text-sm text-gray-600 font-medium">マーケット</div>
                   </div>
-                  <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
-                    <ChartBarIcon className="h-6 w-6 text-green-600" />
+                  <div className="h-12 w-12 bg-gray-100 rounded-lg flex items-center justify-center">
+                    <ChartBarIcon className="h-6 w-6 text-gray-600" />
                   </div>
                 </div>
               </div>
               
-              <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-6 border border-purple-200 shadow-sm">
+              <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-sm text-purple-600 font-medium mb-2">
+                    <div className="text-sm text-gray-600 font-medium mb-2">
                       総資産価値
                     </div>
-                    <div className="text-3xl font-bold text-purple-900 mb-1">
+                    <div className="text-3xl font-bold text-gray-900 mb-1">
                       {portfolioLoading ? '...' : Math.floor(totalPortfolioValue).toLocaleString()}
                     </div>
-                    <div className="text-sm text-purple-700 font-medium">PT</div>
+                    <div className="text-sm text-gray-600 font-medium">PT</div>
                   </div>
-                  <div className="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                    <LinkIcon className="h-6 w-6 text-purple-600" />
+                  <div className="h-12 w-12 bg-gray-100 rounded-lg flex items-center justify-center">
+                    <LinkIcon className="h-6 w-6 text-gray-600" />
                   </div>
                 </div>
               </div>
@@ -240,7 +238,7 @@ export default function ProfilePage({ params }: ProfilePageProps) {
                 <div className="flex space-x-3">
                   <Button
                     onClick={() => router.push('/portfolio')}
-                    className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700"
+                    className="flex items-center space-x-2 bg-gray-900 hover:bg-gray-800 text-white"
                   >
                     <ChartBarIcon className="h-5 w-5" />
                     <span>ポートフォリオ詳細</span>

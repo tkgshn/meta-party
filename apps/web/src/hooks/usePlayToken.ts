@@ -102,7 +102,15 @@ export function usePlayToken(account: string | null): PlayTokenState & PlayToken
 
   // Initialize provider and contract
   const initializeProvider = useCallback(async () => {
-    if (!window.ethereum || !account) return null;
+    if (!account) return null;
+    
+    // For social wallets (no window.ethereum), return null to let wagmi handle it
+    if (!window.ethereum) {
+      if (DEBUG_MODE) {
+        console.log('No window.ethereum detected - social wallet should use wagmi instead');
+      }
+      return null;
+    }
 
     try {
       const provider = new BrowserProvider(window.ethereum);

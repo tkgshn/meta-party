@@ -75,10 +75,22 @@ export function useWagmiToken(networkKey?: string): WagmiTokenState & WagmiToken
   const [pendingTxHash, setPendingTxHash] = useState<`0x${string}` | undefined>();
 
   // Get current network or use default
-  const currentNetworkKey = networkKey || (chain ? Object.keys(NETWORKS).find(key => NETWORKS[key].chainId === chain.id) : 'polygon');
+  const currentNetworkKey = networkKey || (chain ? Object.keys(NETWORKS).find(key => NETWORKS[key].chainId === chain.id) : 'sepolia');
   const currentNetwork = currentNetworkKey ? NETWORKS[currentNetworkKey] : undefined;
   const tokenAddress = currentNetwork ? getCurrencyContract(currentNetworkKey) : undefined;
-  const isWagmiAvailable = !!(publicClient && walletClient && account);
+  const isWagmiAvailable = !!(publicClient && account);
+  
+  if (DEBUG_MODE) {
+    console.log('🔍 Wagmi Token Hook Debug:', {
+      currentNetworkKey,
+      chainId: chain?.id,
+      tokenAddress,
+      isWagmiAvailable,
+      hasPublicClient: !!publicClient,
+      hasWalletClient: !!walletClient,
+      hasAccount: !!account
+    });
+  }
 
   // Read balance
   const { data: balanceData, refetch: refetchBalance } = useReadContract({
@@ -98,7 +110,7 @@ export function useWagmiToken(networkKey?: string): WagmiTokenState & WagmiToken
     functionName: 'hasClaimed',
     args: account ? [account] : undefined,
     query: {
-      enabled: !!(tokenAddress && account && publicClient && (currentNetworkKey === 'polygonAmoy' || currentNetworkKey === 'sepolia')),
+      enabled: !!(tokenAddress && account && publicClient && currentNetworkKey === 'sepolia'),
     }
   });
 
@@ -198,8 +210,11 @@ export function useWagmiToken(networkKey?: string): WagmiTokenState & WagmiToken
       return { success: false, error: 'Tokens already claimed' };
     }
 
-    if (currentNetworkKey !== 'polygonAmoy' && currentNetworkKey !== 'sepolia') {
-      return { success: false, error: 'Claiming is only available on supported testnets' };
+    if (currentNetworkKey !== 'sepolia') {
+      return { 
+        success: false, 
+        error: `現在のネットワーク（${currentNetwork?.displayName || 'Unknown'}）ではPlay Tokenの取得はできません。Sepoliaテストネットに切り替えてください。` 
+      };
     }
 
     try {
@@ -228,16 +243,21 @@ export function useWagmiToken(networkKey?: string): WagmiTokenState & WagmiToken
       console.error('Claim failed:', error);
       
       // Handle specific error cases
+      let errorMessage = error.message || 'Claim failed';
+      
       if (error.message?.includes('insufficient funds')) {
-        return { 
-          success: false, 
-          error: 'ガス代が不足しています。ネットワークのネイティブトークンが必要です。' 
-        };
+        errorMessage = 'ガス代（SEP）が不足しています。Sepoliaフォーセットからテストトークンを取得してください: https://sepoliafaucet.com/';
+      } else if (error.message?.includes('already claimed')) {
+        errorMessage = '既にトークンを受け取り済みです。1つのアドレスで受け取れるのは1回のみです。';
+      } else if (error.message?.includes('User rejected')) {
+        errorMessage = 'トランザクションがユーザーによってキャンセルされました。';
+      } else if (error.message?.includes('network')) {
+        errorMessage = 'ネットワークエラーが発生しました。Sepoliaテストネットに接続してください。';
       }
       
       return { 
         success: false, 
-        error: error.message || 'Claim failed' 
+        error: errorMessage 
       };
     }
   }, [isWagmiAvailable, tokenAddress, hasClaimed, currentNetworkKey, writeContractAsync, account]);
@@ -250,7 +270,7 @@ export function useWagmiToken(networkKey?: string): WagmiTokenState & WagmiToken
     isLoading: isLoading || isWaitingForReceipt,
     error,
     hasClaimed,
-    canClaim: (currentNetworkKey === 'polygonAmoy' || currentNetworkKey === 'sepolia') && !hasClaimed,
+    canClaim: currentNetworkKey === 'sepolia' && !hasClaimed,
     
     // Actions
     refreshBalance,

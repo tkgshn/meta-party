@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useTwitterLink } from '@/hooks/useTwitterLink';
 import { useSocialAuth } from '@/hooks/useSocialAuth';
+import { useWagmiToken } from '@/hooks/useWagmiToken';
 import { 
   UserGroupIcon, 
   GiftIcon, 
@@ -16,7 +17,7 @@ interface TwitterVolunteerCardProps {
   networkKey?: string;
 }
 
-export default function TwitterVolunteerCard({ networkKey = 'polygonAmoy' }: TwitterVolunteerCardProps) {
+export default function TwitterVolunteerCard({ networkKey = 'sepolia' }: TwitterVolunteerCardProps) {
   const [twitterInput, setTwitterInput] = useState('');
   const [bonusStatus, setBonusStatus] = useState<{
     loading: boolean;
@@ -47,6 +48,10 @@ export default function TwitterVolunteerCard({ networkKey = 'polygonAmoy' }: Twi
     checkVolunteerStatus, 
     claimVolunteerBonus 
   } = useSocialAuth();
+
+  // Check if we should use wagmi for wallet interactions
+  const { isWagmiAvailable } = useWagmiToken(networkKey);
+  const isUsingWagmi = isWagmiAvailable && !window.ethereum;
 
   // 既存の連携があれば自動設定
   useEffect(() => {
@@ -297,7 +302,7 @@ export default function TwitterVolunteerCard({ networkKey = 'polygonAmoy' }: Twi
           </p>
           {bonusStatus.txHash && (
             <a
-              href={`https://amoy.polygonscan.com/tx/${bonusStatus.txHash}`}
+              href={`https://sepolia.etherscan.io/tx/${bonusStatus.txHash}`}
               target="_blank"
               rel="noopener noreferrer"
               className="text-sm text-blue-600 hover:underline"

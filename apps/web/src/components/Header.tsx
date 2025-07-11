@@ -103,8 +103,8 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
   const { disconnect } = useDisconnect();
   const { open } = useAppKit();
 
-  // Detect current network
-  const [currentNetworkKey, setCurrentNetworkKey] = useState<string>('polygonAmoy');
+  // Detect current network - start with null to avoid race conditions
+  const [currentNetworkKey, setCurrentNetworkKey] = useState<string | null>(null);
 
   // Check if user is authorized admin
   const whitelistedAddress = '0x2c5329fFa2A1f02A241Ec1932b4358bf71e158ae';
@@ -141,7 +141,7 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
     canClaim: wagmiCanClaim,
     isLoading: wagmiLoading,
     isWagmiAvailable
-  } = useWagmiToken(currentNetworkKey);
+  } = useWagmiToken(currentNetworkKey || 'sepolia');
 
   // Use traditional token hook for browser wallets (MetaMask)
   const {
@@ -152,10 +152,11 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
     canClaim: tokenHookCanClaim,
     addTokenToMetaMask: tokenHookAddToMetaMask,
     isLoading: tokenHookLoading
-  } = useToken(account || null, currentNetworkKey);
+  } = useToken(account || null, currentNetworkKey || 'sepolia');
 
   // Determine which hook to use based on wallet type
-  const isUsingWagmi = isWagmiAvailable && !window.ethereum;
+  // Use wagmi for social wallets (no window.ethereum) or when wagmi is the only option
+  const isUsingWagmi = isWagmiAvailable && (typeof window === 'undefined' || !window.ethereum);
   const actualBalance = isUsingWagmi ? wagmiTokenBalance : tokenBalance;
   const actualRefreshBalance = isUsingWagmi ? wagmiRefreshBalance : refreshBalance;
   const actualClaimTokens = isUsingWagmi ? wagmiClaimTokens : claimFromTokenHook;
@@ -204,6 +205,41 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
   const handleDisconnect = async () => {
     await disconnect();
     setShowUserMenu(false);
+  };
+
+  // Switch to Sepolia network
+  const switchToSepolia = async () => {
+    if (!window.ethereum) {
+      throw new Error('MetaMask not detected');
+    }
+
+    try {
+      // Try to switch to Sepolia
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: '0xaa36a7' }], // Sepolia chain ID
+      });
+    } catch (switchError: any) {
+      // If the chain hasn't been added to MetaMask, add it
+      if (switchError.code === 4902) {
+        await window.ethereum.request({
+          method: 'wallet_addEthereumChain',
+          params: [{
+            chainId: '0xaa36a7',
+            chainName: 'Sepolia Testnet',
+            nativeCurrency: {
+              name: 'Sepolia Ether',
+              symbol: 'SEP',
+              decimals: 18
+            },
+            rpcUrls: ['https://rpc.sepolia.org'],
+            blockExplorerUrls: ['https://sepolia.etherscan.io']
+          }]
+        });
+      } else {
+        throw switchError;
+      }
+    }
   };
 
 
@@ -306,40 +342,38 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
 
                 {/* Action Buttons */}
                 <div className="flex items-center space-x-2">
-                  {/* Unified Claim Button - show for supported networks where tokens can be claimed */}
-                  {actualCanClaim && account && (currentNetworkKey === 'sepolia' || currentNetworkKey === 'polygonAmoy') && (
-                    <button
-                      onClick={async () => {
-                        setManualRefreshing(true);
-                        try {
-                          // Try sponsored claim first for Sepolia, fallback to regular claim
-                          let result;
-                          if (currentNetworkKey === 'sepolia' && !isUsingWagmi) {
-                            result = await claimSponsored(account);
-                            if (!result.success && actualClaimTokens) {
-                              // Fallback to regular claim
-                              result = await actualClaimTokens();
-                            }
-                          } else if (actualClaimTokens) {
-                            // Use regular claim for other networks or wagmi wallets
-                            result = await actualClaimTokens();
-                          } else {
-                            result = { success: false, error: 'Claim function not available' };
-                          }
+                  {/* Unified Claim Button - show when network detection is complete */}
+                  {account && currentNetworkKey && (
+                    <>
+                      {/* Show claim button for Sepolia - prioritize showing for first-time users */}
+                      {currentNetworkKey === 'sepolia' && (actualCanClaim || (!actualHasClaimed && !isUsingWagmi)) && (
+                        <button
+                          onClick={async () => {
+                            setManualRefreshing(true);
+                            try {
+                              // Try sponsored claim first for Sepolia, fallback to regular claim
+                              let result;
+                              if (!isUsingWagmi) {
+                                result = await claimSponsored(account);
+                                if (!result.success && actualClaimTokens) {
+                                  // Fallback to regular claim
+                                  result = await actualClaimTokens();
+                                }
+                              } else if (actualClaimTokens) {
+                                // Use regular claim for wagmi wallets
+                                result = await actualClaimTokens();
+                              } else {
+                                result = { success: false, error: 'Claim function not available' };
+                              }
 
                           if (!result.success) {
                             if (result.error?.includes('ガス代') || result.error?.includes('insufficient funds')) {
                               let faucetUrl = 'https://faucet.polygon.technology/';
                               let networkName = 'testnet';
 
-                              // Network-specific faucet URLs
-                              if (currentNetworkKey === 'sepolia') {
-                                faucetUrl = 'https://sepoliafaucet.com/';
-                                networkName = 'Sepolia';
-                              } else if (currentNetworkKey === 'polygonAmoy') {
-                                faucetUrl = 'https://faucet.polygon.technology/';
-                                networkName = 'Polygon Amoy';
-                              }
+                              // Sepolia faucet URL
+                              faucetUrl = 'https://sepoliafaucet.com/';
+                              networkName = 'Sepolia';
 
                               alert(`ガス代が不足しています。${networkName}フォーセットからテストトークンを取得してください: ${faucetUrl}`);
                             } else {
@@ -359,9 +393,7 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                               }
                             }, 2000);
 
-                            const successMessage = currentNetworkKey === 'sepolia'
-                              ? '🎉 1,000 PT を無料で受け取りました！'
-                              : '🎉 1,000 PT の受け取りが完了しました！';
+                            const successMessage = '🎉 1,000 PT を無料で受け取りました！';
                             alert(successMessage);
                           }
                         } catch (error) {
@@ -372,18 +404,59 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                         }
                       }}
                       disabled={sponsoredClaimLoading || actualIsLoading || manualRefreshing}
-                      className="inline-flex items-center px-3 py-2 border border-purple-600 text-sm font-medium rounded-lg text-white bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 transition-colors"
+                      className={`inline-flex items-center px-3 py-2 border text-sm font-medium rounded-lg transition-colors ${
+                        !actualHasClaimed && actualCanClaim 
+                          ? 'border-green-600 text-white bg-green-600 hover:bg-green-700 shadow-lg animate-pulse disabled:bg-gray-400' 
+                          : 'border-purple-600 text-white bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400'
+                      }`}
                       title="1,000 Play Tokenを受け取れます"
                     >
                       <PlusCircleIcon className="h-4 w-4 mr-1" />
                       <span className="hidden sm:inline">
-                        {(sponsoredClaimLoading || actualIsLoading || manualRefreshing) ? '取得中...' : '🎁 無料で1,000 PT'}
+                          {(sponsoredClaimLoading || manualRefreshing) ? '取得中...' : 
+                           (!actualHasClaimed && actualCanClaim ? '🎁 初回ボーナス受け取り' : 'サインアップボーナス')}
                       </span>
                       <span className="sm:hidden">
-                        {(sponsoredClaimLoading || actualIsLoading || manualRefreshing) ? '...' : '🎁 無料'}
+                        {(sponsoredClaimLoading || manualRefreshing) ? '...' : 
+                         (!actualHasClaimed && actualCanClaim ? '🎁 初回' : 'ボーナス')}
                       </span>
                     </button>
                   )}
+
+                  {/* Show network switch button for non-Sepolia networks - show for first-time users */}
+                  {currentNetworkKey !== 'sepolia' && (actualCanClaim || (!actualHasClaimed && !isUsingWagmi)) && (
+                    <button
+                      onClick={async () => {
+                        try {
+                          await switchToSepolia();
+                          alert('Sepoliaネットワークに切り替えました！サインアップボーナスを受け取れます。');
+                        } catch (error) {
+                          console.error('Network switch failed:', error);
+                          alert('ネットワークの切り替えに失敗しました。手動でSepoliaテストネットに切り替えてください。');
+                        }
+                      }}
+                      className={`inline-flex items-center px-3 py-2 border text-sm font-medium rounded-lg transition-colors ${
+                        !actualHasClaimed && (actualCanClaim || (!actualHasClaimed && !isUsingWagmi))
+                          ? 'border-orange-500 text-white bg-orange-500 hover:bg-orange-600 shadow-lg animate-pulse'
+                          : 'border-blue-600 text-blue-600 bg-blue-50 hover:bg-blue-100'
+                      }`}
+                      title="Sepoliaに切り替えてサインアップボーナスを受け取る"
+                    >
+                      <PlusCircleIcon className="h-4 w-4 mr-1" />
+                      <span className="hidden sm:inline">
+                        {!actualHasClaimed && (actualCanClaim || (!actualHasClaimed && !isUsingWagmi)) 
+                          ? '🎁 初回ボーナスを受け取る' 
+                          : 'Sepoliaに切り替え'}
+                      </span>
+                      <span className="sm:hidden">
+                        {!actualHasClaimed && (actualCanClaim || (!actualHasClaimed && !isUsingWagmi)) 
+                          ? '🎁 初回' 
+                          : 'Sepolia'}
+                      </span>
+                    </button>
+                  )}
+                </>
+              )}
 
                   {/* Legacy Play Token Claim Button - hidden but kept for reference */}
                   {false && tokenHookCanClaim && claimFromTokenHook && (
@@ -397,14 +470,9 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                               let faucetUrl = 'https://faucet.polygon.technology/';
                               let networkName = 'testnet';
 
-                              // Network-specific faucet URLs
-                              if (currentNetworkKey === 'sepolia') {
-                                faucetUrl = 'https://sepoliafaucet.com/';
-                                networkName = 'Sepolia';
-                              } else if (currentNetworkKey === 'polygonAmoy') {
-                                faucetUrl = 'https://faucet.polygon.technology/';
-                                networkName = 'Polygon Amoy';
-                              }
+                              // Sepolia faucet URL
+                              faucetUrl = 'https://sepoliafaucet.com/';
+                              networkName = 'Sepolia';
 
                               alert(`ガス代が不足しています。${networkName}フォーセットからテストトークンを取得してください: ${faucetUrl}`);
                             } else {

@@ -10,7 +10,7 @@ import { cookieToInitialState, WagmiProvider, type Config } from 'wagmi'
 const queryClient = new QueryClient()
 
 if (!projectId) {
-  throw new Error('Project ID is not defined')
+  console.warn('Project ID is not defined, using fallback')
 }
 
 // Set up metadata
@@ -29,8 +29,10 @@ createAppKit({
   defaultNetwork: networks[0],
   metadata: metadata,
   features: {
+    email: false,
     analytics: true, // Optional - defaults to your Cloud configuration
-    socials: ['x', 'google', 'discord'], // Enable Twitter (X), Google, Discord
+    socials: ['x'], // Enable Twitter (X), Google, Discord
+    emailShowWallets: false,
   },
   themeMode: 'light',
   themeVariables: {

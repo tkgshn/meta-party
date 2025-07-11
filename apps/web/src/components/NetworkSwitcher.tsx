@@ -12,7 +12,7 @@ interface NetworkSwitcherProps {
 
 export default function NetworkSwitcher({ onNetworkChange, className = '' }: NetworkSwitcherProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedNetwork, setSelectedNetwork] = useState('polygonAmoy');
+  const [selectedNetwork, setSelectedNetwork] = useState('sepolia');
   const { switchNetwork, getCurrentChainId } = useMetaMask();
 
   // Get current network from MetaMask
@@ -88,7 +88,7 @@ export default function NetworkSwitcher({ onNetworkChange, className = '' }: Net
               <h3 className="text-sm font-semibold text-gray-900 mb-3">ネットワークを選択</h3>
               <div className="space-y-2">
                 {Object.entries(NETWORKS)
-                  .filter(([key]) => key === 'polygonAmoy' || key === 'sepolia') // Only show Polygon Amoy and Sepolia
+                  .filter(([key]) => key === 'sepolia') // Only show Sepolia
                   .map(([key, network]) => {
                   const isSelected = selectedNetwork === key;
                   const currency = 'PT';

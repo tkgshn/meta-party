@@ -152,7 +152,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     const url = new URL(request.url);
     const walletAddress = url.searchParams.get('address');
-    const networkKey = url.searchParams.get('network') || 'polygonAmoy';
+    const networkKey = url.searchParams.get('network') || 'sepolia';
 
     if (!walletAddress) {
       return NextResponse.json({ error: 'Wallet address is required' }, { status: 400 });

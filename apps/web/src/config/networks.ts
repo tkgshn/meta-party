@@ -25,37 +25,6 @@ export interface NetworkConfig {
 }
 
 export const NETWORKS: Record<string, NetworkConfig> = {
-  // Polygon Mainnet with USDC
-  polygon: {
-    chainId: 137,
-    chainIdHex: '0x89',
-    name: 'polygon',
-    displayName: 'Polygon Mainnet',
-    rpcUrls: [
-      'https://polygon-rpc.com',
-      'https://rpc.ankr.com/polygon',
-      'https://polygon-bor.publicnode.com'
-    ],
-    blockExplorerUrls: ['https://polygonscan.com'],
-    nativeCurrency: {
-      name: 'MATIC',
-      symbol: 'MATIC',
-      decimals: 18
-    },
-    contracts: {
-      // Native Circle USDC on Polygon Mainnet
-      usdc: '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359',
-      // TODO: Deploy market contracts to Polygon Mainnet
-      marketFactory: undefined,
-      conditionalTokens: undefined
-    },
-    isTestnet: false,
-    gasSettings: {
-      // Based on July 2025 Polygon gas recommendations
-      maxFeePerGas: '0x82DDA9C00', // 35 gwei (35 * 10^9)
-      maxPriorityFeePerGas: '0x6FC23AC00' // 30 gwei (30 * 10^9)
-    }
-  },
   
   // Ethereum Sepolia Testnet
   sepolia: {
@@ -86,33 +55,6 @@ export const NETWORKS: Record<string, NetworkConfig> = {
     }
   },
 
-  // Polygon Amoy Testnet with Play Token (existing)
-  polygonAmoy: {
-    chainId: 80002,
-    chainIdHex: '0x13882',
-    name: 'polygonAmoy',
-    displayName: 'Polygon Amoy Testnet',
-    rpcUrls: [
-      'https://rpc-amoy.polygon.technology',
-      'https://polygon-amoy.publicnode.com'
-    ],
-    blockExplorerUrls: ['https://amoy.polygonscan.com'],
-    nativeCurrency: {
-      name: 'MATIC',
-      symbol: 'MATIC',
-      decimals: 18
-    },
-    contracts: {
-      playToken: process.env.NEXT_PUBLIC_PLAY_TOKEN_ADDRESS || '0x237B9E4EEE4AeAf712B5B240Ab03C973310B6bD1',
-      marketFactory: process.env.NEXT_PUBLIC_MARKET_FACTORY_ADDRESS || '0x9f1C3f06B201FFa385a4BB3695f78cB1c17c12db',
-      conditionalTokens: process.env.NEXT_PUBLIC_CONDITIONAL_TOKENS_ADDRESS || '0x0416a4757062c1e61759ADDb6d68Af145919F045'
-    },
-    isTestnet: true,
-    gasSettings: {
-      maxFeePerGas: '0x1DCD6500', // 500000000 wei (0.5 gwei) - testnet
-      maxPriorityFeePerGas: '0x1DCD6500' // 500000000 wei (0.5 gwei)
-    }
-  },
   
   // Local Anvil Development Network
   anvil: {
@@ -145,7 +87,7 @@ export const NETWORKS: Record<string, NetworkConfig> = {
 };
 
 // Default network (can be changed via UI)
-export const DEFAULT_NETWORK = 'polygon';
+export const DEFAULT_NETWORK = 'sepolia';
 
 // Get network config by chain ID
 export function getNetworkByChainId(chainId: number): NetworkConfig | undefined {
@@ -172,20 +114,12 @@ export function getCurrencySymbol(networkKey: string): string {
     return network.contracts.playToken ? 'PT' : 'SEP';
   }
   
-  // For Polygon Amoy testnet, show Play Token
-  if (networkKey === 'polygonAmoy' && network.contracts.playToken) {
-    return 'PT';
-  }
   
   // For Anvil local network, show Play Token when deployed
   if (networkKey === 'anvil') {
     return network.contracts.playToken ? 'PT' : 'ETH';
   }
   
-  // For Polygon mainnet, show native MATIC instead of USDC
-  if (networkKey === 'polygon') {
-    return 'MATIC';
-  }
   
   return network.nativeCurrency.symbol;
 }
@@ -195,18 +129,8 @@ export function getCurrencyContract(networkKey: string): string | undefined {
   const network = NETWORKS[networkKey];
   if (!network) return undefined;
   
-  // For Polygon mainnet, don't return any contract address (use native MATIC)
-  if (networkKey === 'polygon') {
-    return undefined;
-  }
-  
   // For Sepolia testnet, return Play Token address if deployed
   if (networkKey === 'sepolia') {
-    return network.contracts.playToken;
-  }
-  
-  // For Amoy testnet, return Play Token address
-  if (networkKey === 'polygonAmoy') {
     return network.contracts.playToken;
   }
   

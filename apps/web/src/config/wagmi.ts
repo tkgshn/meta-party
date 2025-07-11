@@ -7,7 +7,7 @@ import { defineChain } from 'viem'
 export const projectId = process.env.NEXT_PUBLIC_REOWN_PROJECT_ID || '5dd7b117e9736f52f60dc23582acb63e'
 
 if (!projectId) {
-  throw new Error('NEXT_PUBLIC_REOWN_PROJECT_ID is not defined')
+  console.warn('NEXT_PUBLIC_REOWN_PROJECT_ID is not defined, using fallback')
 }
 
 // Define Anvil local network

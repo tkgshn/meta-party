@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { useAccount } from 'wagmi';
 import { useMetaMask } from '@/hooks/useMetaMask';
 import { useToken } from '@/hooks/useToken';
+import { useWagmiToken } from '@/hooks/useWagmiToken';
 import { useOnChainPortfolio } from '@/hooks/useOnChainPortfolio';
 import { NETWORKS, getNetworkByChainId, getCurrencySymbol } from '@/config/networks';
 import NetworkSwitcher from '@/components/NetworkSwitcher';
@@ -33,7 +34,7 @@ export default function PortfolioPage() {
   const account = wagmiAccount || null;
   const isConnected = wagmiIsConnected;
   
-  const [currentNetworkKey, setCurrentNetworkKey] = useState<string>('polygon');
+  const [currentNetworkKey, setCurrentNetworkKey] = useState<string>('sepolia');
   const [selectedTab, setSelectedTab] = useState<'positions' | 'history' | 'analytics'>('positions');
   const [showVolunteerModal, setShowVolunteerModal] = useState(false);
 
@@ -41,7 +42,18 @@ export default function PortfolioPage() {
   const currentNetwork = NETWORKS[currentNetworkKey];
   const currencySymbol = 'PT'; // Play Tokenで固定
 
-  // Use token hook for current network
+  // Use wagmi token hook for social wallets (Reown/WalletConnect)
+  const {
+    balance: wagmiTokenBalance,
+    isLoading: wagmiTokenLoading,
+    error: wagmiTokenError,
+    canClaim: wagmiCanClaim,
+    claimTokens: wagmiClaimTokens,
+    refreshBalance: wagmiRefreshBalance,
+    isWagmiAvailable
+  } = useWagmiToken(currentNetworkKey);
+
+  // Use traditional token hook for browser wallets (MetaMask)
   const {
     balance: tokenBalance,
     symbol: tokenSymbol,
@@ -56,6 +68,15 @@ export default function PortfolioPage() {
     isTokenAddedToMetaMask,
     refreshBalance
   } = useToken(account, currentNetworkKey);
+
+  // Determine which hook to use based on wallet type
+  const isUsingWagmi = isWagmiAvailable && (typeof window === 'undefined' || !window.ethereum);
+  const actualBalance = isUsingWagmi ? wagmiTokenBalance : tokenBalance;
+  const actualCanClaim = isUsingWagmi ? wagmiCanClaim : canClaim;
+  const actualClaimTokens = isUsingWagmi ? wagmiClaimTokens : claimTokens;
+  const actualRefreshBalance = isUsingWagmi ? wagmiRefreshBalance : refreshBalance;
+  const actualTokenLoading = isUsingWagmi ? wagmiTokenLoading : tokenLoading;
+  const actualTokenError = isUsingWagmi ? wagmiTokenError : tokenError;
 
   // Use portfolio hook (mainly for position tracking)
   const {
@@ -100,7 +121,7 @@ export default function PortfolioPage() {
 
   // Calculate portfolio summary using live on-chain data only
   const portfolioSummary = useMemo(() => {
-    const cash = parseFloat(tokenBalance) || 0;
+    const cash = parseFloat(actualBalance) || 0;
     const positionsValue = positionTokens.reduce((sum, token) => sum + token.value, 0);
     const portfolioTotal = totalPortfolioValue || (cash + positionsValue);
 
@@ -133,7 +154,7 @@ export default function PortfolioPage() {
       currencySymbol: 'PT', // Play Tokenで固定
       isTestnet: currentNetwork?.isTestnet
     };
-  }, [tokenBalance, positionTokens, totalPortfolioValue, tokenLastUpdated, portfolioLastUpdated, currentNetwork]);
+  }, [actualBalance, positionTokens, totalPortfolioValue, tokenLastUpdated, portfolioLastUpdated, currentNetwork]);
 
   if (!isConnected) {
     return (
@@ -181,22 +202,29 @@ export default function PortfolioPage() {
               </div>
             </div>
             <div className="flex items-center space-x-3">
-              {canClaim && (
+              {actualCanClaim && (
                 <Button
                   onClick={async () => {
-                    if (claimTokens) {
-                      const result = await claimTokens();
+                    if (actualClaimTokens) {
+                      const result = await actualClaimTokens();
                       if (result.success) {
-                        refreshBalance();
+                        await actualRefreshBalance();
+                        alert(isUsingWagmi ? 
+                          '🎉 1,000 PT を受け取りました！' : 
+                          '🎉 1,000 PT の受け取りが完了しました！'
+                        );
+                      } else {
+                        alert(`エラー: ${result.error || 'トークンの取得に失敗しました'}`);
                       }
                     }
                   }}
-                  className="bg-green-600 hover:bg-green-700"
+                  className="bg-gray-900 hover:bg-gray-800 text-white"
+                  disabled={actualTokenLoading}
                 >
-                  サインアップボーナス（1,000PT）を取得
+                  {actualTokenLoading ? '取得中...' : 'サインアップボーナス（1,000PT）を取得'}
                 </Button>
               )}
-              {!canClaim && !isTokenAddedToMetaMask && (currentNetworkKey === 'polygonAmoy' || currentNetworkKey === 'sepolia') && (
+              {!actualCanClaim && !isUsingWagmi && !isTokenAddedToMetaMask && currentNetworkKey === 'sepolia' && (
                 <Button
                   variant="outline"
                   onClick={async () => {
@@ -208,7 +236,7 @@ export default function PortfolioPage() {
                       alert('MetaMaskへのトークン追加に失敗しました。手動で追加してください。');
                     }
                   }}
-                  className="text-blue-600 border-blue-200 bg-blue-50 hover:bg-blue-100"
+                  className="text-gray-600 border-gray-200 bg-gray-50 hover:bg-gray-100"
                 >
                   <PlusCircleIcon className="h-4 w-4 mr-2" />
                   $PTをMetamaskからも可視化
@@ -219,18 +247,18 @@ export default function PortfolioPage() {
         </div>
 
         {/* Portfolio Status */}
-        {(tokenLoading || portfolioLoading) && (
+        {(actualTokenLoading || portfolioLoading) && (
           <div className="mb-4 p-4 bg-blue-50 rounded-lg">
             <p className="text-sm text-blue-800">データを読み込み中...</p>
           </div>
         )}
 
-        {(tokenError || portfolioError) && (
+        {(actualTokenError || portfolioError) && (
           <div className="mb-4 p-4 bg-red-50 rounded-lg">
-            <p className="text-sm text-red-800">エラー: {tokenError || portfolioError}</p>
+            <p className="text-sm text-red-800">エラー: {actualTokenError || portfolioError}</p>
             <button
               onClick={() => {
-                refreshBalance();
+                actualRefreshBalance();
                 refreshPortfolio();
               }}
               className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
@@ -243,44 +271,44 @@ export default function PortfolioPage() {
         {/* Main Portfolio and Cash Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           {/* Portfolio Card */}
-          <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+          <Card className="bg-white border-gray-200 shadow-sm">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium text-blue-600">Portfolio</p>
+                    <p className="text-sm font-medium text-gray-600">Portfolio</p>
                   </div>
-                  <p className="text-3xl font-bold text-blue-900">
+                  <p className="text-3xl font-bold text-gray-900">
                     {portfolioSummary.portfolioTotal.toFixed(2)} PT
                   </p>
-                  <p className="text-sm text-blue-700 mt-1">
+                  <p className="text-sm text-gray-500 mt-1">
                     Cash + ポジション時価評価額（PT）
                   </p>
                 </div>
-                <div className="h-16 w-16 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <TrophyIcon className="h-8 w-8 text-blue-600" />
+                <div className="h-16 w-16 bg-gray-100 rounded-lg flex items-center justify-center">
+                  <TrophyIcon className="h-8 w-8 text-gray-600" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
           {/* Cash Card */}
-          <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+          <Card className="bg-white border-gray-200 shadow-sm">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium text-green-600">Cash</p>
+                    <p className="text-sm font-medium text-gray-600">Cash</p>
                   </div>
-                  <p className="text-3xl font-bold text-green-900">
+                  <p className="text-3xl font-bold text-gray-900">
                     {portfolioSummary.cash.toFixed(2)} PT
                   </p>
-                  <p className="text-sm text-green-700 mt-1">
+                  <p className="text-sm text-gray-500 mt-1">
                     今すぐ使えるPlay Token残高
                   </p>
                 </div>
-                <div className="h-16 w-16 bg-green-100 rounded-lg flex items-center justify-center">
-                  <BanknotesIcon className="h-8 w-8 text-green-600" />
+                <div className="h-16 w-16 bg-gray-100 rounded-lg flex items-center justify-center">
+                  <BanknotesIcon className="h-8 w-8 text-gray-600" />
                 </div>
               </div>
             </CardContent>
@@ -288,42 +316,42 @@ export default function PortfolioPage() {
         </div>
 
         {/* Volunteer Bonus Section - show after cash cards */}
-        {!canClaim && (currentNetworkKey === 'polygonAmoy' || currentNetworkKey === 'sepolia') && (
-          <Card className="bg-gradient-to-br from-purple-50 to-pink-100 border-purple-200 mb-8">
+        {!actualCanClaim && currentNetworkKey === 'sepolia' && (
+          <Card className="bg-white border-gray-200 shadow-sm mb-8">
             <CardContent className="p-6">
               <div className="flex items-center space-x-4">
                 <div className="flex-shrink-0">
-                  <div className="h-12 w-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center">
+                  <div className="h-12 w-12 bg-gray-900 rounded-full flex items-center justify-center">
                     <span className="text-xl">🎁</span>
                   </div>
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-purple-900 mb-1">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-1">
                     ボランティア特典プログラム
                   </h3>
-                  <p className="text-sm text-purple-700 mb-3">
+                  <p className="text-sm text-gray-600 mb-3">
                     チームみらいのボランティア活動に参加している方限定の特典です
                   </p>
-                  <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-4">
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-purple-800">
+                        <p className="text-sm font-medium text-gray-800">
                           追加ボーナス配布中
                         </p>
-                        <p className="text-xs text-purple-600 mt-1">
+                        <p className="text-xs text-gray-600 mt-1">
                           対象者には自動的に配布されます
                         </p>
                       </div>
                       <div className="flex items-center space-x-3">
                         <div className="text-right">
-                          <div className="text-2xl font-bold text-purple-900">
+                          <div className="text-2xl font-bold text-gray-900">
                             +2,000
                           </div>
-                          <div className="text-sm text-purple-700">PT</div>
+                          <div className="text-sm text-gray-600">PT</div>
                         </div>
                         <Button
                           onClick={() => setShowVolunteerModal(true)}
-                          className="bg-purple-600 hover:bg-purple-700 text-white"
+                          className="bg-gray-900 hover:bg-gray-800 text-white"
                           size="sm"
                         >
                           詳細・申請
@@ -390,8 +418,8 @@ export default function PortfolioPage() {
                 {/* Live positions from on-chain data */}
                 {positionTokens.length > 0 ? (
                   <div className="space-y-4">
-                    <div className="bg-green-50 p-3 rounded-lg mb-4">
-                      <p className="text-sm text-green-800 font-medium">✓ ライブポジション</p>
+                    <div className="bg-gray-50 p-3 rounded-lg mb-4">
+                      <p className="text-sm text-gray-800 font-medium">✓ ライブポジション</p>
                     </div>
                     {positionTokens.map((token) => (
                       <div key={token.address} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">

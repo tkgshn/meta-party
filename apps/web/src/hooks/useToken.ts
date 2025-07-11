@@ -60,7 +60,7 @@ export function useToken(account: string | null, networkKey?: string): TokenStat
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Get current network or use default
-  const currentNetworkKey = networkKey || 'polygon';
+  const currentNetworkKey = networkKey || 'sepolia';
   const currentNetwork = NETWORKS[currentNetworkKey];
   const tokenAddress = getCurrencyContract(currentNetworkKey);
   // const tokenDecimals = getCurrencyDecimals(currentNetworkKey);
@@ -89,9 +89,9 @@ export function useToken(account: string | null, networkKey?: string): TokenStat
         // For Reown/WalletConnect, we need to use wagmi's provider
         // This will be handled in a separate hook
         if (DEBUG_MODE) {
-          console.log('No window.ethereum detected, likely using WalletConnect/Reown');
+          console.log('No window.ethereum detected, likely using WalletConnect/Reown - skipping traditional provider');
         }
-        setError('Social wallet detected - use wagmi hooks for transactions');
+        // Don't set error for social wallets, just return null to let wagmi handle it
         return null;
       }
 
