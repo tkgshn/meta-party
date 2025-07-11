@@ -1,6 +1,7 @@
 'use client'
 
 import { wagmiAdapter, projectId, networks } from '@/config/wagmi'
+import { sepolia } from '@reown/appkit/networks'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createAppKit } from '@reown/appkit/react'
 import React, { type ReactNode } from 'react'
@@ -26,13 +27,16 @@ createAppKit({
   adapters: [wagmiAdapter],
   projectId,
   networks,
-  defaultNetwork: networks[0],
+  defaultNetwork: sepolia,
   metadata: metadata,
   features: {
     email: false,
     analytics: true, // Optional - defaults to your Cloud configuration
     socials: ['x'], // Enable Twitter (X), Google, Discord
     emailShowWallets: false,
+  },
+  sponsor: {
+    mode: 'auto', // 常に sponsor を有効化（明示的に relay）
   },
   themeMode: 'light',
   themeVariables: {

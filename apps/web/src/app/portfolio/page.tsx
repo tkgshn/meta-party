@@ -11,6 +11,7 @@ import {
   ClockIcon,
   PlusCircleIcon,
   XMarkIcon,
+  CheckCircleIcon,
 } from '@heroicons/react/24/outline';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,7 @@ import { useMetaMask } from '@/hooks/useMetaMask';
 import { useToken } from '@/hooks/useToken';
 import { useWagmiToken } from '@/hooks/useWagmiToken';
 import { useOnChainPortfolio } from '@/hooks/useOnChainPortfolio';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { NETWORKS, getNetworkByChainId, getCurrencySymbol } from '@/config/networks';
 import NetworkSwitcher from '@/components/NetworkSwitcher';
 import Header from '@/components/Header';
@@ -29,14 +31,22 @@ export default function PortfolioPage() {
   const { address: wagmiAccount, isConnected: wagmiIsConnected, chainId } = useAccount();
   // Keep useMetaMask for network detection functionality
   const { getCurrentChainId } = useMetaMask();
-  
+
   // Use wagmi account first, fallback to MetaMask if needed
   const account = wagmiAccount || null;
   const isConnected = wagmiIsConnected;
-  
+
   const [currentNetworkKey, setCurrentNetworkKey] = useState<string>('sepolia');
   const [selectedTab, setSelectedTab] = useState<'positions' | 'history' | 'analytics'>('positions');
   const [showVolunteerModal, setShowVolunteerModal] = useState(false);
+  const [volunteerBonusStatus, setVolunteerBonusStatus] = useState<{
+    hasClaimedBonus: boolean;
+    isVolunteer: boolean;
+    loading: boolean;
+  }>({ hasClaimedBonus: false, isVolunteer: false, loading: true });
+
+  // Get current user information
+  const currentUser = useCurrentUser();
 
   // Get current network info
   const currentNetwork = NETWORKS[currentNetworkKey];
@@ -113,6 +123,67 @@ export default function PortfolioPage() {
       detectNetwork();
     }
   }, [account, chainId, getCurrentChainId]);
+
+  // Check volunteer bonus status
+  useEffect(() => {
+    const checkVolunteerBonusStatus = async () => {
+      console.log('🔍 Checking volunteer bonus status:', {
+        account,
+        authenticated: currentUser.authenticated,
+        twitterId: currentUser.twitterId,
+        networkKey: currentNetworkKey,
+        loading: currentUser.isLoading
+      });
+
+      if (!account || currentNetworkKey !== 'sepolia') {
+        console.log('❌ Conditions not met for volunteer check');
+        setVolunteerBonusStatus({ hasClaimedBonus: false, isVolunteer: false, loading: false });
+        return;
+      }
+
+      // Check if user is authenticated and has Twitter ID
+      if (currentUser.isLoading) {
+        console.log('⏳ User data still loading...');
+        return;
+      }
+
+      try {
+        // Check volunteer bonus status using the existing API
+        const response = await fetch(
+          `/api/claim/volunteer-bonus?address=${account}&network=${currentNetworkKey}`
+        );
+        
+        console.log('📡 Volunteer API response:', response.status);
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('✅ Volunteer API data:', data);
+          setVolunteerBonusStatus({
+            hasClaimedBonus: data.hasClaimedVolunteerBonus,
+            isVolunteer: true,
+            loading: false
+          });
+        } else {
+          console.log('❌ Volunteer API error:', response.status);
+          // Not a volunteer or other error
+          setVolunteerBonusStatus({
+            hasClaimedBonus: false,
+            isVolunteer: false,
+            loading: false
+          });
+        }
+      } catch (error) {
+        console.error('Failed to check volunteer bonus status:', error);
+        setVolunteerBonusStatus({
+          hasClaimedBonus: false,
+          isVolunteer: false,
+          loading: false
+        });
+      }
+    };
+
+    checkVolunteerBonusStatus();
+  }, [account, currentUser.authenticated, currentUser.twitterId, currentUser.isLoading, currentNetworkKey]);
 
   // Handle network switching
   const handleNetworkChange = (networkKey: string) => {
@@ -209,8 +280,8 @@ export default function PortfolioPage() {
                       const result = await actualClaimTokens();
                       if (result.success) {
                         await actualRefreshBalance();
-                        alert(isUsingWagmi ? 
-                          '🎉 1,000 PT を受け取りました！' : 
+                        alert(isUsingWagmi ?
+                          '🎉 1,000 PT を受け取りました！' :
                           '🎉 1,000 PT の受け取りが完了しました！'
                         );
                       } else {
@@ -315,47 +386,81 @@ export default function PortfolioPage() {
           </Card>
         </div>
 
+        {/* Debug info - remove in production */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm">
+            <p><strong>🔍 Debug Info:</strong></p>
+            <p>Network: {currentNetworkKey}</p>
+            <p>Account: {account}</p>
+            <p>User Auth: {currentUser.authenticated ? 'Yes' : 'No'}</p>
+            <p>Twitter ID: {currentUser.twitterId || 'None'}</p>
+            <p>User Loading: {currentUser.isLoading ? 'Yes' : 'No'}</p>
+            <p>Volunteer Status: {JSON.stringify(volunteerBonusStatus)}</p>
+            <p>Show Section: {(currentNetworkKey === 'sepolia' && volunteerBonusStatus.isVolunteer && !volunteerBonusStatus.loading).toString()}</p>
+          </div>
+        )}
+
         {/* Volunteer Bonus Section - show after cash cards */}
-        {!actualCanClaim && currentNetworkKey === 'sepolia' && (
+        {currentNetworkKey === 'sepolia' && volunteerBonusStatus.isVolunteer && !volunteerBonusStatus.loading && (
           <Card className="bg-white border-gray-200 shadow-sm mb-8">
             <CardContent className="p-6">
               <div className="flex items-center space-x-4">
                 <div className="flex-shrink-0">
-                  <div className="h-12 w-12 bg-gray-900 rounded-full flex items-center justify-center">
-                    <span className="text-xl">🎁</span>
+                  <div className={`h-12 w-12 rounded-full flex items-center justify-center ${
+                    volunteerBonusStatus.hasClaimedBonus 
+                      ? 'bg-gradient-to-r from-green-500 to-blue-500' 
+                      : 'bg-gray-900'
+                  }`}>
+                    {volunteerBonusStatus.hasClaimedBonus ? (
+                      <CheckCircleIcon className="h-6 w-6 text-white" />
+                    ) : (
+                      <span className="text-xl">🎁</span>
+                    )}
                   </div>
                 </div>
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                    ボランティア特典プログラム
+                    {volunteerBonusStatus.hasClaimedBonus ? 'ボランティア特典獲得済み' : 'ボランティア特典プログラム'}
                   </h3>
                   <p className="text-sm text-gray-600 mb-3">
-                    チームみらいのボランティア活動に参加している方限定の特典です
+                    {volunteerBonusStatus.hasClaimedBonus 
+                      ? 'チームみらいのボランティア特典（2,000 PT）を獲得済みです'
+                      : 'チームみらいのボランティア活動に参加している方限定の特典です'
+                    }
                   </p>
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                  <div className={`border rounded-lg p-4 ${
+                    volunteerBonusStatus.hasClaimedBonus 
+                      ? 'bg-gradient-to-r from-green-50 to-blue-50 border-green-200' 
+                      : 'bg-gray-50 border-gray-200'
+                  }`}>
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-gray-800">
-                          追加ボーナス配布中
+                          {volunteerBonusStatus.hasClaimedBonus ? '✅ 特典獲得完了' : '追加ボーナス配布中'}
                         </p>
                         <p className="text-xs text-gray-600 mt-1">
-                          対象者には自動的に配布されます
+                          {volunteerBonusStatus.hasClaimedBonus 
+                            ? 'ボランティア活動への参加ありがとうございます'
+                            : '対象者には自動的に配布されます'
+                          }
                         </p>
                       </div>
                       <div className="flex items-center space-x-3">
                         <div className="text-right">
                           <div className="text-2xl font-bold text-gray-900">
-                            +2,000
+                            {volunteerBonusStatus.hasClaimedBonus ? '2,000' : '+2,000'}
                           </div>
                           <div className="text-sm text-gray-600">PT</div>
                         </div>
-                        <Button
-                          onClick={() => setShowVolunteerModal(true)}
-                          className="bg-gray-900 hover:bg-gray-800 text-white"
-                          size="sm"
-                        >
-                          詳細・申請
-                        </Button>
+                        {!volunteerBonusStatus.hasClaimedBonus && (
+                          <Button
+                            onClick={() => setShowVolunteerModal(true)}
+                            className="bg-gray-900 hover:bg-gray-800 text-white"
+                            size="sm"
+                          >
+                            詳細・申請
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -366,7 +471,7 @@ export default function PortfolioPage() {
         )}
 
         {/* Portfolio Performance Chart - Coming Soon */}
-        <Card className="mb-8">
+        <Card className="bg-white border-gray-200 shadow-sm mb-8">
           <CardContent className="p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">ポートフォリオ推移</h2>
             <div className="h-64 flex items-center justify-center">
@@ -383,7 +488,8 @@ export default function PortfolioPage() {
         </Card>
 
         {/* Tab Navigation */}
-        <Card className="mb-8">
+        <Card className="bg-white border-gray-200 shadow-sm mb-8">
+          {/* <div className="border-b border-gray-200"> */}
           <div className="border-b border-gray-200">
             <nav className="flex space-x-8 px-6">
               {[

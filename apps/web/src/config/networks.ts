@@ -33,9 +33,9 @@ export const NETWORKS: Record<string, NetworkConfig> = {
     name: 'sepolia',
     displayName: 'Sepolia Testnet',
     rpcUrls: [
-      'https://rpc.sepolia.org',
-      'https://sepolia.publicnode.com',
-      'https://ethereum-sepolia.publicnode.com'
+      process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || 'https://ethereum-sepolia.publicnode.com',
+      'https://ethereum-sepolia.publicnode.com',
+      'https://sepolia.publicnode.com'
     ],
     blockExplorerUrls: ['https://sepolia.etherscan.io'],
     nativeCurrency: {

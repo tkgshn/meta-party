@@ -188,10 +188,13 @@ export default function TwitterVolunteerCard({ networkKey = 'sepolia' }: Twitter
         </div>
         <div>
           <h3 className="text-lg font-semibold text-gray-900">
-            Twitter連携・ボランティアボーナス
+            {bonusStatus.success ? 'ボランティア特典獲得済み' : 'Twitter連携・ボランティアボーナス'}
           </h3>
           <p className="text-sm text-gray-600">
-            Twitter IDを連携してボランティアボーナス（2,000 PT）を受け取り
+            {bonusStatus.success 
+              ? 'チームみらいのボランティア特典（2,000 PT）を獲得済みです'
+              : 'Twitter IDを連携してボランティアボーナス（2,000 PT）を受け取り'
+            }
           </p>
         </div>
       </div>
@@ -267,7 +270,7 @@ export default function TwitterVolunteerCard({ networkKey = 'sepolia' }: Twitter
             >
               <GiftIcon className="h-5 w-5" />
               <span>
-                {bonusStatus.loading ? 'ボーナス請求中...' : '2,000 PTボーナス請求'}
+                {bonusStatus.loading ? 'ボーナス請求中...' : '🎁 2,000 PT特典を受け取る'}
               </span>
             </button>
           )}
@@ -290,24 +293,33 @@ export default function TwitterVolunteerCard({ networkKey = 'sepolia' }: Twitter
 
       {/* 成功メッセージ */}
       {bonusStatus.success && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
-          <div className="flex items-center space-x-2 mb-2">
-            <CheckCircleIcon className="h-5 w-5 text-green-600" />
-            <span className="font-medium text-green-800">
-              ボーナス付与完了！
+        <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-6 mb-4">
+          <div className="flex items-center space-x-2 mb-3">
+            <CheckCircleIcon className="h-6 w-6 text-green-600" />
+            <span className="text-lg font-bold text-green-800">
+              🎉 ボランティア特典獲得済み！
             </span>
           </div>
-          <p className="text-sm text-green-700 mb-2">
-            2,000 PTのボランティアボーナスが付与されました。
-          </p>
+          <div className="bg-white rounded-lg p-4 mb-3">
+            <p className="text-lg font-semibold text-gray-900 mb-1">
+              チームみらいボランティア特典
+            </p>
+            <p className="text-green-700 font-medium">
+              ✅ 2,000 PT を獲得しました
+            </p>
+            <p className="text-sm text-gray-600 mt-1">
+              ボランティア活動への参加ありがとうございます
+            </p>
+          </div>
           {bonusStatus.txHash && (
             <a
               href={`https://sepolia.etherscan.io/tx/${bonusStatus.txHash}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm text-blue-600 hover:underline"
+              className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 hover:underline transition-colors"
             >
-              トランザクション詳細 →
+              <LinkIcon className="h-4 w-4 mr-1" />
+              ブロックチェーン取引詳細
             </a>
           )}
         </div>
@@ -326,19 +338,21 @@ export default function TwitterVolunteerCard({ networkKey = 'sepolia' }: Twitter
         </div>
       )}
 
-      {/* 説明 */}
-      <div className="bg-gray-50 rounded-lg p-4">
-        <h4 className="font-medium text-gray-900 mb-2">ご利用の流れ</h4>
-        <ol className="text-sm text-gray-600 space-y-1">
-          <li>1. Twitter IDを入力して連携</li>
-          <li>2. ボランティア状態の自動確認</li>
-          <li>3. 登録済みの場合、2,000 PTボーナス請求</li>
-          <li>4. 未登録でも基本の1,000 PTは別途請求可能</li>
-        </ol>
-        <p className="text-xs text-gray-500 mt-3">
-          ※ ボランティアボーナスは各アドレス1回限りです
-        </p>
-      </div>
+      {/* 説明 - 獲得済みの場合は簡潔に */}
+      {!bonusStatus.success && (
+        <div className="bg-gray-50 rounded-lg p-4">
+          <h4 className="font-medium text-gray-900 mb-2">ご利用の流れ</h4>
+          <ol className="text-sm text-gray-600 space-y-1">
+            <li>1. Twitter IDを入力して連携</li>
+            <li>2. ボランティア状態の自動確認</li>
+            <li>3. 登録済みの場合、2,000 PTボーナス請求</li>
+            <li>4. 未登録でも基本の1,000 PTは別途請求可能</li>
+          </ol>
+          <p className="text-xs text-gray-500 mt-3">
+            ※ ボランティアボーナスは各アドレス1回限りです
+          </p>
+        </div>
+      )}
     </div>
   );
 }

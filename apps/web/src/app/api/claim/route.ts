@@ -21,7 +21,7 @@ const CONTRACT_ADDRESSES = {
   sepolia: {
     playToken: process.env.NEXT_PUBLIC_PLAY_TOKEN_ADDRESS_SEPOLIA || '',
     chainId: 11155111,
-    rpcUrl: process.env.SEPOLIA_RPC_URL || 'https://rpc.sepolia.org'
+    rpcUrl: process.env.SEPOLIA_RPC_URL || process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || 'https://ethereum-sepolia.publicnode.com'
   },
   amoy: {
     playToken: process.env.NEXT_PUBLIC_PLAY_TOKEN_ADDRESS || '0x237B9E4EEE4AeAf712B5B240Ab03C973310B6bD1',

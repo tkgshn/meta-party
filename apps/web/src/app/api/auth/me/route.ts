@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
         twitterId: payload.sub,
         twitterUsername: payload.username,
         displayName: payload.display_name,
+        profileImage: payload.profile_image,
         walletAddress: payload.wallet_address,
         isNewUser: payload.is_new_user,
         authenticated: true

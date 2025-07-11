@@ -69,9 +69,9 @@ export async function POST(request: NextRequest): Promise<NextResponse<Volunteer
     }
 
     // 秘密鍵取得（環境変数から）
-    const privateKey = process.env.PRIVATE_KEY;
+    const privateKey = process.env.SEPOLIA_DEPLOYER_PRIVATE_KEY;
     if (!privateKey) {
-      console.error('❌ PRIVATE_KEY not found in environment variables');
+      console.error('❌ SEPOLIA_DEPLOYER_PRIVATE_KEY not found in environment variables');
       return NextResponse.json({
         success: false,
         message: 'Server configuration error'

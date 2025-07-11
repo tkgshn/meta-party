@@ -25,10 +25,12 @@ import { usePlayToken } from '@/hooks/usePlayToken';
 import { useSponsoredClaim } from '@/hooks/useSponsoredClaim';
 import { useSocialAuth } from '@/hooks/useSocialAuth';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useSeedEth } from '@/hooks/useSeedEth';
 import { NETWORKS, getNetworkByChainId, getCurrencySymbol, DEFAULT_NETWORK } from '@/config/networks';
 import NetworkSwitcher from './NetworkSwitcher';
 import { Button } from '@/components/ui/button';
 import { getClaimStatus, setClaimStatus, hasClaimedAnywhere } from '@/lib/claimStorage';
+import { getUserAvatarUrl } from '@/utils/pixelAvatar';
 
 interface HeaderProps {
   onSearch?: (query: string) => void;
@@ -128,6 +130,12 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
             );
             if (networkKey) {
               setCurrentNetworkKey(networkKey);
+              
+              // If user is on Polygon mainnet (137), suggest switching to Sepolia
+              if (chainId === 137) {
+                console.warn('User is on Polygon mainnet, should switch to Sepolia for this branch');
+                // Show a more subtle notification in the UI instead of alert
+              }
               return;
             }
           }
@@ -211,6 +219,9 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
 
   // Use sponsored claim hook for gasless claiming
   const { claimSponsored, isLoading: sponsoredClaimLoading } = useSponsoredClaim();
+  
+  // Use seed ETH hook for initial gas funding
+  const { seedEth, isLoading: seedEthLoading } = useSeedEth();
 
   // Calculate portfolio value with Play Token priority
   // Use appropriate balance based on network
@@ -258,7 +269,7 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
               symbol: 'SEP',
               decimals: 18
             },
-            rpcUrls: ['https://rpc.sepolia.org'],
+            rpcUrls: [process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || 'https://ethereum-sepolia.publicnode.com'],
             blockExplorerUrls: ['https://sepolia.etherscan.io']
           }]
         });
@@ -377,19 +388,35 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                           onClick={async () => {
                             setManualRefreshing(true);
                             try {
-                              // Try sponsored claim first for Sepolia, fallback to regular claim
                               let result;
-                              if (!isUsingWagmi) {
+                              
+                              // For Magic Link users (no window.ethereum), first send seed ETH
+                              if (!isUsingWagmi && typeof window !== 'undefined' && !window.ethereum) {
+                                console.log('Magic Link user detected, sending seed ETH first...');
+                                const seedResult = await seedEth(account, currentUser.twitterId || undefined);
+                                
+                                if (seedResult.success) {
+                                  console.log('Seed ETH sent successfully:', seedResult.txHash);
+                                  // Wait a bit for ETH to be available
+                                  await new Promise(resolve => setTimeout(resolve, 3000));
+                                } else if (seedResult.error && !seedResult.error.includes('already has sufficient ETH')) {
+                                  // Only show error if it's not about already having ETH
+                                  console.warn('Seed ETH failed:', seedResult.error);
+                                }
+                                
+                                // Proceed with claim regardless of seed result (user might already have ETH)
+                                if (actualClaimTokens) {
+                                  result = await actualClaimTokens();
+                                } else {
+                                  result = { success: false, error: 'Claim function not available' };
+                                }
+                              } else {
+                                // For MetaMask users, try sponsored claim first, then fallback
                                 result = await claimSponsored(account);
                                 if (!result.success && actualClaimTokens) {
                                   // Fallback to regular claim
                                   result = await actualClaimTokens();
                                 }
-                              } else if (actualClaimTokens) {
-                                // Use regular claim for wagmi wallets
-                                result = await actualClaimTokens();
-                              } else {
-                                result = { success: false, error: 'Claim function not available' };
                               }
 
                               // Update localStorage on successful claim
@@ -398,22 +425,31 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                                   hasClaimed: true,
                                   claimDate: new Date().toISOString(),
                                   txHash: result.txHash,
-                                  twitterId: currentUser.twitterId,
+                                  twitterId: currentUser.twitterId || undefined,
                                   walletAddress: account,
                                   networkKey: currentNetworkKey
                                 });
                               }
 
                           if (!result.success) {
-                            if (result.error?.includes('ガス代') || result.error?.includes('insufficient funds')) {
-                              let faucetUrl = 'https://faucet.polygon.technology/';
-                              let networkName = 'testnet';
-
-                              // Sepolia faucet URL
-                              faucetUrl = 'https://sepoliafaucet.com/';
-                              networkName = 'Sepolia';
-
-                              alert(`ガス代が不足しています。${networkName}フォーセットからテストトークンを取得してください: ${faucetUrl}`);
+                            if (result.error?.includes('ガス代') || 
+                                result.error?.includes('insufficient funds') || 
+                                result.error?.includes('INSUFFICIENT BALANCE') ||
+                                result.error?.includes('Smart Account does not have sufficient funds')) {
+                              
+                              const faucetUrl = 'https://sepoliafaucet.com/';
+                              const networkName = 'Sepolia';
+                              
+                              // Magic Linkユーザーの場合のより詳細な説明
+                              const isTwitterAuth = currentUser.authenticated && currentUser.twitterId;
+                              const errorMsg = isTwitterAuth 
+                                ? `Xアカウントで作成されたスマートウォレットにはガス代（Sepolia ETH）が不足しています。\n\n以下のフォーセットから無料でSepolia ETHを取得してください：\n${faucetUrl}\n\nウォレットアドレス: ${account}\n\n取得後、再度お試しください。`
+                                : `ガス代が不足しています。${networkName}フォーセットからテストトークンを取得してください: ${faucetUrl}`;
+                              
+                              alert(errorMsg);
+                            } else if (result.error?.includes('Sponsored claims not available') || 
+                                      result.error?.includes('deployer key not configured')) {
+                              alert('スポンサード機能が利用できません。Sepolia ETHを取得してから直接クレームしてください。\n\nフォーセット: https://sepoliafaucet.com/');
                             } else {
                               alert(`エラー: ${result.error || 'トークンの取得に失敗しました'}`);
                             }
@@ -427,7 +463,7 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                                 hasClaimed: true,
                                 claimDate: new Date().toISOString(),
                                 txHash: result.txHash,
-                                twitterId: currentUser.twitterId,
+                                twitterId: currentUser.twitterId || undefined,
                                 walletAddress: account,
                                 networkKey: currentNetworkKey
                               });
@@ -454,7 +490,7 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                           setManualRefreshing(false);
                         }
                       }}
-                      disabled={sponsoredClaimLoading || actualIsLoading || manualRefreshing}
+                      disabled={sponsoredClaimLoading || actualIsLoading || manualRefreshing || seedEthLoading}
                       className={`inline-flex items-center px-3 py-2 border text-sm font-medium rounded-lg transition-colors ${
                         !actualHasClaimed && actualCanClaim 
                           ? 'border-green-600 text-white bg-green-600 hover:bg-green-700 shadow-lg animate-pulse disabled:bg-gray-400' 
@@ -464,18 +500,18 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                     >
                       <PlusCircleIcon className="h-4 w-4 mr-1" />
                       <span className="hidden sm:inline">
-                          {(sponsoredClaimLoading || manualRefreshing) ? '取得中...' : 
+                          {(sponsoredClaimLoading || manualRefreshing || seedEthLoading) ? '取得中...' : 
                            (!actualHasClaimed && actualCanClaim ? '🎁 初回ボーナス受け取り' : 'サインアップボーナス')}
                       </span>
                       <span className="sm:hidden">
-                        {(sponsoredClaimLoading || manualRefreshing) ? '...' : 
+                        {(sponsoredClaimLoading || manualRefreshing || seedEthLoading) ? '...' : 
                          (!actualHasClaimed && actualCanClaim ? '🎁 初回' : 'ボーナス')}
                       </span>
                     </button>
                   )}
 
-                  {/* Show network switch button for non-Sepolia networks - show for first-time users */}
-                  {currentNetworkKey !== 'sepolia' && (actualCanClaim || (!actualHasClaimed && !isUsingWagmi)) && (
+                  {/* Show network switch button for non-Sepolia networks */}
+                  {currentNetworkKey !== 'sepolia' && (
                     <button
                       onClick={async () => {
                         try {
@@ -487,22 +523,22 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                         }
                       }}
                       className={`inline-flex items-center px-3 py-2 border text-sm font-medium rounded-lg transition-colors ${
-                        !actualHasClaimed && (actualCanClaim || (!actualHasClaimed && !isUsingWagmi))
-                          ? 'border-orange-500 text-white bg-orange-500 hover:bg-orange-600 shadow-lg animate-pulse'
-                          : 'border-blue-600 text-blue-600 bg-blue-50 hover:bg-blue-100'
+                        chainId === 137
+                          ? 'border-red-500 text-white bg-red-500 hover:bg-red-600 shadow-lg animate-pulse'
+                          : 'border-orange-500 text-white bg-orange-500 hover:bg-orange-600 shadow-lg animate-pulse'
                       }`}
                       title="Sepoliaに切り替えてサインアップボーナスを受け取る"
                     >
                       <PlusCircleIcon className="h-4 w-4 mr-1" />
                       <span className="hidden sm:inline">
-                        {!actualHasClaimed && (actualCanClaim || (!actualHasClaimed && !isUsingWagmi)) 
-                          ? '🎁 初回ボーナスを受け取る' 
-                          : 'Sepoliaに切り替え'}
+                        {chainId === 137
+                          ? '⚠️ Sepoliaに切り替える'
+                          : '🎁 Sepoliaで受け取る'}
                       </span>
                       <span className="sm:hidden">
-                        {!actualHasClaimed && (actualCanClaim || (!actualHasClaimed && !isUsingWagmi)) 
-                          ? '🎁 初回' 
-                          : 'Sepolia'}
+                        {chainId === 137
+                          ? '⚠️ Sepolia'
+                          : '🎁 Sepolia'}
                       </span>
                     </button>
                   )}
@@ -539,7 +575,7 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                                 hasClaimed: true,
                                 claimDate: new Date().toISOString(),
                                 txHash: result.txHash,
-                                twitterId: currentUser.twitterId,
+                                twitterId: currentUser.twitterId || undefined,
                                 walletAddress: account,
                                 networkKey: currentNetworkKey
                               });
@@ -604,8 +640,27 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                       onClick={() => setShowUserMenu(!showUserMenu)}
                       className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 transition-colors"
                     >
-                      <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-                        <UserIcon className="h-5 w-5 text-white" />
+                      <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center bg-gray-100 relative">
+                        <img
+                          src={getUserAvatarUrl({
+                            profileImage: currentUser.profileImage,
+                            walletAddress: account,
+                            twitterId: currentUser.twitterId
+                          }, 32)}
+                          alt="Profile"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            // フォールバック：デフォルトアイコン
+                            e.currentTarget.style.display = 'none';
+                            const fallbackElement = e.currentTarget.nextElementSibling as HTMLElement;
+                            if (fallbackElement) {
+                              fallbackElement.style.display = 'flex';
+                            }
+                          }}
+                        />
+                        <div className="w-full h-full bg-blue-600 rounded-full items-center justify-center absolute inset-0 hidden">
+                          <UserIcon className="h-5 w-5 text-white" />
+                        </div>
                       </div>
                       <ChevronDownIcon className="h-4 w-4 text-gray-500" />
                     </button>
@@ -619,9 +674,9 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                           </Link>
                           <div className="flex items-center space-x-2 text-xs mt-1">
                             <span className="text-gray-500">
-                              {NETWORKS[currentNetworkKey]?.displayName || 'Unknown Network'}
+                              {(currentNetworkKey && NETWORKS[currentNetworkKey]?.displayName) || 'Unknown Network'}
                             </span>
-                            {NETWORKS[currentNetworkKey]?.isTestnet && (
+                            {currentNetworkKey && NETWORKS[currentNetworkKey]?.isTestnet && (
                               <span className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full text-xs font-medium">
                                 テストネット
                               </span>

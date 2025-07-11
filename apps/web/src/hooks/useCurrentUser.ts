@@ -4,6 +4,7 @@ interface CurrentUser {
   twitterId?: string;
   twitterUsername?: string;
   displayName?: string;
+  profileImage?: string;
   walletAddress?: string;
   isNewUser?: boolean;
   authenticated: boolean;

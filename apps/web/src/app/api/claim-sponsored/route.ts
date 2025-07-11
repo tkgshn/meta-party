@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ethers } from 'ethers';
 
-const SEPOLIA_RPC_URL = process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || 'https://rpc.sepolia.org';
-const PLAY_TOKEN_ADDRESS = process.env.NEXT_PUBLIC_SEPOLIA_PLAY_TOKEN_ADDRESS || '0xBe5cC5b0B4D00f637d58008f3577D4Ef30D65a1D';
+const SEPOLIA_RPC_URL = process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || 'https://ethereum-sepolia.publicnode.com';
+const PLAY_TOKEN_ADDRESS = process.env.NEXT_PUBLIC_SEPOLIA_PLAY_TOKEN_ADDRESS || '0x45d1Fb8fD268E3156D00119C6f195f9ad784C6CE';
 const DEPLOYER_PRIVATE_KEY = process.env.SEPOLIA_DEPLOYER_PRIVATE_KEY; // デプロイヤーの秘密鍵
 
 const PLAY_TOKEN_ABI = [
   'function distributeBaseAirdrop(address to) external',
-  'function hasClaimedBaseAirdrop(address user) external view returns (bool)',
-  'function getBaseAirdropAmount() external pure returns (uint256)'
+  'function baseAirdropClaimed(address user) external view returns (bool)',
+  'function balanceOf(address account) external view returns (uint256)',
+  'function hasRole(bytes32 role, address account) external view returns (bool)'
 ];
 
 interface ClaimRequest {
@@ -35,8 +36,13 @@ export async function POST(request: NextRequest) {
 
     // デプロイヤーの秘密鍵チェック
     if (!DEPLOYER_PRIVATE_KEY) {
+      console.error('SEPOLIA_DEPLOYER_PRIVATE_KEY not configured for sponsored claims');
       return NextResponse.json(
-        { success: false, error: 'Deployer private key not configured' },
+        { 
+          success: false, 
+          error: 'Sponsored claims not available - deployer key not configured',
+          details: 'Please configure SEPOLIA_DEPLOYER_PRIVATE_KEY environment variable'
+        },
         { status: 500 }
       );
     }
@@ -57,7 +63,7 @@ export async function POST(request: NextRequest) {
     const playTokenContract = new ethers.Contract(PLAY_TOKEN_ADDRESS, PLAY_TOKEN_ABI, deployerWallet);
 
     // 既にクレーム済みかチェック
-    const hasClaimed = await playTokenContract.hasClaimedBaseAirdrop(userAddress);
+    const hasClaimed = await playTokenContract.baseAirdropClaimed(userAddress);
     if (hasClaimed) {
       return NextResponse.json(
         { success: false, error: 'User has already claimed tokens' },

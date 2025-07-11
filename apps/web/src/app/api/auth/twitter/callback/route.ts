@@ -201,6 +201,7 @@ export async function GET(request: NextRequest) {
       wallet_address: walletAddress,
       username: twitterUser.username,
       display_name: twitterUser.name,
+      profile_image: twitterUser.profile_image_url,
       is_new_user: isNewUser,
     }
     
