@@ -116,7 +116,6 @@ logs
 # Build outputs
 build/
 dist/
-lib/
 
 # Firebase
 .firebase/
