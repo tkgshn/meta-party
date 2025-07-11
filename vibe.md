@@ -15,6 +15,8 @@
 
 誰でもアクセス可能！ MetaMaskで即座にPlay Tokenを取得できます。
 
+**対応ネットワーク**: Sepolia テストネット（Ethereum L1）
+
 ## 🏗️ プロジェクトの構成
 
 ```
@@ -59,6 +61,7 @@ npm run anvil
 
 - **ホームページ**: http://localhost:3000 (または自動割り当てポート)
 - **市場詳細**: http://localhost:3000/market/[id]
+- **デフォルトネットワーク**: Sepolia テストネット
 
 ### 🔧 **開発環境オプション**
 
@@ -81,16 +84,15 @@ npm run anvil
 
 2. **スマートコントラクトのデプロイ** ✅ **完了済み**
 
-   **デプロイ済みコントラクト（Polygon Amoy テストネット）:**
+   **デプロイ済みコントラクト（Sepolia テストネット）:**
+   - **PlayToken**: `0x45d1Fb8fD268E3156D00119C6f195f9ad784C6CE`
+   - **MarketFactory**: `0x68eF1D7Fae3067A9E5FcC7Cb3083F6C15e44537d`
+   - **ConditionalTokens**: `0x1d1ddb215F901D0541F588490Aa74f11B09f1e5d`
+
+   **旧 Polygon Amoy テストネット（レガシー）:**
    - **PlayToken**: `0x237B9E4EEE4AeAf712B5B240Ab03C973310B6bD1`
    - **MarketFactory**: `0x9f1C3f06B201FFa385a4BB3695f78cB1c17c12db`
    - **ConditionalTokens**: `0x0416a4757062c1e61759ADDb6d68Af145919F045`
-
-   **フロントエンドの.env.localに追加が必要:**
-   ```
-   NEXT_PUBLIC_PLAY_TOKEN_ADDRESS=0x237B9E4EEE4AeAf712B5B240Ab03C973310B6bD1
-   NEXT_PUBLIC_MARKET_FACTORY_ADDRESS=0x9f1C3f06B201FFa385a4BB3695f78cB1c17c12db
-   ```
 
 3. **Wallet Connect（オプション）**
    - https://cloud.walletconnect.com/ でプロジェクトIDを取得
@@ -104,14 +106,15 @@ npm run anvil
 ### 2. **アプリでワンクリック設定** ✅ **自動化済み**
    - http://localhost:3000 にアクセス
    - 「Connect Wallet」ボタンでMetaMask接続
-   - **自動ネットワーク切り替え**: 「Polygon Amoy に切り替え」ボタンをクリック
+   - **自動ネットワーク切り替え**: 「Sepolia に切り替え」ボタンをクリック
    - **自動ネットワーク追加**: 設定が自動で完了（手動設定不要）
 
-### 3. **テスト用POLを取得**
+### 3. **テスト用ETHを取得**
    **複数のファウセットが利用可能:**
-   - **Alchemy Faucet**: https://www.alchemy.com/faucets/polygon-amoy
-   - **Polygon Faucet**: https://faucet.polygon.technology/
-   - 1日1回、無料でテスト用POLを取得可能
+   - **Sepolia Faucet**: https://sepolia-faucet.pk910.de/
+   - **Alchemy Faucet**: https://www.alchemy.com/faucets/ethereum-sepolia
+   - **Infura Faucet**: https://www.infura.io/faucet/sepolia
+   - 1日1回、無料でテスト用ETHを取得可能
 
 ### 4. **Play Token取得** ✅ **完全実装**
    - 「1,000 PT を受け取る」ボタンをクリック
@@ -207,7 +210,7 @@ npm run dev
 ```
 
 ### MetaMaskが接続できない
-- Polygon Amoyテストネットを選択しているか確認
+- Sepoliaテストネットを選択しているか確認
 - ブラウザの拡張機能が有効か確認
 
 ### Play Tokenが取得できない
@@ -215,10 +218,10 @@ npm run dev
 - .env.localにアドレスが正しく設定されているか確認
 
 ### スマートコントラクト関連
-- デプロイは Polygon Mumbai ではなく **Polygon Amoy** を使用
-- deployed-addresses.json にコントラクトアドレス保存済み
-- フロントエンドの .env.local に上記のアドレスを設定済み
-- ダッシュボードページ（/dashboard）でPlay Token請求機能実装済み
+- デプロイは **Sepolia** テストネットを使用（Polygon Amoyから移行）
+- deployed-addresses.json にコントラクトアドレス保存済み（Amoyの情報が残存）
+- フロントエンドの .env.local に Sepolia のアドレスを設定
+- ホームページでPlay Token請求機能実装済み
 
 ## 🔮 将来の展望
 
@@ -231,13 +234,13 @@ npm run dev
 
 詳細は `ref/Mirai-master-plan.md` を参照してください。
 
-## 🎯 現在の状況（2025-07-03 更新）✅ **完全稼働**
+## 🎯 現在の状況（2025-07-11 更新）✅ **完全稼働**
 
 ### 🎉 **完全動作確認済み - 本格運用可能**
 - **フロントエンド**: Next.js 15 アプリが http://localhost:3000 で稼働中
-- **スマートコントラクト**: Polygon Amoy テストネットにデプロイ完了
+- **スマートコントラクト**: Sepolia テストネットにデプロイ完了（Amoyから移行）
 - **予測市場**: 11の市場で完全な取引インターフェース実装済み
-- **ウォレット連携**: 直接MetaMask APIで接続機能実装済み（軽量化完了）
+- **ウォレット連携**: Reown AppKit (旧WalletConnect)で接続機能実装済み
 - **トークン管理**: MetaMaskへの自動トークン追加機能実装
 
 ### 🚀 **今すぐできること（実証済み）**
@@ -248,14 +251,14 @@ npm run dev
 5. **エラー対応**: 日本語での詳細なエラーメッセージとトラブルシューティング ✅
 
 ### 📊 **実際の成功事例**
-- **テストトランザクション**: `0xd9b7e95f022fb75a6ba0bd1d128cb10071af64139250db6e992e46d6e14de123`
+- **テストトランザクション**: Sepolia Etherscanで確認可能
 - **実行結果**: 1,000 PT の取得に成功 ✅
 - **MetaMask表示**: トークン追加ボタンで正常に表示確認 ✅
 
 ### 🔧 **技術的成果**
 - 重複トランザクション送信の完全防止
 - 5秒クールダウンタイマーによるUX向上
-- Polygon Amoy最適化（ガス価格2倍設定）
+- Sepolia最適化（ガス価格設定）
 - Function selector正確性確認（claim: `0x4e71d92d`）
 - エラーハンドリングの日本語対応
 
@@ -325,18 +328,19 @@ POL取得ガイド → PTトークン自動追加 → 1000PT自動受け取り
 完了！ → ダッシュボードで即座利用可能
 ```
 
-**所要時間**: 約2-3分（POL取得含む）
+**所要時間**: 約2-3分（ETH取得含む）
 **成功率**: ほぼ100%（自動検証・回復機能）
 
-## 🔄 **Latest UI/UX Improvements (2025-07-07)**
+## 🔄 **Latest UI/UX Improvements (2025-07-11)**
 
-### ✅ **Unified Currency Display & Header Restoration**
-- **Play Token (PT) Universal Display**: All networks now show "PT" as currency symbol instead of network-specific currencies (MATIC/SEP)
-- **Header Portfolio Display**: Restored original design with Portfolio and Cash displayed at header level (not in dropdown)
+### ✅ **Sepolia Network Migration & Currency Display**
+- **Play Token (PT) Universal Display**: All networks now show "PT" as currency symbol
+- **Sepolia Primary Network**: デフォルトネットワークとして Sepolia を採用
+- **Header Portfolio Display**: Restored original design with Portfolio and Cash displayed at header level
 - **Smart Claim Button Logic**: 
   - Only shows for users who haven't claimed Play Tokens yet
   - Automatically adds PT to MetaMask after successful claim
-  - Includes faucet guidance for users lacking gas fees
+  - Includes faucet guidance for users lacking gas fees (ETH)
 - **Manual Balance Refresh**: Removed automatic loading on page load, only refreshes on user interaction
 - **Enhanced Error Handling**: Better feedback for gas shortage and claim errors
 - **Streamlined UI**: Removed redundant "PlayToken購入" button in favor of cleaner PT management
@@ -887,7 +891,14 @@ WalletModal.tsx - 削除（Reown純正使用）
 
 ### 📊 **重要なアドレス・設定**
 
-#### **Polygon Amoy Testnet**
+#### **Sepolia Testnet （現在のメイン環境）**
+```
+PlayToken: 0x45d1Fb8fD268E3156D00119C6f195f9ad784C6CE
+MarketFactory: 0x68eF1D7Fae3067A9E5FcC7Cb3083F6C15e44537d
+ConditionalTokens: 0x1d1ddb215F901D0541F588490Aa74f11B09f1e5d
+```
+
+#### **Polygon Amoy Testnet （レガシー）**
 ```
 PlayToken: 0x237B9E4EEE4AeAf712B5B240Ab03C973310B6bD1
 MarketFactory: 0x9f1C3f06B201FFa385a4BB3695f78cB1c17c12db
@@ -905,7 +916,7 @@ Permissions: 市場作成・自己解決・月20市場まで
 #### **本番サイト**
 - **URL**: https://web-nqr7kd4vi-taka-shunsuke-takagis-projects.vercel.app
 - **状況**: ✅ 完全稼働・全機能利用可能
-- **対応**: Multi-network (Polygon + Amoy + Anvil Local)
+- **対応**: Multi-network (Sepolia + Anvil Local)
 
 #### **ローカル開発**
 ```bash

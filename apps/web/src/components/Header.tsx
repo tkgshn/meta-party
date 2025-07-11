@@ -23,9 +23,12 @@ import { useWagmiToken } from '@/hooks/useWagmiToken';
 import { useOnChainPortfolio } from '@/hooks/useOnChainPortfolio';
 import { usePlayToken } from '@/hooks/usePlayToken';
 import { useSponsoredClaim } from '@/hooks/useSponsoredClaim';
-import { NETWORKS, getNetworkByChainId, getCurrencySymbol } from '@/config/networks';
+import { useSocialAuth } from '@/hooks/useSocialAuth';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { NETWORKS, getNetworkByChainId, getCurrencySymbol, DEFAULT_NETWORK } from '@/config/networks';
 import NetworkSwitcher from './NetworkSwitcher';
 import { Button } from '@/components/ui/button';
+import { getClaimStatus, setClaimStatus, hasClaimedAnywhere } from '@/lib/claimStorage';
 
 interface HeaderProps {
   onSearch?: (query: string) => void;
@@ -103,8 +106,11 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
   const { disconnect } = useDisconnect();
   const { open } = useAppKit();
 
-  // Detect current network - start with null to avoid race conditions
-  const [currentNetworkKey, setCurrentNetworkKey] = useState<string | null>(null);
+  // Detect current network - start with default network from branch
+  const [currentNetworkKey, setCurrentNetworkKey] = useState<string | null>(DEFAULT_NETWORK);
+
+  // Get current user information from Twitter authentication
+  const currentUser = useCurrentUser();
 
   // Check if user is authorized admin
   const whitelistedAddress = '0x2c5329fFa2A1f02A241Ec1932b4358bf71e158ae';
@@ -112,25 +118,33 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
 
   useEffect(() => {
     const detectNetwork = () => {
-      if (!chainId) return;
-
-      try {
-        const network = getNetworkByChainId(chainId);
-        if (network) {
-          const networkKey = Object.keys(NETWORKS).find(
-            key => NETWORKS[key].chainId === chainId
-          );
-          if (networkKey) {
-            setCurrentNetworkKey(networkKey);
+      // If we have a chainId from wagmi, use it
+      if (chainId) {
+        try {
+          const network = getNetworkByChainId(chainId);
+          if (network) {
+            const networkKey = Object.keys(NETWORKS).find(
+              key => NETWORKS[key].chainId === chainId
+            );
+            if (networkKey) {
+              setCurrentNetworkKey(networkKey);
+              return;
+            }
           }
+        } catch (error) {
+          console.error('Failed to detect network:', error);
         }
-      } catch (error) {
-        console.error('Failed to detect network:', error);
+      }
+      
+      // Fallback: If no chainId or detection fails, use default network
+      // This handles Twitter auth (Magic Link) cases where chainId might not be available
+      if (!currentNetworkKey) {
+        setCurrentNetworkKey(DEFAULT_NETWORK);
       }
     };
 
     detectNetwork();
-  }, [chainId]);
+  }, [chainId, currentNetworkKey]);
 
   // Use wagmi token hook for social wallets (Reown/WalletConnect)
   const {
@@ -154,13 +168,25 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
     isLoading: tokenHookLoading
   } = useToken(account || null, currentNetworkKey || 'sepolia');
 
+  // Check localStorage for claim status to ensure consistency across browsers
+  const localClaimStatus = account && currentNetworkKey ? getClaimStatus(account, currentNetworkKey) : null;
+  
+  // For Twitter authenticated users, check if they've claimed anywhere
+  const hasClaimedWithTwitter = currentUser.authenticated && currentUser.twitterId ? 
+    hasClaimedAnywhere(currentUser.twitterId) : false;
+
   // Determine which hook to use based on wallet type
   // Use wagmi for social wallets (no window.ethereum) or when wagmi is the only option
   const isUsingWagmi = isWagmiAvailable && (typeof window === 'undefined' || !window.ethereum);
   const actualBalance = isUsingWagmi ? wagmiTokenBalance : tokenBalance;
   const actualRefreshBalance = isUsingWagmi ? wagmiRefreshBalance : refreshBalance;
   const actualClaimTokens = isUsingWagmi ? wagmiClaimTokens : claimFromTokenHook;
-  const actualHasClaimed = isUsingWagmi ? wagmiHasClaimed : tokenHookHasClaimed;
+  
+  // Enhanced hasClaimed logic: check both chain state and localStorage
+  const chainHasClaimed = isUsingWagmi ? wagmiHasClaimed : tokenHookHasClaimed;
+  const localHasClaimed = localClaimStatus?.hasClaimed || hasClaimedWithTwitter;
+  const actualHasClaimed = chainHasClaimed || localHasClaimed;
+  
   const actualCanClaim = isUsingWagmi ? wagmiCanClaim : tokenHookCanClaim;
   const actualIsLoading = isUsingWagmi ? wagmiLoading : tokenHookLoading;
 
@@ -366,6 +392,18 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                                 result = { success: false, error: 'Claim function not available' };
                               }
 
+                              // Update localStorage on successful claim
+                              if (result.success && account && currentNetworkKey) {
+                                setClaimStatus({
+                                  hasClaimed: true,
+                                  claimDate: new Date().toISOString(),
+                                  txHash: result.txHash,
+                                  twitterId: currentUser.twitterId,
+                                  walletAddress: account,
+                                  networkKey: currentNetworkKey
+                                });
+                              }
+
                           if (!result.success) {
                             if (result.error?.includes('ガス代') || result.error?.includes('insufficient funds')) {
                               let faucetUrl = 'https://faucet.polygon.technology/';
@@ -382,6 +420,19 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                           } else {
                             // Success - refresh balance and auto-add token to MetaMask
                             await actualRefreshBalance();
+                            
+                            // Update localStorage on successful claim
+                            if (account && currentNetworkKey) {
+                              setClaimStatus({
+                                hasClaimed: true,
+                                claimDate: new Date().toISOString(),
+                                txHash: result.txHash,
+                                twitterId: currentUser.twitterId,
+                                walletAddress: account,
+                                networkKey: currentNetworkKey
+                              });
+                            }
+                            
                             setTimeout(async () => {
                               try {
                                 // Only try to add token if using browser wallet
@@ -481,6 +532,19 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                           } else {
                             // Success - refresh balance and auto-add token to MetaMask
                             await actualRefreshBalance();
+                            
+                            // Update localStorage on successful claim
+                            if (account && currentNetworkKey) {
+                              setClaimStatus({
+                                hasClaimed: true,
+                                claimDate: new Date().toISOString(),
+                                txHash: result.txHash,
+                                twitterId: currentUser.twitterId,
+                                walletAddress: account,
+                                networkKey: currentNetworkKey
+                              });
+                            }
+                            
                             setTimeout(async () => {
                               try {
                                 // Only try to add token if using browser wallet
@@ -553,9 +617,15 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                           <Link href={`/profile/${account}`} className="text-sm font-medium text-gray-900 hover:underline">
                             {account.slice(0, 6)}...{account.slice(-4)}
                           </Link>
-                          <div className="text-xs text-gray-500 mt-1">
-                            {NETWORKS[currentNetworkKey]?.displayName || 'Unknown Network'}
-                            {NETWORKS[currentNetworkKey]?.isTestnet && ' (テストネット)'}
+                          <div className="flex items-center space-x-2 text-xs mt-1">
+                            <span className="text-gray-500">
+                              {NETWORKS[currentNetworkKey]?.displayName || 'Unknown Network'}
+                            </span>
+                            {NETWORKS[currentNetworkKey]?.isTestnet && (
+                              <span className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full text-xs font-medium">
+                                テストネット
+                              </span>
+                            )}
                           </div>
                         </div>
 
