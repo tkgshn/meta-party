@@ -2,11 +2,11 @@
 
 import { useAccount } from 'wagmi';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { notFound } from 'next/navigation';
-import { 
-  UserCircleIcon, 
-  WalletIcon, 
+import {
+  UserCircleIcon,
+  WalletIcon,
   ChartBarIcon,
   LinkIcon,
   ArrowTopRightOnSquareIcon,
@@ -21,6 +21,7 @@ import { useOnChainPortfolio } from '@/hooks/useOnChainPortfolio';
 import { useToken } from '@/hooks/useToken';
 import { useMetaMask } from '@/hooks/useMetaMask';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useUserProfile } from '@/hooks/useUserProfile';
 import { NETWORKS } from '@/config/networks';
 import { isAddress } from 'viem';
 import Header from '@/components/Header';
@@ -33,7 +34,7 @@ interface ProfilePageProps {
 }
 
 export default function ProfilePage({ params }: ProfilePageProps) {
-  const { address: connectedAddress, isConnected } = useAccount();
+  const { address: connectedAddress, isConnected, chainId } = useAccount();
   const { getCurrentChainId } = useMetaMask();
   const router = useRouter();
   const { address: profileAddress } = params;
@@ -55,17 +56,54 @@ export default function ProfilePage({ params }: ProfilePageProps) {
   }, [isConnected, isOwnProfile, router]);
 
   // 現在のネットワーク情報を取得
-  const currentChainId = getCurrentChainId();
+  const [currentChainId, setCurrentChainId] = useState<number | null>(null);
+  const [currentNetworkKey, setCurrentNetworkKey] = useState<string>('sepolia');
   const currentNetwork = currentChainId ? Object.values(NETWORKS).find(network => network.chainId === currentChainId) : null;
-  const currentNetworkKey = currentNetwork ? Object.keys(NETWORKS).find(key => NETWORKS[key].chainId === currentChainId) || 'sepolia' : 'sepolia';
 
-  const { 
-    positionTokens, 
-    totalPortfolioValue, 
-    isLoading: portfolioLoading 
+  // ネットワーク情報の初期化
+  useEffect(() => {
+    const initializeNetwork = async () => {
+      try {
+        // Use wagmi chainId first, fallback to MetaMask
+        const detectedChainId = chainId || await getCurrentChainId();
+        if (detectedChainId) {
+          setCurrentChainId(detectedChainId);
+          const network = Object.values(NETWORKS).find(network => network.chainId === detectedChainId);
+          if (network) {
+            const networkKey = Object.keys(NETWORKS).find(key => NETWORKS[key].chainId === detectedChainId);
+            if (networkKey) {
+              setCurrentNetworkKey(networkKey);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Failed to initialize network:', error);
+        // デフォルトのSepoliaネットワークを使用
+        setCurrentChainId(11155111);
+        setCurrentNetworkKey('sepolia');
+      }
+    };
+
+    initializeNetwork();
+  }, [chainId, getCurrentChainId]);
+
+  const {
+    positionTokens,
+    totalPortfolioValue,
+    isLoading: portfolioLoading
   } = useOnChainPortfolio(profileAddress);
 
-  const { balance: tokenBalance } = useToken(profileAddress, currentNetworkKey);
+  const { balance: tokenBalance, isLoading: tokenLoading } = useToken(profileAddress, currentNetworkKey);
+  
+  // Get external user profile information
+  const { userProfile: externalUserProfile, isLoading: profileLoading } = useUserProfile(
+    !isOwnProfile ? profileAddress : null
+  );
+
+  // Portfolio calculations (same logic as Header)
+  const displayBalance = parseFloat(tokenBalance) || 0;
+  const positionsValue = positionTokens.reduce((sum, token) => sum + token.value, 0);
+  const calculatedPortfolioValue = totalPortfolioValue || (displayBalance + positionsValue);
 
   // Block explorer URLを動的に生成
   const getBlockExplorerUrl = (address: string) => {
@@ -96,25 +134,79 @@ export default function ProfilePage({ params }: ProfilePageProps) {
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
                 {isOwnProfile ? 'マイプロフィール' : 'ユーザープロフィール'}
               </h1>
-              <p className="text-gray-600">
-                {isOwnProfile ? 'アカウント情報とポートフォリオ概要' : 'ユーザーの公開ポートフォリオ情報'}
-              </p>
             </div>
             <div className="flex items-center space-x-3">
-              <Button variant="outline" asChild>
-                <a
-                  href={getBlockExplorerUrl(profileAddress)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center space-x-2"
-                >
-                  <ArrowTopRightOnSquareIcon className="h-4 w-4" />
-                  <span>{getBlockExplorerName()}</span>
-                </a>
-              </Button>
+              {/* Block Explorer button removed - wallet address now clickable */}
             </div>
           </div>
         </div>
+
+        {/* Profile Card */}
+        <Card className="bg-white border-gray-200 shadow-sm mb-8">
+          <CardContent className="p-6">
+            <div className="flex items-center space-x-6">
+              <div className="flex-shrink-0">
+                <div className="h-20 w-20 rounded-full overflow-hidden flex items-center justify-center bg-gray-100 relative">
+                  <img
+                    src={getUserAvatarUrl({
+                      profileImage: isOwnProfile 
+                        ? currentUser.profileImage 
+                        : externalUserProfile?.profileImage,
+                      walletAddress: profileAddress,
+                      twitterId: isOwnProfile 
+                        ? currentUser.twitterId 
+                        : externalUserProfile?.twitterUsername
+                    }, 80)}
+                    alt="Profile"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      const fallbackElement = e.currentTarget.nextElementSibling as HTMLElement;
+                      if (fallbackElement) {
+                        fallbackElement.style.display = 'flex';
+                      }
+                    }}
+                  />
+                  <div className="w-full h-full bg-gray-600 rounded-full items-center justify-center absolute inset-0 hidden">
+                    <UserCircleIcon className="h-12 w-12 text-white" />
+                  </div>
+                </div>
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center space-x-3 mb-2">
+                  <h2 className="text-xl font-semibold text-gray-900">
+                    {isOwnProfile 
+                      ? (currentUser.displayName || shortAddress)
+                      : (externalUserProfile?.displayName || shortAddress)
+                    }
+                  </h2>
+                  {((isOwnProfile && currentUser.twitterUsername) || 
+                    (!isOwnProfile && externalUserProfile?.twitterUsername)) && (
+                    <span className="text-sm text-gray-500">
+                      @{isOwnProfile ? currentUser.twitterUsername : externalUserProfile?.twitterUsername}
+                    </span>
+                  )}
+                </div>
+                <div className="bg-gray-50 rounded-lg px-3 py-2 mb-3">
+                  <a
+                    href={getBlockExplorerUrl(profileAddress)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-gray-600 font-mono hover:text-blue-600 hover:underline cursor-pointer transition-colors"
+                  >
+                    {profileAddress}
+                  </a>
+                </div>
+                <div className="flex items-center space-x-6 text-sm text-gray-500">
+                  <span className="flex items-center space-x-2">
+                    <WalletIcon className="h-4 w-4" />
+                    <span>{currentNetwork?.displayName || 'Unknown Network'}</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Network Info */}
         <div className="mb-6 p-4 bg-gray-50 rounded-lg">
@@ -137,90 +229,8 @@ export default function ProfilePage({ params }: ProfilePageProps) {
           </div>
         </div>
 
-        {/* Profile Card */}
-        <Card className="bg-white border-gray-200 shadow-sm mb-8">
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-6">
-              <div className="flex-shrink-0">
-                <div className="h-20 w-20 rounded-full overflow-hidden flex items-center justify-center bg-gray-100 relative">
-                  <img
-                    src={getUserAvatarUrl({
-                      profileImage: isOwnProfile ? currentUser.profileImage : undefined,
-                      walletAddress: profileAddress,
-                      twitterId: isOwnProfile ? currentUser.twitterId : undefined
-                    }, 80)}
-                    alt="Profile"
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                      const fallbackElement = e.currentTarget.nextElementSibling as HTMLElement;
-                      if (fallbackElement) {
-                        fallbackElement.style.display = 'flex';
-                      }
-                    }}
-                  />
-                  <div className="w-full h-full bg-gray-600 rounded-full items-center justify-center absolute inset-0 hidden">
-                    <UserCircleIcon className="h-12 w-12 text-white" />
-                  </div>
-                </div>
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center space-x-3 mb-2">
-                  <h2 className="text-xl font-semibold text-gray-900">
-                    {isOwnProfile && currentUser.displayName ? currentUser.displayName : shortAddress}
-                  </h2>
-                  {isOwnProfile && currentUser.twitterUsername && (
-                    <span className="text-sm text-gray-500">
-                      @{currentUser.twitterUsername}
-                    </span>
-                  )}
-                </div>
-                <div className="bg-gray-50 rounded-lg px-3 py-2 mb-3">
-                  <p className="text-sm text-gray-600 font-mono">
-                    {profileAddress}
-                  </p>
-                </div>
-                <div className="flex items-center space-x-6 text-sm text-gray-500">
-                  <span className="flex items-center space-x-2">
-                    <WalletIcon className="h-4 w-4" />
-                    <span>{currentNetwork?.displayName || 'Unknown Network'}</span>
-                  </span>
-                  {!isOwnProfile && (
-                    <span className="flex items-center space-x-2">
-                      <ClockIcon className="h-4 w-4" />
-                      <span>公開プロフィール</span>
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Portfolio Overview Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {/* Cash Card */}
-          <Card className="bg-white border-gray-200 shadow-sm">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium text-gray-600">Cash</p>
-                  </div>
-                  <p className="text-3xl font-bold text-gray-900">
-                    {portfolioLoading ? '...' : Math.floor(Number(tokenBalance)).toLocaleString()} PT
-                  </p>
-                  <p className="text-sm text-gray-500 mt-1">
-                    今すぐ使えるPlay Token残高
-                  </p>
-                </div>
-                <div className="h-16 w-16 bg-gray-100 rounded-lg flex items-center justify-center">
-                  <BanknotesIcon className="h-8 w-8 text-gray-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Positions Card */}
           <Card className="bg-white border-gray-200 shadow-sm">
             <CardContent className="p-6">
@@ -252,7 +262,7 @@ export default function ProfilePage({ params }: ProfilePageProps) {
                     <p className="text-sm font-medium text-gray-600">Portfolio</p>
                   </div>
                   <p className="text-3xl font-bold text-gray-900">
-                    {portfolioLoading ? '...' : Math.floor(totalPortfolioValue).toLocaleString()} PT
+                    {portfolioLoading ? '...' : Math.floor(calculatedPortfolioValue).toLocaleString()} PT
                   </p>
                   <p className="text-sm text-gray-500 mt-1">
                     総資産価値（Cash + ポジション）
@@ -260,6 +270,28 @@ export default function ProfilePage({ params }: ProfilePageProps) {
                 </div>
                 <div className="h-16 w-16 bg-gray-100 rounded-lg flex items-center justify-center">
                   <TrophyIcon className="h-8 w-8 text-gray-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Cash Card */}
+          <Card className="bg-white border-gray-200 shadow-sm">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-gray-600">Cash</p>
+                  </div>
+                  <p className="text-3xl font-bold text-gray-900">
+                    {tokenLoading || portfolioLoading ? '...' : Math.floor(displayBalance).toLocaleString()} PT
+                  </p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    今すぐ使えるPlay Token残高
+                  </p>
+                </div>
+                <div className="h-16 w-16 bg-gray-100 rounded-lg flex items-center justify-center">
+                  <BanknotesIcon className="h-8 w-8 text-gray-600" />
                 </div>
               </div>
             </CardContent>
@@ -275,51 +307,31 @@ export default function ProfilePage({ params }: ProfilePageProps) {
                   <UserCircleIcon className="h-10 w-10 text-gray-400" />
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-3">
-                  {shortAddress} のプロフィール
+                  {externalUserProfile?.displayName || shortAddress} のプロフィール
                 </h3>
-                <p className="text-gray-500 max-w-md mx-auto leading-relaxed">
-                  このユーザーの公開ポートフォリオ情報を表示しています。<br />
-                  個人設定やTwitter連携などの機能は自分のプロフィールでのみ利用可能です。
-                </p>
+                {externalUserProfile?.hasProfile ? (
+                  <div className="space-y-2">
+                    {externalUserProfile.twitterUsername && (
+                      <p className="text-sm text-gray-600">
+                        <span className="font-medium">Twitter:</span> @{externalUserProfile.twitterUsername}
+                      </p>
+                    )}
+                    <p className="text-gray-500 max-w-md mx-auto leading-relaxed">
+                      このユーザーの公開ポートフォリオ情報を表示しています。
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-gray-500 max-w-md mx-auto leading-relaxed">
+                    このアドレスのユーザー情報は公開されていません。<br />
+                    ポートフォリオ情報のみ表示されています。
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* Quick Actions */}
-        {isOwnProfile && isConnected && (
-          <Card className="bg-white border-gray-200 shadow-sm">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    クイックアクション
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    よく使用する機能への素早いアクセス
-                  </p>
-                </div>
-                <div className="flex space-x-3">
-                  <Button
-                    onClick={() => router.push('/portfolio')}
-                    className="bg-gray-900 hover:bg-gray-800 text-white"
-                  >
-                    <ChartBarIcon className="h-4 w-4 mr-2" />
-                    ポートフォリオ詳細
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => router.push('/')}
-                    className="text-gray-600 border-gray-200 bg-gray-50 hover:bg-gray-100"
-                  >
-                    <LinkIcon className="h-4 w-4 mr-2" />
-                    マーケット一覧
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+
       </main>
     </>
   );

@@ -152,9 +152,9 @@ export default function PortfolioPage() {
         const response = await fetch(
           `/api/claim/volunteer-bonus?address=${account}&network=${currentNetworkKey}`
         );
-        
+
         console.log('📡 Volunteer API response:', response.status);
-        
+
         if (response.ok) {
           const data = await response.json();
           console.log('✅ Volunteer API data:', data);
@@ -263,7 +263,7 @@ export default function PortfolioPage() {
         <div className="mb-6 p-4 bg-gray-50 rounded-lg">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <div className={`w-3 h-3 rounded-full ${currentNetwork?.isTestnet ? 'bg-yellow-400' : 'bg-green-400'}`} />
+              <div className={`w-3 h-3 rounded-full ${currentNetwork?.isTestnet ? 'bg-orange-400' : 'bg-green-400'}`} />
               <div>
                 <p className="text-sm font-medium text-gray-900">{currentNetwork?.displayName}</p>
                 <p className="text-xs text-gray-500">
@@ -406,11 +406,10 @@ export default function PortfolioPage() {
             <CardContent className="p-6">
               <div className="flex items-center space-x-4">
                 <div className="flex-shrink-0">
-                  <div className={`h-12 w-12 rounded-full flex items-center justify-center ${
-                    volunteerBonusStatus.hasClaimedBonus 
-                      ? 'bg-gradient-to-r from-green-500 to-blue-500' 
+                  <div className={`h-12 w-12 rounded-full flex items-center justify-center ${volunteerBonusStatus.hasClaimedBonus
+                      ? 'bg-gradient-to-r from-green-500 to-blue-500'
                       : 'bg-gray-900'
-                  }`}>
+                    }`}>
                     {volunteerBonusStatus.hasClaimedBonus ? (
                       <CheckCircleIcon className="h-6 w-6 text-white" />
                     ) : (
@@ -423,23 +422,22 @@ export default function PortfolioPage() {
                     {volunteerBonusStatus.hasClaimedBonus ? 'ボランティア特典獲得済み' : 'ボランティア特典プログラム'}
                   </h3>
                   <p className="text-sm text-gray-600 mb-3">
-                    {volunteerBonusStatus.hasClaimedBonus 
+                    {volunteerBonusStatus.hasClaimedBonus
                       ? 'チームみらいのボランティア特典（2,000 PT）を獲得済みです'
                       : 'チームみらいのボランティア活動に参加している方限定の特典です'
                     }
                   </p>
-                  <div className={`border rounded-lg p-4 ${
-                    volunteerBonusStatus.hasClaimedBonus 
-                      ? 'bg-gradient-to-r from-green-50 to-blue-50 border-green-200' 
+                  <div className={`border rounded-lg p-4 ${volunteerBonusStatus.hasClaimedBonus
+                      ? 'bg-gradient-to-r from-green-50 to-blue-50 border-green-200'
                       : 'bg-gray-50 border-gray-200'
-                  }`}>
+                    }`}>
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-gray-800">
                           {volunteerBonusStatus.hasClaimedBonus ? '✅ 特典獲得完了' : '追加ボーナス配布中'}
                         </p>
                         <p className="text-xs text-gray-600 mt-1">
-                          {volunteerBonusStatus.hasClaimedBonus 
+                          {volunteerBonusStatus.hasClaimedBonus
                             ? 'ボランティア活動への参加ありがとうございます'
                             : '対象者には自動的に配布されます'
                           }
