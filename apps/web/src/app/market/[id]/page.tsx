@@ -22,14 +22,48 @@ import {
   Legend
 } from 'recharts';
 
-import { miraiMarkets, type Market } from '@/data/miraiMarkets';
+import { useOnChainMarket } from '@/hooks/useOnChainMarkets';
+import { type Market } from '@/data/miraiMarkets';
 import Header from '@/components/Header';
 import { updateMarketState } from '@/utils/futarchyMath';
 import { useAppKit } from '@reown/appkit/react';
+import { useOnChainPortfolio } from '@/hooks/useOnChainPortfolio';
+import { onChainService } from '@/lib/onChainService';
 
 // Helper function to get market data by ID
 const getMarketById = (id: string) => {
   return miraiMarkets.find(market => market.id === id);
+};
+
+// Convert on-chain market to legacy format for backward compatibility
+const convertOnChainMarketToLegacy = (onChainMarket: any) => {
+  return {
+    id: onChainMarket.address,
+    title: onChainMarket.title,
+    description: onChainMarket.kpiDescription,
+    category: 'governance',
+    totalVolume: parseFloat(onChainMarket.volume),
+    participants: onChainMarket.participants,
+    endDate: new Date(onChainMarket.tradingDeadline * 1000),
+    deadline: new Date(onChainMarket.tradingDeadline * 1000),
+    tags: ['futarchy', 'governance'],
+    isFeatured: false,
+    isActive: onChainMarket.phase === 0,
+    createdAt: new Date(onChainMarket.createdAt),
+    lastTrade: new Date(onChainMarket.lastUpdated),
+    liquidity: parseFloat(onChainMarket.totalFunding),
+    topPrice: parseFloat(onChainMarket.prices[0] || '0.5'),
+    proposals: onChainMarket.prices.map((price: string, index: number) => ({
+      id: `${index}`,
+      name: `提案 ${index + 1}`,
+      description: `アウトカム ${index + 1}`,
+      price: parseFloat(price),
+      probability: Math.round(parseFloat(price) * 100),
+      supporters: Math.floor(onChainMarket.participants / onChainMarket.numOutcomes),
+      volume: parseFloat(onChainMarket.volume) / onChainMarket.numOutcomes,
+      lastUpdate: new Date(onChainMarket.lastUpdated)
+    }))
+  };
 };
 
 // Generate price history for multi-option markets with different time scopes
@@ -139,12 +173,18 @@ export default function MarketDetailPage() {
   const [timeScope, setTimeScope] = useState<'1h' | '6h' | '1w' | '1m' | 'all'>('1w');
   const [selectedBuyButton, setSelectedBuyButton] = useState<{ proposalId: string; type: 'yes' | 'no' } | null>(null);
   const [selectedPhase, setSelectedPhase] = useState<'open' | 'decision' | 'resolution' | null>(null);
+  const [isTrading, setIsTrading] = useState(false);
 
-  // User holdings (mock data - in real app this would come from wallet/contracts)
-  const [userBalance] = useState(11.08); // PT balance
+  // Get user's wallet account
+  const { account } = useAppKit();
+  
+  // Use on-chain data
+  const { market: onChainMarket, trades, isLoading, error, refreshMarket } = useOnChainMarket(marketId);
+  const { playTokenBalance } = useOnChainPortfolio(account);
 
-  // Get the actual market data
-  const marketData = getMarketById(marketId);
+  // Convert to legacy format for backward compatibility
+  const marketData = onChainMarket ? convertOnChainMarketToLegacy(onChainMarket) : getMarketById(marketId);
+  const userBalance = playTokenBalance ? parseFloat(playTokenBalance) : 0;
 
   // Generate price history based on market data and time scope
   const priceHistory = useMemo(() => {

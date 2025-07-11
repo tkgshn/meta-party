@@ -94,7 +94,7 @@ export default function ProfilePage({ params }: ProfilePageProps) {
   } = useOnChainPortfolio(profileAddress);
 
   const { balance: tokenBalance, isLoading: tokenLoading } = useToken(profileAddress, currentNetworkKey);
-  
+
   // Get external user profile information
   const { userProfile: externalUserProfile, isLoading: profileLoading } = useUserProfile(
     !isOwnProfile ? profileAddress : null
@@ -149,12 +149,12 @@ export default function ProfilePage({ params }: ProfilePageProps) {
                 <div className="h-20 w-20 rounded-full overflow-hidden flex items-center justify-center bg-gray-100 relative">
                   <img
                     src={getUserAvatarUrl({
-                      profileImage: isOwnProfile 
-                        ? currentUser.profileImage 
+                      profileImage: isOwnProfile
+                        ? currentUser.profileImage
                         : externalUserProfile?.profileImage,
                       walletAddress: profileAddress,
-                      twitterId: isOwnProfile 
-                        ? currentUser.twitterId 
+                      twitterId: isOwnProfile
+                        ? currentUser.twitterId
                         : externalUserProfile?.twitterUsername
                     }, 80)}
                     alt="Profile"
@@ -175,17 +175,24 @@ export default function ProfilePage({ params }: ProfilePageProps) {
               <div className="flex-1">
                 <div className="flex items-center space-x-3 mb-2">
                   <h2 className="text-xl font-semibold text-gray-900">
-                    {isOwnProfile 
-                      ? (currentUser.displayName || shortAddress)
-                      : (externalUserProfile?.displayName || shortAddress)
-                    }
+                    <a
+                      href={getBlockExplorerUrl(profileAddress)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:underline cursor-pointer"
+                    >
+                      {isOwnProfile
+                        ? (currentUser.displayName || profileAddress)
+                        : (externalUserProfile?.displayName || profileAddress)
+                      }
+                    </a>
                   </h2>
-                  {((isOwnProfile && currentUser.twitterUsername) || 
+                  {((isOwnProfile && currentUser.twitterUsername) ||
                     (!isOwnProfile && externalUserProfile?.twitterUsername)) && (
-                    <span className="text-sm text-gray-500">
-                      @{isOwnProfile ? currentUser.twitterUsername : externalUserProfile?.twitterUsername}
-                    </span>
-                  )}
+                      <span className="text-sm text-gray-500">
+                        @{isOwnProfile ? currentUser.twitterUsername : externalUserProfile?.twitterUsername}
+                      </span>
+                    )}
                 </div>
                 <div className="bg-gray-50 rounded-lg px-3 py-2 mb-3">
                   <a
@@ -203,20 +210,20 @@ export default function ProfilePage({ params }: ProfilePageProps) {
                     <span>{currentNetwork?.displayName || 'Unknown Network'}</span>
                   </span>
                   {/* Twitter account information */}
-                  {((isOwnProfile && currentUser.twitterUsername) || 
+                  {((isOwnProfile && currentUser.twitterUsername) ||
                     (!isOwnProfile && externalUserProfile?.twitterUsername)) && (
-                    <a
-                      href={`https://x.com/${isOwnProfile ? currentUser.twitterUsername : externalUserProfile?.twitterUsername}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center space-x-2 text-blue-600 hover:text-blue-800 hover:underline transition-colors"
-                    >
-                      <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                      </svg>
-                      <span>@{isOwnProfile ? currentUser.twitterUsername : externalUserProfile?.twitterUsername}</span>
-                    </a>
-                  )}
+                      <a
+                        href={`https://x.com/${isOwnProfile ? currentUser.twitterUsername : externalUserProfile?.twitterUsername}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center space-x-2 text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+                      >
+                        <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                        </svg>
+                        <span>@{isOwnProfile ? currentUser.twitterUsername : externalUserProfile?.twitterUsername}</span>
+                      </a>
+                    )}
                 </div>
               </div>
             </div>
@@ -238,23 +245,30 @@ export default function ProfilePage({ params }: ProfilePageProps) {
             </div>
             <div className="flex items-center space-x-3">
               <div className="text-xs text-gray-500">
-                アドレス: {shortAddress}
-              </div>
-              {/* Twitter account link in network info */}
-              {((isOwnProfile && currentUser.twitterUsername) || 
-                (!isOwnProfile && externalUserProfile?.twitterUsername)) && (
-                <a
-                  href={`https://x.com/${isOwnProfile ? currentUser.twitterUsername : externalUserProfile?.twitterUsername}`}
+                アドレス: <a
+                  href={getBlockExplorerUrl(profileAddress)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center space-x-1 text-xs text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+                  className="font-bold hover:underline cursor-pointer"
                 >
-                  <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                  </svg>
-                  <span>@{isOwnProfile ? currentUser.twitterUsername : externalUserProfile?.twitterUsername}</span>
+                  {profileAddress}
                 </a>
-              )}
+              </div>
+              {/* Twitter account link in network info */}
+              {((isOwnProfile && currentUser.twitterUsername) ||
+                (!isOwnProfile && externalUserProfile?.twitterUsername)) && (
+                  <a
+                    href={`https://x.com/${isOwnProfile ? currentUser.twitterUsername : externalUserProfile?.twitterUsername}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center space-x-1 text-xs text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+                  >
+                    <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                    </svg>
+                    <span>@{isOwnProfile ? currentUser.twitterUsername : externalUserProfile?.twitterUsername}</span>
+                  </a>
+                )}
             </div>
           </div>
         </div>
@@ -337,7 +351,7 @@ export default function ProfilePage({ params }: ProfilePageProps) {
                   <UserCircleIcon className="h-10 w-10 text-gray-400" />
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-3">
-                  {externalUserProfile?.displayName || shortAddress} のプロフィール
+                  {(externalUserProfile?.displayName || profileAddress)} のプロフィール
                 </h3>
                 {externalUserProfile?.hasProfile ? (
                   <div className="space-y-2">

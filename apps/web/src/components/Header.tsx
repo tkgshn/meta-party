@@ -31,6 +31,7 @@ import NetworkSwitcher from './NetworkSwitcher';
 import { Button } from '@/components/ui/button';
 import { getClaimStatus, setClaimStatus, hasClaimedAnywhere } from '@/lib/claimStorage';
 import { getUserAvatarUrl } from '@/utils/pixelAvatar';
+import ThemeToggle from './ThemeToggle';
 
 interface HeaderProps {
   onSearch?: (query: string) => void;
@@ -310,7 +311,7 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
   };
 
   return (
-    <header className="bg-white shadow-sm border-b sticky top-0 z-50">
+    <header className="bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-800 sticky top-0 z-50">
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16 min-w-0 gap-4">
           {/* Logo and Title */}
@@ -354,6 +355,9 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
 
           {/* User Section */}
           <div className="flex items-center space-x-6">
+            {/* Theme Toggle */}
+            <ThemeToggle />
+            
             <ClientOnly fallback={
               <div className="w-32 h-10 bg-gray-200 rounded-lg animate-pulse"></div>
             }>

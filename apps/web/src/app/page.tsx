@@ -4,11 +4,14 @@ import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import {
   MagnifyingGlassIcon,
-  ChevronDownIcon
+  ChevronDownIcon,
+  ExclamationTriangleIcon,
+  ArrowPathIcon
 } from '@heroicons/react/24/outline';
 import { ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import '@/types/ethereum';
-import { miraiMarkets, type Market } from '@/data/miraiMarkets';
+import { useOnChainMarkets, convertToLegacyMarket, createSampleMarkets } from '@/hooks/useOnChainMarkets';
+import { type Market } from '@/data/miraiMarkets';
 import Header from '@/components/Header';
 
 const categoriesData = [
@@ -33,18 +36,31 @@ export default function HomePage() {
   const [viewMode] = useState<'grid' | 'list'>('grid');
   const [hoveredButton, setHoveredButton] = useState<{ proposalId: string; type: 'yes' | 'no' } | null>(null);
 
+  // Use on-chain data
+  const { markets: onChainMarkets, isLoading, error, refreshMarkets } = useOnChainMarkets();
+
+  // Convert on-chain markets to legacy format, fallback to sample data if no on-chain markets
+  const markets = useMemo(() => {
+    if (onChainMarkets && onChainMarkets.length > 0) {
+      return onChainMarkets.map(convertToLegacyMarket);
+    } else {
+      // Use sample data if no on-chain markets exist
+      return createSampleMarkets().map(convertToLegacyMarket);
+    }
+  }, [onChainMarkets]);
+
   // Calculate category counts dynamically
   const categories = useMemo(() => {
-    const categoryCounts = miraiMarkets.reduce((acc, market) => {
+    const categoryCounts = markets.reduce((acc, market) => {
       acc[market.category] = (acc[market.category] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
 
     return categoriesData.map(cat => ({
       ...cat,
-      count: cat.id === 'all' ? miraiMarkets.length : (categoryCounts[cat.id] || 0)
+      count: cat.id === 'all' ? markets.length : (categoryCounts[cat.id] || 0)
     }));
-  }, []);
+  }, [markets]);
 
   // Handle search from Header component
   const handleSearch = (query: string) => {
@@ -53,7 +69,7 @@ export default function HomePage() {
 
   // Filter and sort markets
   const filteredAndSortedMarkets = useMemo(() => {
-    let filtered = [...miraiMarkets];
+    let filtered = [...markets];
 
     // Category filter
     if (selectedCategory !== 'all') {
@@ -87,7 +103,7 @@ export default function HomePage() {
     });
 
     return sorted as Market[];
-  }, [selectedCategory, searchQuery, sortBy]);
+  }, [markets, selectedCategory, searchQuery, sortBy]);
 
   return (
     <>
@@ -111,8 +127,8 @@ export default function HomePage() {
       // </div> */}
 
           {/* Search and Filters */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
               {/* Search */}
               <div className="flex-1 max-w-lg">
                 <div className="relative">
@@ -122,7 +138,7 @@ export default function HomePage() {
                     placeholder="市場を検索..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="pl-10 pr-4 py-2 w-full border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
               </div>
@@ -134,7 +150,7 @@ export default function HomePage() {
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as 'newest' | 'volume' | 'trending' | 'ending')}
-                    className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="appearance-none bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 pr-8 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="trending">トレンド順</option>
                     <option value="newest">新着順</option>
@@ -149,7 +165,7 @@ export default function HomePage() {
                   onClick={() => setShowFilters(!showFilters)}
                   className={`inline-flex items-center px-3 py-2 border rounded-lg text-sm font-medium ${showFilters
                     ? 'border-blue-500 text-blue-600 bg-blue-50'
-                    : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
+                    : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700'
                     }`}
                 >
                   <FunnelIcon className="w-4 h-4 mr-2" />
@@ -160,11 +176,11 @@ export default function HomePage() {
 
             {/* Expanded Filters */}
             {showFilters && (
-              <div className="mt-4 pt-4 border-t border-gray-200">
+              <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                 <div className="mb-3">
                   <h3 className="text-sm font-medium text-gray-700 mb-2">カテゴリで絞り込む</h3>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                   {categories.map((category) => (
                     <button
                       key={category.id}
@@ -197,9 +213,41 @@ export default function HomePage() {
             )}
           </div>
 
+          {/* Error State */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex items-center space-x-2">
+                <ExclamationTriangleIcon className="w-5 h-5 text-red-600 flex-shrink-0" />
+                <div>
+                  <h3 className="text-sm font-medium text-red-800">
+                    データの取得に失敗しました
+                  </h3>
+                  <p className="text-sm text-red-700 mt-1">
+                    {error}
+                  </p>
+                  <button
+                    onClick={refreshMarkets}
+                    className="mt-2 text-sm text-red-600 hover:text-red-800 font-medium"
+                  >
+                    再試行
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Loading State */}
+          {isLoading && (
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-8">
+              <div className="flex items-center justify-center space-x-2">
+                <ArrowPathIcon className="w-5 h-5 text-blue-600 animate-spin" />
+                <span className="text-gray-600 dark:text-gray-400">市場データを読み込み中...</span>
+              </div>
+            </div>
+          )}
 
           {/* Quick Category Tabs */}
-          <div className="border-b border-gray-200">
+          <div className="border-b border-gray-200 dark:border-gray-700">
             <nav className="flex space-x-8 overflow-x-auto" aria-label="Categories">
               {categories.filter(cat => cat.count > 0 || cat.id === 'all').map((category) => (
                 <button
@@ -227,7 +275,7 @@ export default function HomePage() {
           {/* Results Summary */}
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <h2 className="text-lg font-medium text-gray-900">
+              <h2 className="text-lg font-medium text-gray-900 dark:text-white">
                 {selectedCategory === 'all' ? 'すべての市場' : `${categories.find(c => c.id === selectedCategory)?.name}の市場`}
               </h2>
               <span className="text-sm text-gray-500">
@@ -247,12 +295,12 @@ export default function HomePage() {
 
           {/* Market Grid */}
           <div className={`grid gap-6 ${viewMode === 'grid'
-            ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
+            ? 'grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
             : 'grid-cols-1'
             }`}>
             {filteredAndSortedMarkets.map((market: Market) => (
               <Link key={market.id} href={`/market/${market.id}`}>
-                <div className="bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border border-gray-200">
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border border-gray-200 dark:border-gray-700">
                   <div className="p-6">
                     {/* <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center space-x-2">
@@ -292,7 +340,7 @@ export default function HomePage() {
                       <span>{format(market.deadline, 'MM/dd', { locale: ja })} 終了</span>
                     </div> */}
 
-                    <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2">
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2 line-clamp-2">
                       {market.title}
                     </h3>
 
@@ -310,11 +358,11 @@ export default function HomePage() {
                               key={proposal.id}
                               className="flex items-center justify-between py-2 min-h-[40px]"
                             >
-                              <span className="text-base font-medium text-gray-900 truncate">
+                              <span className="text-base font-medium text-gray-900 dark:text-white truncate">
                                 {proposal.name}
                               </span>
                               <span className="flex items-center ml-3 space-x-2">
-                                <span className="text-base font-bold text-gray-700">
+                                <span className="text-base font-bold text-gray-700 dark:text-gray-300">
                                   {(proposal.price * 100).toFixed(0)}%
                                 </span>
                                 <button
@@ -342,7 +390,7 @@ export default function HomePage() {
                           ))}
                           {market.proposals.length > 3 && (
                             <div className="text-center py-1">
-                              <span className="text-xs text-gray-500">他 {market.proposals.length - 3} 件</span>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">他 {market.proposals.length - 3} 件</span>
                             </div>
                           )}
                         </div>
@@ -388,7 +436,7 @@ export default function HomePage() {
                             <div className="flex items-center justify-between">
                               <div className="flex items-center space-x-2">
                                 <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                                <span className="text-sm font-medium text-gray-900">YES</span>
+                                <span className="text-sm font-medium text-gray-900 dark:text-white">YES</span>
                               </div>
                               <div className="flex items-center space-x-2">
                                 <span className="text-sm font-bold text-green-600">
@@ -408,7 +456,7 @@ export default function HomePage() {
                             <div className="flex items-center justify-between">
                               <div className="flex items-center space-x-2">
                                 <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                                <span className="text-sm font-medium text-gray-900">NO</span>
+                                <span className="text-sm font-medium text-gray-900 dark:text-white">NO</span>
                               </div>
                               <div className="flex items-center space-x-2">
                                 <span className="text-sm font-bold text-red-600">
@@ -479,7 +527,7 @@ export default function HomePage() {
                 </div> */}
 
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
                         流動性: {market.liquidity.toLocaleString()} PT
                       </span>
                       <button className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors">
@@ -494,12 +542,12 @@ export default function HomePage() {
 
           {/* Empty State */}
           {filteredAndSortedMarkets.length === 0 && (
-            <div className="text-center py-12 bg-white rounded-lg shadow-sm border border-gray-200">
+            <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
               <MagnifyingGlassIcon className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-4 text-lg font-medium text-gray-900">
+              <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">
                 {searchQuery ? '検索結果が見つかりません' : '市場がありません'}
               </h3>
-              <p className="mt-2 text-sm text-gray-500">
+              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
                 {searchQuery
                   ? `「${searchQuery}」に一致する市場が見つかりませんでした。`
                   : '選択されたカテゴリには市場がありません。'

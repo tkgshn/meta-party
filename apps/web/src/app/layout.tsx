@@ -26,7 +26,7 @@ export default async function RootLayout({
 
   return (
     <html lang="ja" className={inter.variable} suppressHydrationWarning>
-      <body className="font-sans bg-gray-50" suppressHydrationWarning>
+      <body className="font-sans bg-gray-50 dark:bg-gray-900" suppressHydrationWarning>
         <ReownContextProvider cookies={cookies}>
           <WalletErrorBoundary>
             <Providers>
