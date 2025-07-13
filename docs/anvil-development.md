@@ -1,6 +1,6 @@
 # Anvil Local Development Guide
 
-This guide explains how to use Anvil for robust local development of the Ultrathink Futarchy Platform.
+This guide explains how to use Anvil for robust local development of the Futarchy Platform.
 
 ## Overview
 

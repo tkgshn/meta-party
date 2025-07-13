@@ -1,8 +1,8 @@
-# Ultrathink Futarchy Platform
+# Futarchy Platform
 
 ## 🎯 プロジェクト概要
 
-**Ultrathink Futarchy Platform**は、予測市場を活用した新世代のガバナンスシステムです。社会課題の解決策を市場メカニズムで評価し、最適な意思決定を支援する革新的なプラットフォームです。
+**Futarchy Platform**は、予測市場を活用した新世代のガバナンスシステムです。社会課題の解決策を市場メカニズムで評価し、最適な意思決定を支援する革新的なプラットフォームです。
 
 ### 核心コンセプト
 - **Futarchy**: Robin Hansonが提唱した「予測市場による政治」理論の実装
@@ -252,6 +252,6 @@ npm run test               # フロントエンドテスト
 
 ---
 
-**Ultrathink Futarchy Platform**は、予測市場を通じてより良い集合知と意思決定を実現する、次世代ガバナンスシステムです。
+**Futarchy Platform**は、予測市場を通じてより良い集合知と意思決定を実現する、次世代ガバナンスシステムです。
 
 🚀 **今すぐ始める**: `npm run dev` でローカル開発を開始しましょう！

@@ -16,7 +16,7 @@ if (!projectId) {
 
 // Set up metadata
 const metadata = {
-  name: 'Ultrathink Futarchy Platform',
+  name: 'Futarchy Platform',
   description: 'Cutting-edge prediction market-based governance system',
   url: 'https://web-nqr7kd4vi-taka-shunsuke-takagis-projects.vercel.app', // Your production URL
   icons: ['https://assets.reown.com/reown-profile-pic.png']

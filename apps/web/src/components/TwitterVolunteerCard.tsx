@@ -300,6 +300,27 @@ export default function TwitterVolunteerCard({ networkKey = 'sepolia' }: Twitter
               🎉 ボランティア特典獲得済み！
             </span>
           </div>
+          
+          {/* 連携済みTwitterアカウント表示 */}
+          {(linkedTwitterId || twitterInput) && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+              <div className="flex items-center space-x-2">
+                <svg className="h-4 w-4 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                </svg>
+                <span className="text-sm font-medium text-blue-800">
+                  連携済みアカウント: {linkedTwitterId || twitterInput}
+                </span>
+              </div>
+              {bonusStatus.volunteerInfo && (
+                <div className="mt-2 text-xs text-blue-700">
+                  <p><strong>名前:</strong> {bonusStatus.volunteerInfo.name}</p>
+                  <p><strong>役割:</strong> {bonusStatus.volunteerInfo.role}</p>
+                </div>
+              )}
+            </div>
+          )}
+          
           <div className="bg-white rounded-lg p-4 mb-3">
             <p className="text-lg font-semibold text-gray-900 mb-1">
               チームみらいボランティア特典

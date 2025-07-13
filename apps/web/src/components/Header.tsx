@@ -317,7 +317,7 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
           {/* Logo and Title */}
           <div className="flex items-center">
             <Link href="/" className="flex items-center">
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
                 demo
               </h1>
             </Link>
@@ -334,7 +334,7 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                     value={searchInput}
                     onChange={handleSearchChange}
                     placeholder="市場を検索..."
-                    className="block w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    className="block w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                   />
                 </form>
                 {/* 仕組みについてボタン */}
@@ -365,17 +365,17 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
               <div className="flex items-center space-x-4">
                 {/* Play Token Portfolio Display */}
                 <div className="hidden lg:flex items-center space-x-3 text-sm">
-                  <Link href="/portfolio" className="flex items-center space-x-1 px-2 py-1 rounded hover:bg-blue-50 transition-colors cursor-pointer group whitespace-nowrap">
+                  <Link href="/portfolio" className="flex items-center space-x-1 px-2 py-1 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors cursor-pointer group whitespace-nowrap">
                     <ChartBarIcon className="h-4 w-4 text-blue-600 flex-shrink-0" />
-                    <span className="text-gray-600 group-hover:text-blue-700">ポートフォリオ:</span>
-                    <span className="font-semibold text-gray-900 group-hover:text-blue-700">
+                    <span className="text-gray-600 dark:text-gray-300 group-hover:text-blue-700">ポートフォリオ:</span>
+                    <span className="font-semibold text-gray-900 dark:text-white group-hover:text-blue-700">
                       {isBalanceLoading ? '...' : Math.floor(portfolioValue || 0).toLocaleString()} PT
                     </span>
                   </Link>
-                  <Link href="/portfolio" className="flex items-center space-x-1 px-2 py-1 rounded hover:bg-green-50 transition-colors cursor-pointer group whitespace-nowrap">
+                  <Link href="/portfolio" className="flex items-center space-x-1 px-2 py-1 rounded hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors cursor-pointer group whitespace-nowrap">
                     <CurrencyDollarIcon className="h-4 w-4 text-green-600 flex-shrink-0" />
-                    <span className="text-gray-600 group-hover:text-green-700">キャッシュ:</span>
-                    <span className="font-semibold text-gray-900 group-hover:text-green-700">
+                    <span className="text-gray-600 dark:text-gray-300 group-hover:text-green-700">キャッシュ:</span>
+                    <span className="font-semibold text-gray-900 dark:text-white group-hover:text-green-700">
                       {isBalanceLoading ? '...' : Math.floor(cashValue || 0).toLocaleString()} PT
                     </span>
                   </Link>
@@ -671,13 +671,13 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
 
                     {/* User Dropdown Menu */}
                     {showUserMenu && (
-                      <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
-                        <div className="px-4 py-3 border-b border-gray-200">
-                          <Link href={`/profile/${account}`} className="text-sm font-medium text-gray-900 hover:underline">
+                      <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50">
+                        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                          <Link href={`/profile/${account}`} className="text-sm font-medium text-gray-900 dark:text-white hover:underline">
                             {account.slice(0, 6)}...{account.slice(-4)}
                           </Link>
                           <div className="flex items-center space-x-2 text-xs mt-1">
-                            <span className="text-gray-500">
+                            <span className="text-gray-500 dark:text-gray-400">
                               {(currentNetworkKey && NETWORKS[currentNetworkKey]?.displayName) || 'Unknown Network'}
                             </span>
                             {currentNetworkKey && NETWORKS[currentNetworkKey]?.isTestnet && (
@@ -701,7 +701,7 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
 
                           <Link
                             href={`/profile/${account}`}
-                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                            className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                             onClick={() => setShowUserMenu(false)}
                           >
                             <div className="flex items-center">
@@ -712,7 +712,7 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
 
                         <Link
                           href="/portfolio"
-                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                          className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                           onClick={() => setShowUserMenu(false)}
                         >
                           <div className="flex items-center justify-between w-full">
@@ -721,7 +721,7 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                               ポートフォリオ
                             </div>
                             <div className="text-right">
-                              <div className="font-semibold text-gray-900">
+                              <div className="font-semibold text-gray-900 dark:text-white">
                                 {(portfolioLoading || isBalanceLoading) ? '...' : Math.floor(displayBalance || 0).toLocaleString()} PT
                               </div>
                               <div className="text-xs text-green-600">Live</div>
@@ -733,7 +733,7 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                         {isAdmin && (
                           <Link
                             href="/admin"
-                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                            className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                             onClick={() => setShowUserMenu(false)}
                           >
                             <div className="flex items-center">
@@ -743,10 +743,10 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
                           </Link>
                         )}
 
-                        <div className="border-t border-gray-200 mt-1">
+                        <div className="border-t border-gray-200 dark:border-gray-700 mt-1">
                           <button
                             onClick={handleDisconnect}
-                            className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                            className="block w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                           >
                             <div className="flex items-center">
                               <ArrowRightStartOnRectangleIcon className="h-4 w-4 mr-2" />
@@ -778,7 +778,7 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
 
       {/* Mobile Search */}
       {showSearch && (
-        <div className="md:hidden border-t border-gray-200 px-4 py-3">
+        <div className="md:hidden border-t border-gray-200 dark:border-gray-700 px-4 py-3">
           <form onSubmit={handleSearchSubmit} className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
@@ -788,7 +788,7 @@ export default function Header({ onSearch, searchQuery = '', showSearch = true }
               value={searchInput}
               onChange={handleSearchChange}
               placeholder="市場を検索..."
-              className="block w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+              className="block w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
             />
           </form>
         </div>

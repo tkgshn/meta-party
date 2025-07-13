@@ -20,11 +20,13 @@ import { useMetaMask } from '@/hooks/useMetaMask';
 import { useToken } from '@/hooks/useToken';
 import { useWagmiToken } from '@/hooks/useWagmiToken';
 import { useOnChainPortfolio } from '@/hooks/useOnChainPortfolio';
+import { usePortfolioHistory } from '@/hooks/usePortfolioHistory';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { NETWORKS, getNetworkByChainId, getCurrencySymbol } from '@/config/networks';
 import NetworkSwitcher from '@/components/NetworkSwitcher';
 import Header from '@/components/Header';
 import TwitterVolunteerCard from '@/components/TwitterVolunteerCard';
+import PortfolioChart from '@/components/PortfolioChart';
 
 export default function PortfolioPage() {
   // Use wagmi's useAccount for broader wallet support
@@ -97,6 +99,16 @@ export default function PortfolioPage() {
     lastUpdated: portfolioLastUpdated,
     refreshPortfolio
   } = useOnChainPortfolio(account);
+
+  // Use portfolio history hook for chart data
+  const {
+    historyData,
+    isLoading: historyLoading,
+    error: historyError,
+    refreshHistory,
+    profitLoss,
+    setPeriod
+  } = usePortfolioHistory(account, currentNetworkKey);
 
   // Detect current network from wallet
   useEffect(() => {
@@ -468,20 +480,37 @@ export default function PortfolioPage() {
           </Card>
         )}
 
-        {/* Portfolio Performance Chart - Coming Soon */}
+        {/* Portfolio Performance Chart */}
         <Card className="bg-white border-gray-200 shadow-sm mb-8">
           <CardContent className="p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">ポートフォリオ推移</h2>
-            <div className="h-64 flex items-center justify-center">
-              <div className="text-center">
-                <ChartBarIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">チャート機能は準備中です</h3>
-                <p className="text-gray-500">
-                  ポートフォリオの過去のパフォーマンスを追跡する機能を開発中です。<br />
-                  今後のアップデートでご利用いただけるようになります。
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">ポートフォリオ推移</h2>
+              {historyError && (
+                <button
+                  onClick={refreshHistory}
+                  className="text-sm text-blue-600 hover:text-blue-800 underline"
+                >
+                  再読み込み
+                </button>
+              )}
+            </div>
+            
+            {historyError && (
+              <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm text-yellow-800">
+                  💡 履歴データを取得できませんでした。デモデータを表示しています。
                 </p>
               </div>
-            </div>
+            )}
+
+            <PortfolioChart
+              data={historyData}
+              profitLoss={profitLoss}
+              period={profitLoss.period}
+              onPeriodChange={setPeriod}
+              isLoading={historyLoading}
+              currencySymbol={currencySymbol}
+            />
           </CardContent>
         </Card>
 

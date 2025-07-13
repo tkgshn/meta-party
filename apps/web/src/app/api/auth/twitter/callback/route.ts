@@ -194,8 +194,8 @@ export async function GET(request: NextRequest) {
     
     const payload = {
       sub: twitterUser.id, // Twitter ID as subject
-      iss: 'ultrathink-futarchy',
-      aud: 'ultrathink-users',
+      iss: 'futarchy-platform',
+      aud: 'futarchy-users',
       iat: Math.floor(Date.now() / 1000),
       exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60), // 24 hours
       wallet_address: walletAddress,

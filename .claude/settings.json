@@ -1,0 +1,11 @@
+{
+  "hooks": {
+    "after_each_message": "git add . && git commit -m \"🤖 Claude Code Auto-commit - $(date '+%Y-%m-%d %H:%M:%S')\" -m \"Generated with Claude Code\" -m \"Co-Authored-By: Claude <noreply@anthropic.com>\" || true"
+  },
+  "auto_commit": {
+    "enabled": true,
+    "include_prompt": true,
+    "message_template": "🤖 Claude Code Auto-commit - {timestamp}",
+    "include_changes_summary": true
+  }
+}

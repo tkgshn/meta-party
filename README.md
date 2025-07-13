@@ -1,4 +1,4 @@
-# Ultrathink Futarchy Platform 🚀
+# Futarchy Platform 🚀
 
 [![Production](https://img.shields.io/badge/Production-Live-green)](https://web-nqr7kd4vi-taka-shunsuke-takagis-projects.vercel.app)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
@@ -10,7 +10,7 @@
 
 ## 🌟 プロジェクト概要
 
-**Ultrathink Futarchy Platform** は、Robin Hanson のFutarchy理論「**Vote on Values, Bet on Beliefs**」を実装した革新的なガバナンスシステムです。予測市場を通じて分散した専門知識を効率的に集約し、より良い意思決定を実現します。
+**Futarchy Platform** は、Robin Hanson のFutarchy理論「**Vote on Values, Bet on Beliefs**」を実装した革新的なガバナンスシステムです。予測市場を通じて分散した専門知識を効率的に集約し、より良い意思決定を実現します。
 
 ### 核心理念
 - **知識の集約**: 分散した専門知識を予測市場で効率的に収集
@@ -398,7 +398,7 @@ MIT License - 詳細は [LICENSE](./LICENSE) を参照
 
 ---
 
-**🎯 Ultrathink Futarchy Platform** - 予測市場による意思決定の未来を今すぐ体験してください！
+**🎯 Futarchy Platform** - 予測市場による意思決定の未来を今すぐ体験してください！
 
 **🚀 開発に参加**: `npm run dev:with-anvil` でローカル開発環境を即座に起動！
 

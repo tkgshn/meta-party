@@ -278,7 +278,7 @@ export default function HomePage() {
               <h2 className="text-lg font-medium text-gray-900 dark:text-white">
                 {selectedCategory === 'all' ? 'すべての市場' : `${categories.find(c => c.id === selectedCategory)?.name}の市場`}
               </h2>
-              <span className="text-sm text-gray-500">
+              <span className="text-sm text-gray-500 dark:text-gray-400">
                 {filteredAndSortedMarkets.length}件の市場
               </span>
             </div>
@@ -286,7 +286,7 @@ export default function HomePage() {
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="text-sm text-gray-500 hover:text-gray-700"
+                className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
               >
                 検索をクリア
               </button>
@@ -425,7 +425,7 @@ export default function HomePage() {
                               <span className="text-sm font-bold text-green-600">
                                 {(market.topPrice * 100).toFixed(0)}%
                               </span>
-                              <span className="text-xs font-semibold text-gray-600 mt-0.5 tracking-wide">
+                              <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 mt-0.5 tracking-wide">
                                 YES
                               </span>
                             </div>

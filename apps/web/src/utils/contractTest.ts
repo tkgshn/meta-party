@@ -101,14 +101,18 @@ export async function testNetworkConnection() {
     console.log('✅ Network connection test:', {
       chainId: networkId,
       currentBlock,
-      isAmoy: networkId === 80002,
+      isSepolia: networkId === 11155111,
+      isAnvil: networkId === 31337,
+      // isAmoy: networkId === 80002, // Commented out - Amoy support removed
     });
     
     return {
       success: true,
       chainId: networkId,
       currentBlock,
-      isAmoy: networkId === 80002,
+      isSepolia: networkId === 11155111,
+      isAnvil: networkId === 31337,
+      // isAmoy: networkId === 80002, // Commented out - Amoy support removed
     };
     
   } catch (error) {

@@ -35,22 +35,28 @@ const PLAY_TOKEN_ABI = [
   'function claim()'
 ] as const;
 
-// Supported networks for Play Token
-const SUPPORTED_CHAIN_IDS = [80002, 11155111]; // Polygon Amoy, Sepolia
+// Supported networks for Play Token (Amoy removed)
+const SUPPORTED_CHAIN_IDS = [11155111, 31337]; // Sepolia, Anvil Local
 
 // Network-specific configurations
 const NETWORK_CONFIGS = {
-  80002: { // Polygon Amoy
-    name: 'Polygon Amoy',
-    contractsDeployed: true,
-    faucetUrl: 'https://faucet.polygon.technology/',
-    blockExplorerUrl: 'https://amoy.polygonscan.com',
-  },
+  // 80002: { // Polygon Amoy - COMMENTED OUT (support removed)
+  //   name: 'Polygon Amoy',
+  //   contractsDeployed: true,
+  //   faucetUrl: 'https://faucet.polygon.technology/',
+  //   blockExplorerUrl: 'https://amoy.polygonscan.com',
+  // },
   11155111: { // Sepolia
     name: 'Sepolia',
     contractsDeployed: true, // ✅ Contracts deployed
     faucetUrl: 'https://sepoliafaucet.com/',
     blockExplorerUrl: 'https://sepolia.etherscan.io',
+  },
+  31337: { // Anvil Local
+    name: 'Anvil Local',
+    contractsDeployed: true,
+    faucetUrl: '',
+    blockExplorerUrl: 'local',
   }
 };
 
@@ -79,8 +85,9 @@ const DEBUG_MODE = process.env.NODE_ENV === 'development';
 if (DEBUG_MODE) {
   console.log('PlayToken Hook Environment Check:', {
     supportedChains: SUPPORTED_CHAIN_IDS,
-    amoyAddress: NETWORKS.polygonAmoy?.contracts.playToken,
+    // amoyAddress: NETWORKS.polygonAmoy?.contracts.playToken, // Commented out - Amoy support removed
     sepoliaAddress: NETWORKS.sepolia?.contracts.playToken,
+    anvilAddress: NETWORKS.anvil?.contracts.playToken,
     nodeEnv: process.env.NODE_ENV,
   });
 }

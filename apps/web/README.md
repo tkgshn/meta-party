@@ -1,4 +1,4 @@
-# Ultrathink Web App - Multi-Network Futarchy Platform
+# Futarchy Web App - Multi-Network Platform
 
 A cutting-edge prediction market platform built with Next.js 15, supporting both Polygon Mainnet and Amoy Testnet for next-generation futarchy-based governance and collective intelligence.
 
@@ -128,7 +128,7 @@ src/
 
 ## 🔗 Related Documentation
 
-- **[Project README](../../README.md)**: Complete Ultrathink platform overview
+- **[Project README](../../README.md)**: Complete Futarchy platform overview
 - **[CLAUDE.md](../../CLAUDE.md)**: Technical specifications and development guidance
 - **[vibe.md](../../vibe.md)**: Project guide and setup instructions
 - **[Next.js Documentation](https://nextjs.org/docs)**: Framework documentation
@@ -136,7 +136,7 @@ src/
 
 ## 📝 Development Notes
 
-- **Ultrathink Platform Standards**: Follow TypeScript patterns for type safety
+- **Futarchy Platform Standards**: Follow TypeScript patterns for type safety
 - **Code Conventions**: Adhere to existing patterns and futarchy best practices
 - **Multi-Network Testing**: Thoroughly test on both Polygon networks before deploying
 - **MetaMask Integration**: Uses direct `window.ethereum` API for lightweight implementation

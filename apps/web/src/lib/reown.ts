@@ -1,6 +1,7 @@
 import { createAppKit } from '@reown/appkit/react'
 import { EthersAdapter } from '@reown/appkit-adapter-ethers'
-import { sepolia, polygon, polygonAmoy } from '@reown/appkit/networks'
+import { sepolia, polygon } from '@reown/appkit/networks'
+// import { polygonAmoy } from '@reown/appkit/networks' // Commented out - Amoy support removed
 
 // Get projectId from environment
 const projectId = process.env.NEXT_PUBLIC_REOWN_PROJECT_ID
@@ -9,8 +10,9 @@ if (!projectId) {
   console.warn('NEXT_PUBLIC_REOWN_PROJECT_ID is not set, using default')
 }
 
-// Set up networks
-const networks = [sepolia, polygon, polygonAmoy]
+// Set up networks - Amoy support removed
+const networks = [sepolia, polygon]
+// const networks = [sepolia, polygon, polygonAmoy] // Commented out - Amoy support removed
 
 // Set up Ethers adapter
 const ethersAdapter = new EthersAdapter()
@@ -24,7 +26,7 @@ if (projectId) {
     networks,
     projectId,
     metadata: {
-      name: 'Ultrathink Futarchy Platform',
+      name: 'Futarchy Platform',
       description: 'Play Token Airdrop & Futarchy PoC',
       url: process.env.NODE_ENV === 'production' ? 'https://web-nqr7kd4vi-taka-shunsuke-takagis-projects.vercel.app' : 'http://localhost:3000',
       icons: ['https://avatars.githubusercontent.com/u/37784886']

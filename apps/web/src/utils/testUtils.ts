@@ -33,7 +33,9 @@ export const MOCK_ADDRESSES = {
 export const MOCK_CHAIN_IDS = {
   ETHEREUM: '0x1',
   POLYGON: '0x89',
-  POLYGON_AMOY: '0x13882', // 80002
+  SEPOLIA: '0xaa36a7', // 11155111
+  ANVIL: '0x7a69', // 31337
+  // POLYGON_AMOY: '0x13882', // 80002 - Commented out (Amoy support removed)
   ARBITRUM: '0xa4b1',
 };
 
@@ -90,7 +92,7 @@ export function createMockEthereumProvider(
 ): MockEthereumProvider {
   const defaultState = {
     accounts: [MOCK_ADDRESSES.ACCOUNT_1],
-    chainId: MOCK_CHAIN_IDS.POLYGON_AMOY,
+    chainId: MOCK_CHAIN_IDS.SEPOLIA, // Changed from POLYGON_AMOY to SEPOLIA
     isConnected: true,
     isUnlocked: true,
     ...initialState,

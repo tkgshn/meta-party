@@ -1,6 +1,7 @@
 import { cookieStorage, createStorage, http } from '@wagmi/core'
 import { WagmiAdapter } from '@reown/appkit-adapter-wagmi'
-import { polygonAmoy, sepolia } from '@reown/appkit/networks'
+import { sepolia } from '@reown/appkit/networks'
+// import { polygonAmoy } from '@reown/appkit/networks' // Commented out - Amoy support removed
 import { defineChain } from 'viem'
 
 // Get projectId from Reown Cloud
@@ -24,8 +25,9 @@ export const anvil = defineChain({
   testnet: true,
 })
 
-// Export networks for use in AppKit - Sepolia first as default for current branch
-export const networks = [sepolia, anvil, polygonAmoy]
+// Export networks for use in AppKit - Sepolia only (Amoy removed)
+export const networks = [sepolia, anvil]
+// export const networks = [sepolia, anvil, polygonAmoy] // Commented out - Amoy support removed
 
 // Set up the Wagmi Adapter (Config)
 export const wagmiAdapter = new WagmiAdapter({
@@ -38,7 +40,7 @@ export const wagmiAdapter = new WagmiAdapter({
   transports: {
     [sepolia.id]: http(process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || 'https://ethereum-sepolia.publicnode.com'),
     [anvil.id]: http('http://127.0.0.1:8545'),
-    [polygonAmoy.id]: http(process.env.NEXT_PUBLIC_POLYGON_AMOY_RPC_URL || 'https://rpc-amoy.polygon.technology'),
+    // [polygonAmoy.id]: http(process.env.NEXT_PUBLIC_POLYGON_AMOY_RPC_URL || 'https://rpc-amoy.polygon.technology'), // Commented out - Amoy support removed
   }
 })
 

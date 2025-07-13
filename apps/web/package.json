@@ -1,5 +1,5 @@
 {
-  "name": "@ultrathink/web",
+  "name": "@futarchy/web",
   "version": "1.0.0",
   "private": true,
   "description": "Futarchy Web App - Play Token claiming and MetaMask integration",

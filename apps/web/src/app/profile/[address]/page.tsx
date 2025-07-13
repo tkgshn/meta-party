@@ -18,6 +18,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import TwitterVolunteerCard from '@/components/TwitterVolunteerCard';
 import { useOnChainPortfolio } from '@/hooks/useOnChainPortfolio';
+import { usePortfolioHistory } from '@/hooks/usePortfolioHistory';
 import { useToken } from '@/hooks/useToken';
 import { useMetaMask } from '@/hooks/useMetaMask';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -25,6 +26,7 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import { NETWORKS } from '@/config/networks';
 import { isAddress } from 'viem';
 import Header from '@/components/Header';
+import PortfolioChart from '@/components/PortfolioChart';
 import { getUserAvatarUrl } from '@/utils/pixelAvatar';
 
 interface ProfilePageProps {
@@ -95,6 +97,16 @@ export default function ProfilePage({ params }: ProfilePageProps) {
 
   const { balance: tokenBalance, isLoading: tokenLoading } = useToken(profileAddress, currentNetworkKey);
 
+  // Use portfolio history hook for chart data
+  const {
+    historyData,
+    isLoading: historyLoading,
+    error: historyError,
+    refreshHistory,
+    profitLoss,
+    setPeriod
+  } = usePortfolioHistory(profileAddress, currentNetworkKey);
+
   // Get external user profile information
   const { userProfile: externalUserProfile, isLoading: profileLoading } = useUserProfile(
     !isOwnProfile ? profileAddress : null
@@ -142,7 +154,7 @@ export default function ProfilePage({ params }: ProfilePageProps) {
         </div>
 
         {/* Profile Card */}
-        <Card className="bg-white border-gray-200 shadow-sm mb-8">
+        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm mb-8">
           <CardContent className="p-6">
             <div className="flex items-center space-x-6">
               <div className="flex-shrink-0">
@@ -266,17 +278,17 @@ export default function ProfilePage({ params }: ProfilePageProps) {
         {/* Portfolio Overview Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           {/* Positions Card */}
-          <Card className="bg-white border-gray-200 shadow-sm">
+          <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-medium text-gray-600">Positions</p>
                   </div>
-                  <p className="text-3xl font-bold text-gray-900">
+                  <p className="text-3xl font-bold text-gray-900 dark:text-white">
                     {positionTokens.length}
                   </p>
-                  <p className="text-sm text-gray-500 mt-1">
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                     アクティブポジション数
                   </p>
                 </div>
@@ -288,7 +300,7 @@ export default function ProfilePage({ params }: ProfilePageProps) {
           </Card>
 
           {/* Total Portfolio Value Card */}
-          <Card className="bg-white border-gray-200 shadow-sm">
+          <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -310,7 +322,7 @@ export default function ProfilePage({ params }: ProfilePageProps) {
           </Card>
 
           {/* Cash Card */}
-          <Card className="bg-white border-gray-200 shadow-sm">
+          <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -332,9 +344,43 @@ export default function ProfilePage({ params }: ProfilePageProps) {
           </Card>
         </div>
 
+        {/* Portfolio Performance Chart */}
+        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm mb-8">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">ポートフォリオ推移</h2>
+              {historyError && (
+                <button
+                  onClick={refreshHistory}
+                  className="text-sm text-blue-600 hover:text-blue-800 underline"
+                >
+                  再読み込み
+                </button>
+              )}
+            </div>
+            
+            {historyError && (
+              <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm text-yellow-800">
+                  💡 履歴データを取得できませんでした。デモデータを表示しています。
+                </p>
+              </div>
+            )}
+
+            <PortfolioChart
+              data={historyData}
+              profitLoss={profitLoss}
+              period={profitLoss.period}
+              onPeriodChange={setPeriod}
+              isLoading={historyLoading}
+              currencySymbol="PT"
+            />
+          </CardContent>
+        </Card>
+
         {/* Other User Info */}
         {!isOwnProfile && (
-          <Card className="bg-white border-gray-200 shadow-sm mb-8">
+          <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm mb-8">
             <CardContent className="p-6">
               <div className="text-center py-8">
                 <div className="mx-auto h-16 w-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">

@@ -88,7 +88,7 @@ export default function TwitterAuthPage() {
             <UserIcon className="w-10 h-10 text-blue-600" />
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-4">
-            Ultrathink Futarchy Platform
+            Futarchy Platform
           </h1>
           <p className="text-lg text-gray-600 mb-2">
             Twitter認証でPlay Tokenを受け取り、予測市場に参加しましょう

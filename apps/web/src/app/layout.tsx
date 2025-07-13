@@ -13,7 +13,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Ultrathink Futarchy Platform",
+  title: "Futarchy Platform",
   description: "Prediction market governance platform for better decision making",
 };
 

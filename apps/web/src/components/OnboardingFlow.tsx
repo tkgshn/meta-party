@@ -38,13 +38,13 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     {
       id: 'network-setup',
       title: 'ネットワーク設定',
-      description: 'Polygon Amoyテストネットを追加・切り替えます',
+      description: 'Sepoliaテストネットに切り替えます',
       status: 'pending'
     },
     {
-      id: 'get-pol-tokens',
-      title: 'POLトークン取得',
-      description: 'ガス代用のPOLトークンを取得します（外部サイト）',
+      id: 'get-eth-tokens',
+      title: 'SEPトークン取得',
+      description: 'ガス代用のSepoliaETHを取得します（外部サイト）',
       status: 'pending'
     },
     {
@@ -84,33 +84,33 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     }
   };
 
-  // Add Polygon Amoy network
-  const addPolygonAmoy = async (): Promise<boolean> => {
+  // Switch to Sepolia network
+  const switchToSepolia = async (): Promise<boolean> => {
     try {
-      // First try to switch
+      // Try to switch to Sepolia
       await (window.ethereum as unknown as EthereumProvider)?.request({
         method: 'wallet_switchEthereumChain',
-        params: [{ chainId: '0x13882' }], // 80002 in hex
+        params: [{ chainId: '0xaa36a7' }], // 11155111 (Sepolia) in hex
       });
       return true;
     } catch (switchError: unknown) {
       const err = switchError as { code?: number };
-      // If the network doesn't exist, add it
+      // If the network doesn't exist, add it (though Sepolia should already be available)
       if (err.code === 4902) {
         try {
           await (window.ethereum as unknown as EthereumProvider)?.request({
             method: 'wallet_addEthereumChain',
             params: [
               {
-                chainId: '0x13882',
-                chainName: 'Polygon Amoy Testnet',
+                chainId: '0xaa36a7',
+                chainName: 'Sepolia Testnet',
                 nativeCurrency: {
-                  name: 'POL',
-                  symbol: 'POL',
+                  name: 'Sepolia Ether',
+                  symbol: 'SEP',
                   decimals: 18,
                 },
-                rpcUrls: ['https://polygon-amoy.g.alchemy.com/v2/Jmm9344uth8TJQi0gNCbs'],
-                blockExplorerUrls: ['https://amoy.polygonscan.com/'],
+                rpcUrls: ['https://ethereum-sepolia.publicnode.com'],
+                blockExplorerUrls: ['https://sepolia.etherscan.io'],
               },
             ],
           });
@@ -125,8 +125,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     }
   };
 
-  // Check POL balance
-  const checkPOLBalance = async (): Promise<string> => {
+  // Check ETH balance
+  const checkETHBalance = async (): Promise<string> => {
     try {
       const accounts = await (window.ethereum as unknown as EthereumProvider)?.request({
         method: 'eth_accounts',
@@ -200,19 +200,19 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           break;
 
         case 'network-setup':
-          success = await addPolygonAmoy();
+          success = await switchToSepolia();
           if (!success) {
-            errorMessage = 'ネットワークの追加・切り替えに失敗しました。MetaMaskでPolygon Amoyが選択されているか確認してください。';
+            errorMessage = 'ネットワークの切り替えに失敗しました。MetaMaskでSepoliaが選択されているか確認してください。';
           }
           break;
 
-        case 'get-pol-tokens':
-          // Check current POL balance
-          const balance = await checkPOLBalance();
+        case 'get-eth-tokens':
+          // Check current ETH balance
+          const balance = await checkETHBalance();
           setUserBalance(balance);
-          success = parseFloat(balance) > 0.001; // At least 0.001 POL needed
+          success = parseFloat(balance) > 0.001; // At least 0.001 ETH needed
           if (!success) {
-            errorMessage = 'POLトークンが不足しています。Faucetから取得してから「完了」ボタンを押してください。';
+            errorMessage = 'ETHが不足しています。Faucetから取得してから「完了」ボタンを押してください。';
           }
           break;
 
@@ -246,7 +246,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             // Auto-start next step for non-manual steps
             const nextStep = steps[nextIndex];
             console.log('Next step:', nextStep?.id, 'is manual:', ['get-pol-tokens', 'claim-tokens'].includes(nextStep?.id || ''));
-            if (nextStep && !['get-pol-tokens', 'claim-tokens'].includes(nextStep.id)) {
+            if (nextStep && !['get-eth-tokens', 'claim-tokens'].includes(nextStep.id)) {
               setTimeout(() => executeStep(nextStep.id), 500);
             }
             return nextIndex;
@@ -292,7 +292,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   }, [currentStepIndex]);
 
   const currentStep = steps[currentStepIndex];
-  const isManualStep = ['get-pol-tokens', 'claim-tokens'].includes(currentStep?.id || '');
+  const isManualStep = ['get-eth-tokens', 'claim-tokens'].includes(currentStep?.id || '');
 
   return (
     <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-lg">
@@ -351,22 +351,22 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               {step.errorMessage && (
                 <p className="text-sm text-red-600 mt-2">{step.errorMessage}</p>
               )}
-              {step.id === 'get-pol-tokens' && index === currentStepIndex && (
+              {step.id === 'get-eth-tokens' && index === currentStepIndex && (
                 <div className="mt-3 space-y-2">
                   <p className="text-sm text-gray-700">
-                    現在のPOL残高: <span className="font-mono font-bold">{userBalance} POL</span>
+                    現在のETH残高: <span className="font-mono font-bold">{userBalance} ETH</span>
                   </p>
                   <div className="flex space-x-2">
                     <a
-                      href="https://www.alchemy.com/faucets/polygon-amoy"
+                      href="https://sepoliafaucet.com/"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center px-3 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"
                     >
-                      Alchemy Faucet <ArrowRightIcon className="w-4 h-4 ml-1" />
+                      Sepolia Faucet <ArrowRightIcon className="w-4 h-4 ml-1" />
                     </a>
                     <a
-                      href="https://faucet.polygon.technology/"
+                      href="https://faucets.chain.link/sepolia"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center px-3 py-2 text-sm bg-purple-600 text-white rounded-md hover:bg-purple-700"
@@ -392,7 +392,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         
         {isManualStep && currentStep && (
           <div className="space-x-2">
-            {currentStep.id === 'get-pol-tokens' && (
+            {currentStep.id === 'get-eth-tokens' && (
               <button
                 onClick={() => executeStep(currentStep.id)}
                 disabled={isProcessing}

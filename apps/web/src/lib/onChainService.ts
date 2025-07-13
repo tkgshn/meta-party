@@ -49,15 +49,17 @@ const CONDITIONAL_TOKENS_ABI = [
   'function safeBatchTransferFrom(address,address,uint256[],uint256[],bytes)'
 ] as const;
 
-// Contract addresses
+// Contract addresses (Sepolia-based configuration)
 const CONTRACTS = {
-  PLAY_TOKEN: process.env.NEXT_PUBLIC_PLAY_TOKEN_ADDRESS || '',
-  MARKET_FACTORY: process.env.NEXT_PUBLIC_MARKET_FACTORY_ADDRESS || '',
-  CONDITIONAL_TOKENS: process.env.NEXT_PUBLIC_CONDITIONAL_TOKENS_ADDRESS || ''
+  PLAY_TOKEN: process.env.NEXT_PUBLIC_SEPOLIA_PLAY_TOKEN_ADDRESS || '',
+  MARKET_FACTORY: process.env.NEXT_PUBLIC_SEPOLIA_MARKET_FACTORY_ADDRESS || '',
+  CONDITIONAL_TOKENS: process.env.NEXT_PUBLIC_SEPOLIA_CONDITIONAL_TOKENS_ADDRESS || ''
 };
 
 // Network configuration
-const POLYGON_AMOY_CHAIN_ID = 80002;
+const SEPOLIA_CHAIN_ID = 11155111;
+const ANVIL_CHAIN_ID = 31337;
+// const POLYGON_AMOY_CHAIN_ID = 80002; // Commented out - Amoy support removed
 
 // Market phases
 enum MarketPhase {
@@ -132,8 +134,9 @@ class OnChainService {
     this.provider = new BrowserProvider(window.ethereum);
     const network = await this.provider.getNetwork();
     
-    if (Number(network.chainId) !== POLYGON_AMOY_CHAIN_ID) {
-      throw new Error('Please connect to Polygon Amoy network');
+    const chainId = Number(network.chainId);
+    if (chainId !== SEPOLIA_CHAIN_ID && chainId !== ANVIL_CHAIN_ID) {
+      throw new Error('Please connect to Sepolia testnet or Anvil local network');
     }
 
     // Initialize contracts

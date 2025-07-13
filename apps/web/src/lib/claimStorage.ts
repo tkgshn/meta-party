@@ -11,7 +11,7 @@ export interface ClaimStatus {
   networkKey: string;
 }
 
-const CLAIM_STORAGE_KEY = 'ultrathink-claim-status';
+const CLAIM_STORAGE_KEY = 'futarchy-claim-status';
 
 /**
  * Get claim status from localStorage
