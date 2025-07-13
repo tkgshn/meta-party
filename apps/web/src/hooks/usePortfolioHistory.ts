@@ -19,10 +19,24 @@ export interface PortfolioHistoryPoint {
   transactionHash?: string;
   transactionType?: 'transfer_in' | 'transfer_out' | 'claim';
   value?: number;
+  from?: string;
+  to?: string;
+}
+
+export interface TransactionDetail {
+  hash: string;
+  blockNumber: number;
+  timestamp: number;
+  from: string;
+  to: string;
+  value: number;
+  type: 'claim' | 'transfer_in' | 'transfer_out';
+  formattedValue: string;
 }
 
 interface UsePortfolioHistoryReturn {
   historyData: PortfolioHistoryPoint[];
+  transactions: TransactionDetail[];
   isLoading: boolean;
   error: string | null;
   lastUpdated: Date | null;
@@ -54,9 +68,11 @@ function clientToProvider(client: Client<Transport, Chain, Account>) {
 
 export function usePortfolioHistory(
   account: string | null,
-  networkKey: string
+  networkKey: string,
+  forceFullHistory: boolean = false
 ): UsePortfolioHistoryReturn {
   const [historyData, setHistoryData] = useState<PortfolioHistoryPoint[]>([]);
+  const [transactions, setTransactions] = useState<TransactionDetail[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -98,17 +114,48 @@ export function usePortfolioHistory(
   const getTransactionHistory = useCallback(async (
     provider: BrowserProvider,
     tokenAddress: string,
-    account: string
+    account: string,
+    isFullHistory: boolean = false
   ): Promise<PortfolioHistoryPoint[]> => {
     try {
       const contract = new Contract(tokenAddress, ERC20_ABI, provider);
       const currentBlock = await provider.getBlockNumber();
       
-      // Limit block range to avoid RPC rate limits (max 10,000 blocks)
-      const maxBlockRange = 10000;
-      const blocksPerDay = Math.floor(24 * 60 * 60 / 2); // ~43200 blocks per day for 2s blocks
-      const lookbackBlocks = Math.min(maxBlockRange, blocksPerDay * 3); // 3 days max to stay under limit
-      const fromBlock = Math.max(0, currentBlock - lookbackBlocks);
+      let fromBlock: number;
+      
+      if (isFullHistory) {
+        // For ALL mode: get complete history from account's first transaction
+        console.log('Fetching complete transaction history for ALL mode...');
+        
+        // Try to find the first block with activity for this account
+        // We'll start from a reasonable point (deployment block or contract creation)
+        // and work backwards if needed
+        const contractCreationBlock = Math.max(0, currentBlock - 100000); // ~200 days ago as fallback
+        
+        try {
+          // First, try to find any early transaction to establish a starting point
+          const earlyIncomingFilter = contract.filters.Transfer(null, account);
+          const earlyEvents = await contract.queryFilter(earlyIncomingFilter, contractCreationBlock, contractCreationBlock + 1000);
+          
+          if (earlyEvents.length > 0) {
+            fromBlock = earlyEvents[0].blockNumber;
+            console.log(`Found first transaction at block ${fromBlock}`);
+          } else {
+            // If no early events found, use contract creation as starting point
+            fromBlock = contractCreationBlock;
+            console.log(`Using contract creation block ${fromBlock} as starting point`);
+          }
+        } catch (error) {
+          console.warn('Could not determine optimal starting block, using fallback');
+          fromBlock = Math.max(0, currentBlock - 50000); // ~100 days fallback
+        }
+      } else {
+        // For other periods: use limited range to avoid RPC rate limits
+        const maxBlockRange = 10000;
+        const blocksPerDay = Math.floor(24 * 60 * 60 / 2); // ~43200 blocks per day for 2s blocks
+        const lookbackBlocks = Math.min(maxBlockRange, blocksPerDay * 3); // 3 days max to stay under limit
+        fromBlock = Math.max(0, currentBlock - lookbackBlocks);
+      }
 
       console.log(`Fetching events from block ${fromBlock} to ${currentBlock} (range: ${currentBlock - fromBlock} blocks)`);
 
@@ -116,23 +163,56 @@ export function usePortfolioHistory(
       let outgoingEvents: (EventLog | Log)[] = [];
 
       try {
-        // Get incoming transfers (TO this account) with chunk processing
-        const incomingFilter = contract.filters.Transfer(null, account);
-        incomingEvents = await contract.queryFilter(incomingFilter, fromBlock, currentBlock);
+        if (isFullHistory) {
+          // For ALL mode: use chunked querying to handle large ranges
+          const chunkSize = 5000; // Smaller chunks for full history
+          const totalBlocks = currentBlock - fromBlock;
+          
+          console.log(`Using chunked querying: ${Math.ceil(totalBlocks / chunkSize)} chunks of ${chunkSize} blocks each`);
+          
+          for (let start = fromBlock; start <= currentBlock; start += chunkSize) {
+            const end = Math.min(start + chunkSize - 1, currentBlock);
+            
+            try {
+              // Get incoming transfers for this chunk
+              const incomingFilter = contract.filters.Transfer(null, account);
+              const chunkIncoming = await contract.queryFilter(incomingFilter, start, end);
+              incomingEvents.push(...chunkIncoming);
 
-        // Get outgoing transfers (FROM this account) with chunk processing  
-        const outgoingFilter = contract.filters.Transfer(account, null);
-        outgoingEvents = await contract.queryFilter(outgoingFilter, fromBlock, currentBlock);
+              // Get outgoing transfers for this chunk
+              const outgoingFilter = contract.filters.Transfer(account, null);
+              const chunkOutgoing = await contract.queryFilter(outgoingFilter, start, end);
+              outgoingEvents.push(...chunkOutgoing);
+              
+              // Small delay to avoid rate limiting
+              if (end < currentBlock) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+              }
+            } catch (chunkError: any) {
+              console.warn(`Failed to fetch chunk ${start}-${end}:`, chunkError.message);
+              // Continue with next chunk instead of failing completely
+            }
+          }
+        } else {
+          // For limited periods: single query
+          const incomingFilter = contract.filters.Transfer(null, account);
+          incomingEvents = await contract.queryFilter(incomingFilter, fromBlock, currentBlock);
+
+          const outgoingFilter = contract.filters.Transfer(account, null);
+          outgoingEvents = await contract.queryFilter(outgoingFilter, fromBlock, currentBlock);
+        }
       } catch (error: any) {
         if (error.message?.includes('exceed maximum block range')) {
           console.warn('Block range too large, using smaller range');
-          // Fall back to even smaller range (1 day)
-          const smallerFromBlock = Math.max(0, currentBlock - blocksPerDay);
+          // Fall back to limited range even for ALL mode
+          const fallbackBlocks = 43200; // 1 day
+          const fallbackFromBlock = Math.max(0, currentBlock - fallbackBlocks);
+          
           const incomingFilter = contract.filters.Transfer(null, account);
-          incomingEvents = await contract.queryFilter(incomingFilter, smallerFromBlock, currentBlock);
+          incomingEvents = await contract.queryFilter(incomingFilter, fallbackFromBlock, currentBlock);
           
           const outgoingFilter = contract.filters.Transfer(account, null);
-          outgoingEvents = await contract.queryFilter(outgoingFilter, smallerFromBlock, currentBlock);
+          outgoingEvents = await contract.queryFilter(outgoingFilter, fallbackFromBlock, currentBlock);
         } else {
           throw error;
         }
@@ -145,8 +225,9 @@ export function usePortfolioHistory(
 
       console.log(`Found ${allEvents.length} transfer events`);
 
-      // Process events to create history points
+      // Process events to create history points and transaction details
       const historyPoints: PortfolioHistoryPoint[] = [];
+      const transactionDetails: TransactionDetail[] = [];
       let runningBalance = 0;
 
       // Get current balance for final calculation
@@ -174,6 +255,8 @@ export function usePortfolioHistory(
 
         const value = parseFloat(formatUnits(eventLog.args[2], decimals));
         const isIncoming = eventLog.args[1].toLowerCase() === account.toLowerCase();
+        const fromAddress = eventLog.args[0];
+        const toAddress = eventLog.args[1];
         
         if (isIncoming) {
           runningBalance += value;
@@ -183,17 +266,32 @@ export function usePortfolioHistory(
 
         // Determine transaction type
         let transactionType: 'transfer_in' | 'transfer_out' | 'claim' = isIncoming ? 'transfer_in' : 'transfer_out';
-        if (isIncoming && eventLog.args[0] === '0x0000000000000000000000000000000000000000') {
+        if (isIncoming && fromAddress === '0x0000000000000000000000000000000000000000') {
           transactionType = 'claim'; // Minted tokens (claimed)
         }
 
+        // Add to history points
         historyPoints.push({
           timestamp: block.timestamp * 1000,
           balance: runningBalance,
           blockNumber: eventLog.blockNumber,
           transactionHash: eventLog.transactionHash,
           transactionType,
-          value
+          value,
+          from: fromAddress,
+          to: toAddress
+        });
+
+        // Add to transaction details
+        transactionDetails.push({
+          hash: eventLog.transactionHash,
+          blockNumber: eventLog.blockNumber,
+          timestamp: block.timestamp * 1000,
+          from: fromAddress,
+          to: toAddress,
+          value,
+          type: transactionType,
+          formattedValue: value.toFixed(2)
         });
       }
 
@@ -220,11 +318,11 @@ export function usePortfolioHistory(
         });
       }
 
-      return historyPoints;
+      return { historyPoints, transactionDetails };
 
     } catch (error) {
       console.error('Failed to get transaction history:', error);
-      return [];
+      return { historyPoints: [], transactionDetails: [] };
     }
   }, []);
 
@@ -261,12 +359,13 @@ export function usePortfolioHistory(
         throw new Error('No wallet provider');
       }
 
-      const history = await getTransactionHistory(provider, tokenAddress, account);
+      const { historyPoints, transactionDetails } = await getTransactionHistory(provider, tokenAddress, account, forceFullHistory || period === 'ALL');
       
       // Cache the result
-      cacheRef.current.set(cacheKey, history);
+      cacheRef.current.set(cacheKey, historyPoints);
       
-      setHistoryData(history);
+      setHistoryData(historyPoints);
+      setTransactions(transactionDetails);
       setLastUpdated(new Date());
 
     } catch (error) {
@@ -278,12 +377,47 @@ export function usePortfolioHistory(
       const now = Date.now();
       const mockData: PortfolioHistoryPoint[] = [
         { timestamp: now - 6 * 24 * 60 * 60 * 1000, balance: 0, blockNumber: 0 },
-        { timestamp: now - 5 * 24 * 60 * 60 * 1000, balance: 1000, blockNumber: 1, transactionType: 'claim', value: 1000 },
-        { timestamp: now - 3 * 24 * 60 * 60 * 1000, balance: 850, blockNumber: 2, transactionType: 'transfer_out', value: 150 },
-        { timestamp: now - 1 * 24 * 60 * 60 * 1000, balance: 920, blockNumber: 3, transactionType: 'transfer_in', value: 70 },
+        { timestamp: now - 5 * 24 * 60 * 60 * 1000, balance: 1000, blockNumber: 1, transactionType: 'claim', value: 1000, from: '0x0000000000000000000000000000000000000000', to: account || '' },
+        { timestamp: now - 3 * 24 * 60 * 60 * 1000, balance: 850, blockNumber: 2, transactionType: 'transfer_out', value: 150, from: account || '', to: '0x742d35Cc6639C99532C2e9b9a81c0D2dF4f1d8f9' },
+        { timestamp: now - 1 * 24 * 60 * 60 * 1000, balance: 920, blockNumber: 3, transactionType: 'transfer_in', value: 70, from: '0x742d35Cc6639C99532C2e9b9a81c0D2dF4f1d8f9', to: account || '' },
         { timestamp: now, balance: 920, blockNumber: 4 }
       ];
+      
+      const mockTransactions: TransactionDetail[] = [
+        {
+          hash: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+          blockNumber: 1,
+          timestamp: now - 5 * 24 * 60 * 60 * 1000,
+          from: '0x0000000000000000000000000000000000000000',
+          to: account || '',
+          value: 1000,
+          type: 'claim',
+          formattedValue: '1000.00'
+        },
+        {
+          hash: '0x2234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+          blockNumber: 2,
+          timestamp: now - 3 * 24 * 60 * 60 * 1000,
+          from: account || '',
+          to: '0x742d35Cc6639C99532C2e9b9a81c0D2dF4f1d8f9',
+          value: 150,
+          type: 'transfer_out',
+          formattedValue: '150.00'
+        },
+        {
+          hash: '0x3234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+          blockNumber: 3,
+          timestamp: now - 1 * 24 * 60 * 60 * 1000,
+          from: '0x742d35Cc6639C99532C2e9b9a81c0D2dF4f1d8f9',
+          to: account || '',
+          value: 70,
+          type: 'transfer_in',
+          formattedValue: '70.00'
+        }
+      ];
+      
       setHistoryData(mockData);
+      setTransactions(mockTransactions);
       console.log('Using mock data for portfolio history demonstration');
     } finally {
       setIsLoading(false);
@@ -325,10 +459,11 @@ export function usePortfolioHistory(
     if (account && networkKey) {
       refreshHistory();
     }
-  }, [account, networkKey, refreshHistory]);
+  }, [account, networkKey, period, refreshHistory]); // Add period dependency to refresh when period changes
 
   return {
     historyData: filteredData(),
+    transactions,
     isLoading,
     error,
     lastUpdated,

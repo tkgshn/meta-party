@@ -5,8 +5,10 @@ import { Providers } from "./providers";
 import WalletErrorBoundary from "@/components/WalletErrorBoundary";
 import ReownContextProvider from '@/context/reownContext';
 import { headers } from "next/headers";
+import { StagewiseToolbar } from '@stagewise/toolbar-next';
+import ReactPlugin from '@stagewise-plugins/react';
 
-const inter = Inter({ 
+const inter = Inter({
   subsets: ["latin"],
   display: 'swap',
   variable: '--font-inter'
@@ -33,6 +35,11 @@ export default async function RootLayout({
               <div className="min-h-screen flex flex-col">
                 {children}
               </div>
+              <StagewiseToolbar
+                config={{
+                  plugins: [ReactPlugin],
+                }}
+              />
             </Providers>
           </WalletErrorBoundary>
         </ReownContextProvider>

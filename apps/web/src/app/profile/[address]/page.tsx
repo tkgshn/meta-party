@@ -27,6 +27,7 @@ import { NETWORKS } from '@/config/networks';
 import { isAddress } from 'viem';
 import Header from '@/components/Header';
 import PortfolioChart from '@/components/PortfolioChart';
+import TransactionHistory from '@/components/TransactionHistory';
 import { getUserAvatarUrl } from '@/utils/pixelAvatar';
 
 interface ProfilePageProps {
@@ -101,6 +102,7 @@ export default function ProfilePage({ params }: ProfilePageProps) {
   // Use portfolio history hook for chart data
   const {
     historyData,
+    transactions,
     isLoading: historyLoading,
     error: historyError,
     refreshHistory,
@@ -120,6 +122,14 @@ export default function ProfilePage({ params }: ProfilePageProps) {
   const portfolioValue = calculatedPortfolioValue;
   const cashValue = displayBalance;
 
+  // Calculate trading metrics from on-chain data only
+  const volumeTraded = transactions?.reduce((sum, tx) => sum + (tx.value || 0), 0) || 0;
+  const uniqueMarkets = new Set(positionTokens.map(token => token.marketId)).size;
+  const marketsTraded = uniqueMarkets;
+
+  // Simple profit/loss calculation - just show current positions value minus cash invested
+  const simpleProfitLoss = positionsValue > 0 ? positionsValue - 1000 : 0; // Assume 1000 PT initial investment
+
   // Debug logging for portfolio data
   useEffect(() => {
     console.log('Profile Portfolio Debug:', {
@@ -138,11 +148,11 @@ export default function ProfilePage({ params }: ProfilePageProps) {
 
   // Block explorer URLを動的に生成
   const getBlockExplorerUrl = (address: string) => {
-    if (!currentNetwork?.blockExplorer) {
+    if (!currentNetwork?.blockExplorerUrls || currentNetwork.blockExplorerUrls.length === 0) {
       // デフォルトはSepolia
       return `https://sepolia.etherscan.io/address/${address}`;
     }
-    return `${currentNetwork.blockExplorer}/address/${address}`;
+    return `${currentNetwork.blockExplorerUrls[0]}/address/${address}`;
   };
 
   const getBlockExplorerName = () => {
@@ -254,20 +264,17 @@ export default function ProfilePage({ params }: ProfilePageProps) {
 
 
         {/* Portfolio Overview Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {/* Positions Card */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {/* Positions Value Card */}
           <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium text-gray-600">Positions</p>
+                    <p className="text-sm font-medium text-gray-600">ポジション価値</p>
                   </div>
                   <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                    {positionTokens.length}
-                  </p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    アクティブポジション数
+                    {portfolioLoading ? '読み込み中...' : Math.floor(positionsValue || 0).toLocaleString()} PT
                   </p>
                 </div>
                 <div className="h-16 w-16 bg-gray-100 rounded-lg flex items-center justify-center">
@@ -277,55 +284,64 @@ export default function ProfilePage({ params }: ProfilePageProps) {
             </CardContent>
           </Card>
 
-          {/* Total Portfolio Value Card */}
+          {/* Profit/Loss Card */}
           <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium text-gray-600">Portfolio</p>
+                    <p className="text-sm font-medium text-gray-600">損益</p>
                   </div>
-                  <p className="text-3xl font-bold text-gray-900">
-                    {portfolioLoading ? '読み込み中...' : Math.floor(portfolioValue || 0).toLocaleString()} PT
+                  <p className={`text-3xl font-bold ${
+                    simpleProfitLoss >= 0 ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {portfolioLoading ? '読み込み中...' : `${simpleProfitLoss >= 0 ? '+' : ''}${Math.floor(simpleProfitLoss).toLocaleString()}`} PT
                   </p>
-                  <p className="text-sm text-gray-500 mt-1">
-                    総資産価値（Cash + ポジション）
-                  </p>
-                  {process.env.NODE_ENV === 'development' && (
-                    <p className="text-xs text-blue-500 mt-1">
-                      Debug: balance={tokenBalance}, positions={positionTokens.length}, total={totalPortfolioValue}
-                    </p>
-                  )}
                 </div>
-                <div className="h-16 w-16 bg-gray-100 rounded-lg flex items-center justify-center">
-                  <TrophyIcon className="h-8 w-8 text-gray-600" />
+                <div className={`h-16 w-16 rounded-lg flex items-center justify-center ${
+                  simpleProfitLoss >= 0 ? 'bg-green-100' : 'bg-red-100'
+                }`}>
+                  <TrophyIcon className={`h-8 w-8 ${
+                    simpleProfitLoss >= 0 ? 'text-green-600' : 'text-red-600'
+                  }`} />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Cash Card */}
+          {/* Volume Traded Card */}
           <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium text-gray-600">Cash</p>
+                    <p className="text-sm font-medium text-gray-600">取引量</p>
                   </div>
                   <p className="text-3xl font-bold text-gray-900">
-                    {tokenLoading || portfolioLoading ? '読み込み中...' : Math.floor(cashValue || 0).toLocaleString()} PT
+                    {portfolioLoading ? '読み込み中...' : Math.floor(volumeTraded || 0).toLocaleString()} PT
                   </p>
-                  <p className="text-sm text-gray-500 mt-1">
-                    今すぐ使えるPlay Token残高
-                  </p>
-                  {process.env.NODE_ENV === 'development' && (
-                    <p className="text-xs text-blue-500 mt-1">
-                      Debug: raw={tokenBalance}, network={currentNetworkKey}
-                    </p>
-                  )}
                 </div>
-                <div className="h-16 w-16 bg-gray-100 rounded-lg flex items-center justify-center">
-                  <BanknotesIcon className="h-8 w-8 text-gray-600" />
+                <div className="h-16 w-16 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <BanknotesIcon className="h-8 w-8 text-blue-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Markets Traded Card */}
+          <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-gray-600">参加マーケット</p>
+                  </div>
+                  <p className="text-3xl font-bold text-gray-900">
+                    {portfolioLoading ? '読み込み中...' : marketsTraded}
+                  </p>
+                </div>
+                <div className="h-16 w-16 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <ChartBarIcon className="h-8 w-8 text-purple-600" />
                 </div>
               </div>
             </CardContent>
@@ -365,6 +381,14 @@ export default function ProfilePage({ params }: ProfilePageProps) {
             />
           </CardContent>
         </Card>
+
+        {/* Transaction History */}
+        <TransactionHistory
+          transactions={transactions}
+          currentAddress={profileAddress}
+          isLoading={historyLoading}
+          blockExplorerUrl={currentNetwork?.blockExplorerUrls?.[0] || 'https://sepolia.etherscan.io'}
+        />
 
         {/* Other User Info */}
         {!isOwnProfile && (

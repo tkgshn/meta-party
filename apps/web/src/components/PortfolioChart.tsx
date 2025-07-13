@@ -14,7 +14,6 @@ import {
 } from 'recharts';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
-import { ChevronDownIcon } from '@heroicons/react/24/outline';
 
 interface ChartDataPoint {
   timestamp: number;
@@ -79,27 +78,29 @@ export default function PortfolioChart({
     }
   }
 
-  // Custom tooltip
+  // Custom tooltip - Polymarket style
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload as ChartDataPoint;
-      const fullDate = format(new Date(data.timestamp), 'yyyy年M月d日 HH:mm', { locale: ja });
+      const fullDate = format(new Date(data.timestamp), 'MMM d, yyyy h:mm a');
       
       return (
-        <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
-          <p className="text-sm text-gray-600 mb-1">{fullDate}</p>
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-            <span className="font-semibold text-gray-900">
-              {data.balance.toFixed(2)} {currencySymbol}
+        <div className="bg-white p-4 border border-gray-200 rounded-xl shadow-xl backdrop-blur-sm">
+          <p className="text-xs text-gray-500 mb-2 font-medium uppercase tracking-wide">{fullDate}</p>
+          <div className="flex items-center space-x-3">
+            <div className={`w-2 h-2 rounded-full ${profitLoss.total >= 0 ? 'bg-green-500' : 'bg-red-500'}`}></div>
+            <span className="font-bold text-gray-900 text-lg">
+              ${data.balance.toFixed(2)}
             </span>
           </div>
           {data.transactionType && (
-            <p className="text-xs text-gray-500 mt-1">
-              {data.transactionType === 'claim' && '🎁 トークン受取'}
-              {data.transactionType === 'transfer_in' && '📈 受信'}
-              {data.transactionType === 'transfer_out' && '📉 送信'}
-            </p>
+            <div className="mt-2 pt-2 border-t border-gray-100">
+              <span className="text-xs text-gray-600 font-medium">
+                {data.transactionType === 'claim' && '🎁 Token Claim'}
+                {data.transactionType === 'transfer_in' && '📈 Received'}
+                {data.transactionType === 'transfer_out' && '📉 Sent'}
+              </span>
+            </div>
           )}
         </div>
       );
@@ -140,44 +141,37 @@ export default function PortfolioChart({
 
   return (
     <div className="w-full">
-      {/* Header with P&L info */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-baseline space-x-4">
-          <div>
-            <div className={`flex items-center space-x-2 ${profitLoss.total >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              <span className="text-xs">
+      {/* Polymarket-style Header */}
+      <div className="flex items-start justify-between mb-6">
+        <div className="flex-1">
+          {/* P&L Display - Polymarket style */}
+          <div className="mb-2">
+            <div className={`flex items-center space-x-2 ${profitLoss.total >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+              <span className="text-lg font-medium">
                 {profitLoss.total >= 0 ? '▲' : '▼'}
               </span>
-              <span className="text-2xl font-bold">
-                {profitLoss.total >= 0 ? '+' : '-'}{Math.abs(profitLoss.total).toFixed(2)} PT
+              <span className="text-4xl font-bold tracking-tight">
+                {profitLoss.total >= 0 ? '+' : '-'}${Math.abs(profitLoss.total).toFixed(2)}
               </span>
             </div>
-            <div className="text-xs text-gray-500 mt-1">
-              {period === 'ALL' ? '全期間' : period}
-            </div>
-          </div>
-          
-          {/* Current portfolio value */}
-          <div className="border-l border-gray-200 pl-4">
-            <div className="text-lg font-semibold text-gray-900">
-              {currentBalance.toFixed(2)} {currencySymbol}
-            </div>
-            <div className="text-xs text-gray-500">
-              現在の残高
+            <div className="text-gray-500 text-sm mt-1 flex items-center space-x-4">
+              <span>{period === 'ALL' ? 'All-Time' : period}</span>
+              <div className="h-1 w-1 bg-gray-300 rounded-full"></div>
+              <span className="text-gray-400">Polymarket</span>
             </div>
           </div>
         </div>
 
-        {/* Period selector */}
-        <div className="flex items-center space-x-1 bg-gray-100 rounded-lg p-1">
+        {/* Period selector - Polymarket style */}
+        <div className="flex items-center space-x-1 bg-gray-50 rounded-lg p-1 border">
           {(['1D', '1W', '1M', 'ALL'] as const).map((p) => (
             <button
               key={p}
               onClick={() => onPeriodChange(p)}
-              className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
                 period === p
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
               }`}
             >
               {p}
@@ -186,64 +180,77 @@ export default function PortfolioChart({
         </div>
       </div>
 
-      {/* Chart */}
-      <div className="h-64 w-full">
+      {/* Chart - Polymarket style */}
+      <div className="h-80 w-full relative bg-white rounded-lg border border-gray-100">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart
             data={chartData}
             margin={{
-              top: 5,
-              right: 30,
-              left: 20,
-              bottom: 5,
+              top: 20,
+              right: 20,
+              left: 40,
+              bottom: 20,
             }}
           >
             <defs>
               <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={areaColor} stopOpacity={areaOpacity} />
-                <stop offset="95%" stopColor={areaColor} stopOpacity={0} />
+                <stop offset="0%" stopColor={areaColor} stopOpacity={0.15} />
+                <stop offset="100%" stopColor={areaColor} stopOpacity={0.01} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <CartesianGrid 
+              strokeDasharray="none" 
+              stroke="#f3f4f6" 
+              horizontal={true}
+              vertical={false}
+            />
             <XAxis
               dataKey="formattedTime"
               axisLine={false}
               tickLine={false}
-              tick={{ fontSize: 12, fill: '#6b7280' }}
+              tick={{ fontSize: 11, fill: '#9ca3af', fontWeight: 500 }}
+              dy={10}
             />
             <YAxis
               axisLine={false}
               tickLine={false}
-              tick={{ fontSize: 12, fill: '#6b7280' }}
+              tick={{ fontSize: 11, fill: '#9ca3af', fontWeight: 500 }}
               tickFormatter={(value) => `${value.toFixed(0)}`}
+              width={60}
             />
             <Tooltip content={<CustomTooltip />} />
             <Area
               type="monotone"
               dataKey="balance"
               stroke={lineColor}
-              strokeWidth={2}
+              strokeWidth={3}
               fill="url(#colorBalance)"
               fillOpacity={1}
-              dot={{
-                fill: lineColor,
-                strokeWidth: 2,
-                r: 4
-              }}
+              dot={false}
               activeDot={{
-                r: 6,
+                r: 5,
                 fill: lineColor,
-                strokeWidth: 2,
-                stroke: '#fff'
+                strokeWidth: 3,
+                stroke: '#fff',
+                shadowColor: 'rgba(0,0,0,0.1)',
+                filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'
               }}
             />
           </AreaChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Chart legend */}
-      <div className="mt-4 text-xs text-gray-500 text-center">
-        <p>💡 マウスをグラフの上に重ねると詳細な情報が表示されます</p>
+      {/* Chart info - Polymarket style */}
+      <div className="mt-6 flex items-center justify-between text-xs text-gray-400 px-1">
+        <div className="flex items-center space-x-4">
+          <span>Hover to view details</span>
+          <div className="h-1 w-1 bg-gray-300 rounded-full"></div>
+          <span>Based on on-chain transaction history</span>
+        </div>
+        <div className="flex items-center space-x-2">
+          <div className={`w-2 h-2 rounded-full ${profitLoss.total >= 0 ? 'bg-green-500' : 'bg-red-500'}`}></div>
+          <span>Portfolio Value</span>
+        </div>
       </div>
     </div>
   );
