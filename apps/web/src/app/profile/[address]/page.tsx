@@ -123,7 +123,12 @@ export default function ProfilePage({ params }: ProfilePageProps) {
   const cashValue = displayBalance;
 
   // Calculate trading metrics from on-chain data only
-  const volumeTraded = transactions?.reduce((sum, tx) => sum + (tx.value || 0), 0) || 0;
+  // Exclude 'claim' transactions (token claims) from trading volume
+  const volumeTraded = transactions?.reduce((sum, tx) => {
+    // Only count actual trading activity, not token claims
+    if (tx.type === 'claim') return sum;
+    return sum + (tx.value || 0);
+  }, 0) || 0;
   const uniqueMarkets = new Set(positionTokens.map(token => token.marketId)).size;
   const marketsTraded = uniqueMarkets;
 
