@@ -149,7 +149,13 @@ export function useOnChainPortfolio(account: string | null): UseOnChainPortfolio
     try {
       const provider = await initializeProvider();
       if (!provider) {
-        throw new Error('Failed to initialize provider or wrong network');
+        console.warn('No wallet provider available - portfolio data unavailable');
+        setPortfolioData(prev => ({ 
+          ...prev, 
+          isLoading: false, 
+          error: 'Wallet connection required for portfolio data'
+        }));
+        return;
       }
 
       // Get Play Token balance

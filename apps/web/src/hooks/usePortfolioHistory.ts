@@ -203,7 +203,9 @@ export function usePortfolioHistory(
     try {
       const provider = await initializeProvider();
       if (!provider) {
-        throw new Error('Failed to initialize provider');
+        console.warn('No wallet provider available - using mock data');
+        // Fall through to mock data generation below
+        throw new Error('No wallet provider');
       }
 
       const history = await getTransactionHistory(provider, tokenAddress, account);

@@ -128,7 +128,8 @@ class OnChainService {
 
   async initialize(): Promise<void> {
     if (!window.ethereum) {
-      throw new Error('MetaMask is not installed');
+      console.warn('No ethereum provider detected - users can connect via Reown');
+      return;
     }
 
     this.provider = new BrowserProvider(window.ethereum);
@@ -173,7 +174,8 @@ class OnChainService {
   // Get all markets from the factory
   async getAllMarkets(): Promise<OnChainMarket[]> {
     if (!this.marketFactoryContract) {
-      throw new Error('Service not initialized');
+      console.warn('OnChain service not initialized - using fallback data');
+      return [];
     }
 
     const marketAddresses = await this.marketFactoryContract.getAllMarkets();
@@ -290,7 +292,7 @@ class OnChainService {
     account: string
   ): Promise<string> {
     if (!this.provider) {
-      throw new Error('Provider not initialized');
+      throw new Error('Wallet connection required for trading. Please connect via MetaMask or Reown.');
     }
 
     const signer = await this.provider.getSigner();
@@ -402,7 +404,7 @@ class OnChainService {
     account: string
   ): Promise<string> {
     if (!this.provider || !this.marketFactoryContract) {
-      throw new Error('Service not initialized');
+      throw new Error('Wallet connection required for market creation. Please connect via MetaMask or Reown.');
     }
 
     const signer = await this.provider.getSigner();
@@ -430,7 +432,8 @@ class OnChainService {
   // Get user's PlayToken balance
   async getPlayTokenBalance(account: string): Promise<string> {
     if (!this.playTokenContract) {
-      throw new Error('Service not initialized');
+      console.warn('PlayToken contract not initialized');
+      return '0';
     }
 
     const balance = await this.playTokenContract.balanceOf(account);
@@ -440,7 +443,7 @@ class OnChainService {
   // Claim PlayToken (if available)
   async claimPlayToken(account: string): Promise<string> {
     if (!this.provider || !this.playTokenContract) {
-      throw new Error('Service not initialized');
+      throw new Error('Wallet connection required for this operation. Please connect via MetaMask or Reown.');
     }
 
     const signer = await this.provider.getSigner();
@@ -455,7 +458,8 @@ class OnChainService {
   // Check if user has claimed PlayToken
   async hasClaimedPlayToken(account: string): Promise<boolean> {
     if (!this.playTokenContract) {
-      throw new Error('Service not initialized');
+      console.warn('PlayToken contract not initialized');
+      return false;
     }
 
     try {
