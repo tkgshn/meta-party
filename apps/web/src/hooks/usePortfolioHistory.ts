@@ -85,24 +85,46 @@ export function usePortfolioHistory(
 
   // Initialize provider
   const initializeProvider = useCallback(async () => {
-    if (!account || !isConnected) return null;
+    if (!account || !isConnected) {
+      console.log('Account or connection not available:', { account, isConnected });
+      return null;
+    }
 
     try {
       // Try wagmi connector client first (for Reown/WalletConnect)
       if (connectorClient) {
+        console.log('Using wagmi connector client (Reown/WalletConnect)');
         const provider = clientToProvider(connectorClient);
         providerRef.current = provider;
         return provider;
       }
 
-      // Fallback to window.ethereum (for MetaMask)
-      if (window.ethereum) {
+      // Fallback to window.ethereum (for MetaMask and other injected wallets)
+      if (typeof window !== 'undefined' && window.ethereum) {
+        console.log('Using window.ethereum provider');
         const provider = new BrowserProvider(window.ethereum);
         providerRef.current = provider;
         return provider;
       }
 
-      console.warn('No wallet provider available');
+      // Additional check for other wallet providers
+      if (typeof window !== 'undefined') {
+        // Check for other common wallet providers
+        const providers = [
+          window.ethereum,
+          (window as any).web3?.currentProvider,
+          (window as any).walletConnect
+        ].filter(Boolean);
+
+        if (providers.length > 0) {
+          console.log('Using alternative wallet provider');
+          const provider = new BrowserProvider(providers[0]);
+          providerRef.current = provider;
+          return provider;
+        }
+      }
+
+      console.warn('No wallet provider available - will use mock data');
       return null;
     } catch (error) {
       console.error('Failed to initialize provider:', error);
@@ -322,6 +344,7 @@ export function usePortfolioHistory(
 
     } catch (error) {
       console.error('Failed to get transaction history:', error);
+      // Return empty arrays but don't throw - let caller handle fallback
       return { historyPoints: [], transactionDetails: [] };
     }
   }, []);
@@ -355,23 +378,34 @@ export function usePortfolioHistory(
       const provider = await initializeProvider();
       if (!provider) {
         console.warn('No wallet provider available - using mock data');
-        // Fall through to mock data generation below
-        throw new Error('No wallet provider');
+        // Skip to mock data generation instead of throwing error
+        throw new Error('FALLBACK_TO_MOCK');
       }
 
       const { historyPoints, transactionDetails } = await getTransactionHistory(provider, tokenAddress, account, forceFullHistory || period === 'ALL');
       
-      // Cache the result
-      cacheRef.current.set(cacheKey, historyPoints);
-      
-      setHistoryData(historyPoints);
-      setTransactions(transactionDetails);
-      setLastUpdated(new Date());
+      // If we got data, use it; otherwise fall back to mock data
+      if (historyPoints && historyPoints.length > 0) {
+        // Cache the result
+        cacheRef.current.set(cacheKey, historyPoints);
+        
+        setHistoryData(historyPoints);
+        setTransactions(transactionDetails);
+        setLastUpdated(new Date());
+      } else {
+        // No real data available, fall back to mock data
+        console.log('No transaction history found, using mock data');
+        throw new Error('FALLBACK_TO_MOCK');
+      }
 
     } catch (error) {
       console.error('Failed to refresh history:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      setError(`履歴データの取得に失敗しました: ${errorMessage}`);
+      
+      // Only set error if it's not a fallback to mock data
+      if (errorMessage !== 'FALLBACK_TO_MOCK') {
+        setError(`履歴データの取得に失敗しました: ${errorMessage}`);
+      }
       
       // If we can't get real data, create mock data for demonstration
       const now = Date.now();

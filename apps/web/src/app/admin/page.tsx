@@ -12,6 +12,7 @@ import {
 } from '@heroicons/react/24/outline';
 import Header from '@/components/Header';
 import { useAppKit } from '@reown/appkit/react';
+import { useAccount } from 'wagmi';
 import { useOnChainMarkets } from '@/hooks/useOnChainMarkets';
 
 interface AdminStats {
@@ -28,7 +29,8 @@ interface AdminStats {
  * - 市場作成、ユーザー管理、統計表示
  */
 export default function AdminDashboard() {
-  const { account, isConnected } = useAppKit();
+  const { address: account, isConnected } = useAccount();
+  const { open } = useAppKit();
   const { markets, platformStats, isLoading, error } = useOnChainMarkets();
   // Use real on-chain data for stats
   const stats: AdminStats = {
@@ -45,6 +47,8 @@ export default function AdminDashboard() {
   const whitelistedAddress = '0x2c5329fFa2A1f02A241Ec1932b4358bf71e158ae';
 
   useEffect(() => {
+    console.log('Admin page - Connection status:', { account, isConnected });
+    
     if (!account) {
       setIsAuthorized(false);
       return;
@@ -53,11 +57,12 @@ export default function AdminDashboard() {
     // 管理者権限の確認
     const checkAuthorization = () => {
       const isWhitelisted = account.toLowerCase() === whitelistedAddress.toLowerCase();
+      console.log('Admin page - Authorization check:', { account, whitelistedAddress, isWhitelisted });
       setIsAuthorized(isWhitelisted);
     };
 
     checkAuthorization();
-  }, [account]);
+  }, [account, isConnected]);
 
   // Stats are now derived from on-chain data above
   // No need for separate useEffect to fetch stats

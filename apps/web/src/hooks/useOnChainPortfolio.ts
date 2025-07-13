@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { BrowserProvider, Contract, formatUnits } from 'ethers';
 import { useAccount, useConnectorClient } from 'wagmi';
 import type { Account, Chain, Client, Transport } from 'viem';
+import { getNetworkByChainId, getSupportedChainIds } from '../config/networks';
 
 const ERC20_ABI = [
   'function balanceOf(address) view returns (uint256)',
@@ -9,15 +10,6 @@ const ERC20_ABI = [
   'function symbol() view returns (string)',
   'function name() view returns (string)'
 ] as const;
-
-// Contract addresses - now supporting multiple networks
-const PLAY_TOKEN_ADDRESS = process.env.NEXT_PUBLIC_PLAY_TOKEN_ADDRESS || process.env.NEXT_PUBLIC_SEPOLIA_PLAY_TOKEN_ADDRESS;
-// const MARKET_FACTORY_ADDRESS = process.env.NEXT_PUBLIC_MARKET_FACTORY_ADDRESS || process.env.NEXT_PUBLIC_SEPOLIA_MARKET_FACTORY_ADDRESS;
-// const CONDITIONAL_TOKENS_ADDRESS = process.env.NEXT_PUBLIC_CONDITIONAL_TOKENS_ADDRESS || process.env.NEXT_PUBLIC_SEPOLIA_CONDITIONAL_TOKENS_ADDRESS;
-
-// Supported chain IDs
-const SEPOLIA_CHAIN_ID = 11155111;
-const ANVIL_CHAIN_ID = 31337;
 
 interface TokenBalance {
   address: string;
@@ -98,8 +90,9 @@ export function useOnChainPortfolio(account: string | null): UseOnChainPortfolio
         const network = await provider.getNetwork();
         
         const chainId = Number(network.chainId);
-        if (chainId !== SEPOLIA_CHAIN_ID && chainId !== ANVIL_CHAIN_ID) {
-          console.warn('Not on Sepolia or Anvil network');
+        const supportedChainIds = getSupportedChainIds();
+        if (!supportedChainIds.includes(chainId)) {
+          console.warn(`Not on supported network. Connected to chain ${chainId}, supported: ${supportedChainIds.join(', ')}`);
           return null;
         }
 
@@ -166,7 +159,7 @@ export function useOnChainPortfolio(account: string | null): UseOnChainPortfolio
 
   // Refresh portfolio data
   const refreshPortfolio = useCallback(async () => {
-    if (!account || !PLAY_TOKEN_ADDRESS) {
+    if (!account) {
       setPortfolioData(prev => ({
         ...prev,
         playTokenBalance: null,
@@ -194,8 +187,23 @@ export function useOnChainPortfolio(account: string | null): UseOnChainPortfolio
         return;
       }
 
-      // Get Play Token balance
-      const playTokenBalance = await getTokenBalance(provider, PLAY_TOKEN_ADDRESS, account);
+      // Get current network configuration
+      const network = await provider.getNetwork();
+      const chainId = Number(network.chainId);
+      const networkConfig = getNetworkByChainId(chainId);
+      
+      if (!networkConfig || !networkConfig.contracts.playToken) {
+        console.warn(`No Play Token contract found for chain ${chainId}`);
+        setPortfolioData(prev => ({ 
+          ...prev, 
+          isLoading: false, 
+          error: `Play Token not available on this network (Chain ID: ${chainId})`
+        }));
+        return;
+      }
+
+      // Get Play Token balance using the correct contract address for this network
+      const playTokenBalance = await getTokenBalance(provider, networkConfig.contracts.playToken, account);
       
       // Get position tokens
       const positionTokens = await getPositionTokens();
@@ -228,13 +236,22 @@ export function useOnChainPortfolio(account: string | null): UseOnChainPortfolio
 
   // Refresh balance only (faster than full portfolio refresh)
   const refreshBalance = useCallback(async () => {
-    if (!account || !PLAY_TOKEN_ADDRESS) return;
+    if (!account) return;
 
     try {
       const provider = await initializeProvider();
       if (!provider) return;
 
-      const playTokenBalance = await getTokenBalance(provider, PLAY_TOKEN_ADDRESS, account);
+      // Get current network configuration
+      const network = await provider.getNetwork();
+      const chainId = Number(network.chainId);
+      const networkConfig = getNetworkByChainId(chainId);
+      
+      if (!networkConfig || !networkConfig.contracts.playToken) {
+        return;
+      }
+
+      const playTokenBalance = await getTokenBalance(provider, networkConfig.contracts.playToken, account);
       
       if (playTokenBalance) {
         setPortfolioData(prev => ({
