@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { BrowserProvider, Contract, formatUnits, EventLog, Log } from 'ethers';
 import { getCurrencyContract, getNetworkByChainId } from '@/config/networks';
+import { useAccount, useConnectorClient } from 'wagmi';
+import type { Account, Chain, Client, Transport } from 'viem';
 
 const ERC20_ABI = [
   'function balanceOf(address) view returns (uint256)',
@@ -33,6 +35,23 @@ interface UsePortfolioHistoryReturn {
   setPeriod: (period: '1D' | '1W' | '1M' | 'ALL') => void;
 }
 
+// Utility function to convert wagmi client to ethers provider
+function clientToProvider(client: Client<Transport, Chain, Account>) {
+  const { chain, transport } = client;
+  const network = {
+    chainId: chain.id,
+    name: chain.name,
+    ensAddress: chain.contracts?.ensRegistry?.address,
+  };
+  if (transport.type === 'fallback') {
+    return new BrowserProvider(
+      (transport.transports as any)[0].value,
+      network
+    );
+  }
+  return new BrowserProvider(transport, network);
+}
+
 export function usePortfolioHistory(
   account: string | null,
   networkKey: string
@@ -43,22 +62,37 @@ export function usePortfolioHistory(
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [period, setPeriod] = useState<'1D' | '1W' | '1M' | 'ALL'>('ALL');
 
+  const { isConnected } = useAccount();
+  const { data: connectorClient } = useConnectorClient();
   const providerRef = useRef<BrowserProvider | null>(null);
   const cacheRef = useRef<Map<string, PortfolioHistoryPoint[]>>(new Map());
 
   // Initialize provider
   const initializeProvider = useCallback(async () => {
-    if (!window.ethereum || !account) return null;
+    if (!account || !isConnected) return null;
 
     try {
-      const provider = new BrowserProvider(window.ethereum);
-      providerRef.current = provider;
-      return provider;
+      // Try wagmi connector client first (for Reown/WalletConnect)
+      if (connectorClient) {
+        const provider = clientToProvider(connectorClient);
+        providerRef.current = provider;
+        return provider;
+      }
+
+      // Fallback to window.ethereum (for MetaMask)
+      if (window.ethereum) {
+        const provider = new BrowserProvider(window.ethereum);
+        providerRef.current = provider;
+        return provider;
+      }
+
+      console.warn('No wallet provider available');
+      return null;
     } catch (error) {
       console.error('Failed to initialize provider:', error);
       return null;
     }
-  }, [account]);
+  }, [account, isConnected, connectorClient]);
 
   // Get transaction history from Transfer events
   const getTransactionHistory = useCallback(async (
@@ -70,20 +104,39 @@ export function usePortfolioHistory(
       const contract = new Contract(tokenAddress, ERC20_ABI, provider);
       const currentBlock = await provider.getBlockNumber();
       
-      // Get transfer events for the last 7 days (estimate ~2s per block)
-      const blocksPerDay = Math.floor(24 * 60 * 60 / 2);
-      const lookbackBlocks = blocksPerDay * 7;
+      // Limit block range to avoid RPC rate limits (max 10,000 blocks)
+      const maxBlockRange = 10000;
+      const blocksPerDay = Math.floor(24 * 60 * 60 / 2); // ~43200 blocks per day for 2s blocks
+      const lookbackBlocks = Math.min(maxBlockRange, blocksPerDay * 3); // 3 days max to stay under limit
       const fromBlock = Math.max(0, currentBlock - lookbackBlocks);
 
-      console.log(`Fetching events from block ${fromBlock} to ${currentBlock}`);
+      console.log(`Fetching events from block ${fromBlock} to ${currentBlock} (range: ${currentBlock - fromBlock} blocks)`);
 
-      // Get incoming transfers (TO this account)
-      const incomingFilter = contract.filters.Transfer(null, account);
-      const incomingEvents = await contract.queryFilter(incomingFilter, fromBlock, currentBlock);
+      let incomingEvents: (EventLog | Log)[] = [];
+      let outgoingEvents: (EventLog | Log)[] = [];
 
-      // Get outgoing transfers (FROM this account)
-      const outgoingFilter = contract.filters.Transfer(account, null);
-      const outgoingEvents = await contract.queryFilter(outgoingFilter, fromBlock, currentBlock);
+      try {
+        // Get incoming transfers (TO this account) with chunk processing
+        const incomingFilter = contract.filters.Transfer(null, account);
+        incomingEvents = await contract.queryFilter(incomingFilter, fromBlock, currentBlock);
+
+        // Get outgoing transfers (FROM this account) with chunk processing  
+        const outgoingFilter = contract.filters.Transfer(account, null);
+        outgoingEvents = await contract.queryFilter(outgoingFilter, fromBlock, currentBlock);
+      } catch (error: any) {
+        if (error.message?.includes('exceed maximum block range')) {
+          console.warn('Block range too large, using smaller range');
+          // Fall back to even smaller range (1 day)
+          const smallerFromBlock = Math.max(0, currentBlock - blocksPerDay);
+          const incomingFilter = contract.filters.Transfer(null, account);
+          incomingEvents = await contract.queryFilter(incomingFilter, smallerFromBlock, currentBlock);
+          
+          const outgoingFilter = contract.filters.Transfer(account, null);
+          outgoingEvents = await contract.queryFilter(outgoingFilter, smallerFromBlock, currentBlock);
+        } else {
+          throw error;
+        }
+      }
 
       // Combine and sort events by block number
       const allEvents = [...incomingEvents, ...outgoingEvents].sort((a, b) => 
@@ -218,7 +271,8 @@ export function usePortfolioHistory(
 
     } catch (error) {
       console.error('Failed to refresh history:', error);
-      setError(error instanceof Error ? error.message : 'Unknown error occurred');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setError(`履歴データの取得に失敗しました: ${errorMessage}`);
       
       // If we can't get real data, create mock data for demonstration
       const now = Date.now();
@@ -230,6 +284,7 @@ export function usePortfolioHistory(
         { timestamp: now, balance: 920, blockNumber: 4 }
       ];
       setHistoryData(mockData);
+      console.log('Using mock data for portfolio history demonstration');
     } finally {
       setIsLoading(false);
     }

@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { BrowserProvider, Contract, formatUnits } from 'ethers';
+import { useAccount, useConnectorClient } from 'wagmi';
+import type { Account, Chain, Client, Transport } from 'viem';
 
 const ERC20_ABI = [
   'function balanceOf(address) view returns (uint256)',
@@ -8,13 +10,14 @@ const ERC20_ABI = [
   'function name() view returns (string)'
 ] as const;
 
-// Contract addresses on Polygon Amoy
-const PLAY_TOKEN_ADDRESS = process.env.NEXT_PUBLIC_PLAY_TOKEN_ADDRESS;
-// const MARKET_FACTORY_ADDRESS = process.env.NEXT_PUBLIC_MARKET_FACTORY_ADDRESS;
-// const CONDITIONAL_TOKENS_ADDRESS = process.env.NEXT_PUBLIC_CONDITIONAL_TOKENS_ADDRESS;
+// Contract addresses - now supporting multiple networks
+const PLAY_TOKEN_ADDRESS = process.env.NEXT_PUBLIC_PLAY_TOKEN_ADDRESS || process.env.NEXT_PUBLIC_SEPOLIA_PLAY_TOKEN_ADDRESS;
+// const MARKET_FACTORY_ADDRESS = process.env.NEXT_PUBLIC_MARKET_FACTORY_ADDRESS || process.env.NEXT_PUBLIC_SEPOLIA_MARKET_FACTORY_ADDRESS;
+// const CONDITIONAL_TOKENS_ADDRESS = process.env.NEXT_PUBLIC_CONDITIONAL_TOKENS_ADDRESS || process.env.NEXT_PUBLIC_SEPOLIA_CONDITIONAL_TOKENS_ADDRESS;
 
-// Polygon Amoy chain ID
-const POLYGON_AMOY_CHAIN_ID = 80002;
+// Supported chain IDs
+const SEPOLIA_CHAIN_ID = 11155111;
+const ANVIL_CHAIN_ID = 31337;
 
 interface TokenBalance {
   address: string;
@@ -43,6 +46,23 @@ interface UseOnChainPortfolioReturn extends PortfolioData {
   addTokenToMetaMask: (tokenAddress: string) => Promise<boolean>;
 }
 
+// Utility function to convert wagmi client to ethers provider
+function clientToProvider(client: Client<Transport, Chain, Account>) {
+  const { chain, transport } = client;
+  const network = {
+    chainId: chain.id,
+    name: chain.name,
+    ensAddress: chain.contracts?.ensRegistry?.address,
+  };
+  if (transport.type === 'fallback') {
+    return new BrowserProvider(
+      (transport.transports as any)[0].value,
+      network
+    );
+  }
+  return new BrowserProvider(transport, network);
+}
+
 export function useOnChainPortfolio(account: string | null): UseOnChainPortfolioReturn {
   const [portfolioData, setPortfolioData] = useState<PortfolioData>({
     playTokenBalance: null,
@@ -55,29 +75,45 @@ export function useOnChainPortfolio(account: string | null): UseOnChainPortfolio
     lastUpdated: null
   });
 
+  const { isConnected } = useAccount();
+  const { data: connectorClient } = useConnectorClient();
   const providerRef = useRef<BrowserProvider | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Initialize provider
   const initializeProvider = useCallback(async () => {
-    if (!window.ethereum || !account) return null;
+    if (!account || !isConnected) return null;
 
     try {
-      const provider = new BrowserProvider(window.ethereum);
-      const network = await provider.getNetwork();
-      
-      if (Number(network.chainId) !== POLYGON_AMOY_CHAIN_ID) {
-        console.warn('Not on Polygon Amoy network');
-        return null;
+      // Try wagmi connector client first (for Reown/WalletConnect)
+      if (connectorClient) {
+        const provider = clientToProvider(connectorClient);
+        providerRef.current = provider;
+        return provider;
       }
 
-      providerRef.current = provider;
-      return provider;
+      // Fallback to window.ethereum (for MetaMask)
+      if (window.ethereum) {
+        const provider = new BrowserProvider(window.ethereum);
+        const network = await provider.getNetwork();
+        
+        const chainId = Number(network.chainId);
+        if (chainId !== SEPOLIA_CHAIN_ID && chainId !== ANVIL_CHAIN_ID) {
+          console.warn('Not on Sepolia or Anvil network');
+          return null;
+        }
+
+        providerRef.current = provider;
+        return provider;
+      }
+
+      console.warn('No wallet provider available');
+      return null;
     } catch (error) {
       console.error('Failed to initialize provider:', error);
       return null;
     }
-  }, [account]);
+  }, [account, isConnected, connectorClient]);
 
   // Get token balance and metadata
   const getTokenBalance = useCallback(async (

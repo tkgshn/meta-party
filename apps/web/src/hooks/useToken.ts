@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { BrowserProvider, Contract, formatUnits, parseUnits } from 'ethers';
 import { NETWORKS, getCurrencySymbol, getCurrencyContract, getCurrencyDecimals } from '@/config/networks';
+import { useAccount, useConnectorClient } from 'wagmi';
+import type { Account, Chain, Client, Transport } from 'viem';
 import '@/types/ethereum';
 
 // ERC-20 ABI for token functions
@@ -44,6 +46,23 @@ interface TokenActions {
 
 const DEBUG_MODE = process.env.NODE_ENV === 'development'; // Re-enable for debugging
 
+// Utility function to convert wagmi client to ethers provider
+function clientToProvider(client: Client<Transport, Chain, Account>) {
+  const { chain, transport } = client;
+  const network = {
+    chainId: chain.id,
+    name: chain.name,
+    ensAddress: chain.contracts?.ensRegistry?.address,
+  };
+  if (transport.type === 'fallback') {
+    return new BrowserProvider(
+      (transport.transports as any)[0].value,
+      network
+    );
+  }
+  return new BrowserProvider(transport, network);
+}
+
 export function useToken(account: string | null, networkKey?: string): TokenState & TokenActions {
   const [balance, setBalance] = useState<string>('0');
   const [balanceWei, setBalanceWei] = useState<bigint | null>(null);
@@ -55,6 +74,8 @@ export function useToken(account: string | null, networkKey?: string): TokenStat
   const [hasClaimed, setHasClaimed] = useState<boolean>(false);
   const [isTokenAddedToMetaMask, setIsTokenAddedToMetaMask] = useState<boolean>(false);
   
+  const { isConnected } = useAccount();
+  const { data: connectorClient } = useConnectorClient();
   const providerRef = useRef<BrowserProvider | null>(null);
   const contractRef = useRef<Contract | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -81,26 +102,36 @@ export function useToken(account: string | null, networkKey?: string): TokenStat
 
   // Initialize provider and contract
   const initializeProvider = useCallback(async () => {
-    if (!account || !currentNetwork) return null;
+    if (!account || !currentNetwork || !isConnected) return null;
 
     try {
-      // Check if window.ethereum exists (browser wallet)
-      if (!window.ethereum) {
-        // For Reown/WalletConnect, we need to use wagmi's provider
-        // This will be handled in a separate hook
-        if (DEBUG_MODE) {
-          console.log('No window.ethereum detected, likely using WalletConnect/Reown - skipping traditional provider');
-        }
-        // Don't set error for social wallets, just return null to let wagmi handle it
-        return null;
-      }
+      let provider: BrowserProvider;
 
-      const provider = new BrowserProvider(window.ethereum);
-      const network = await provider.getNetwork();
-      
-      if (Number(network.chainId) !== currentNetwork.chainId) {
+      // Try wagmi connector client first (for Reown/WalletConnect)
+      if (connectorClient) {
+        provider = clientToProvider(connectorClient);
         if (DEBUG_MODE) {
-          console.log(`Wrong network. Expected: ${currentNetwork.chainId}, Current: ${network.chainId}`);
+          console.log('Using wagmi connector client (Reown/WalletConnect)');
+        }
+      }
+      // Fallback to window.ethereum (for MetaMask)
+      else if (window.ethereum) {
+        provider = new BrowserProvider(window.ethereum);
+        const network = await provider.getNetwork();
+        
+        if (Number(network.chainId) !== currentNetwork.chainId) {
+          if (DEBUG_MODE) {
+            console.log(`Wrong network. Expected: ${currentNetwork.chainId}, Current: ${network.chainId}`);
+          }
+          return null;
+        }
+        if (DEBUG_MODE) {
+          console.log('Using window.ethereum (MetaMask)');
+        }
+      }
+      else {
+        if (DEBUG_MODE) {
+          console.log('No wallet provider available');
         }
         return null;
       }
@@ -120,7 +151,7 @@ export function useToken(account: string | null, networkKey?: string): TokenStat
       setError('Failed to initialize provider');
       return null;
     }
-  }, [account, tokenAddress, currentNetwork]);
+  }, [account, tokenAddress, currentNetwork, isConnected, connectorClient]);
 
   // Refresh token balance and metadata
   const refreshBalance = useCallback(async () => {

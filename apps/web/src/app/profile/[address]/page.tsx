@@ -2,7 +2,7 @@
 
 import { useAccount } from 'wagmi';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, use } from 'react';
 import { notFound } from 'next/navigation';
 import {
   UserCircleIcon,
@@ -30,16 +30,17 @@ import PortfolioChart from '@/components/PortfolioChart';
 import { getUserAvatarUrl } from '@/utils/pixelAvatar';
 
 interface ProfilePageProps {
-  params: {
+  params: Promise<{
     address: string;
-  };
+  }>;
 }
 
 export default function ProfilePage({ params }: ProfilePageProps) {
   const { address: connectedAddress, isConnected, chainId } = useAccount();
   const { getCurrentChainId } = useMetaMask();
   const router = useRouter();
-  const { address: profileAddress } = params;
+  const resolvedParams = use(params);
+  const { address: profileAddress } = resolvedParams;
   const currentUser = useCurrentUser();
 
   // アドレスの形式チェック
@@ -116,6 +117,24 @@ export default function ProfilePage({ params }: ProfilePageProps) {
   const displayBalance = parseFloat(tokenBalance) || 0;
   const positionsValue = positionTokens.reduce((sum, token) => sum + token.value, 0);
   const calculatedPortfolioValue = totalPortfolioValue || (displayBalance + positionsValue);
+  const portfolioValue = calculatedPortfolioValue;
+  const cashValue = displayBalance;
+
+  // Debug logging for portfolio data
+  useEffect(() => {
+    console.log('Profile Portfolio Debug:', {
+      profileAddress,
+      currentNetworkKey,
+      tokenBalance,
+      displayBalance,
+      positionTokens: positionTokens.length,
+      totalPortfolioValue,
+      portfolioValue,
+      cashValue,
+      tokenLoading,
+      portfolioLoading
+    });
+  }, [profileAddress, currentNetworkKey, tokenBalance, displayBalance, positionTokens, totalPortfolioValue, portfolioValue, cashValue, tokenLoading, portfolioLoading]);
 
   // Block explorer URLを動的に生成
   const getBlockExplorerUrl = (address: string) => {
@@ -232,48 +251,7 @@ export default function ProfilePage({ params }: ProfilePageProps) {
           </CardContent>
         </Card>
 
-        {/* Network Info */}
-        <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className={`w-3 h-3 rounded-full ${currentNetwork?.isTestnet ? 'bg-yellow-400' : 'bg-green-400'}`} />
-              <div>
-                <p className="text-sm font-medium text-gray-900">{currentNetwork?.displayName || 'Unknown Network'}</p>
-                <p className="text-xs text-gray-500">
-                  {currentNetwork?.isTestnet ? 'テストネット' : 'メインネット'} •
-                  PT • チェーンID: {currentNetwork?.chainId}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-3">
-              <div className="text-xs text-gray-500">
-                アドレス: <a
-                  href={getBlockExplorerUrl(profileAddress)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-bold hover:underline cursor-pointer"
-                >
-                  {profileAddress}
-                </a>
-              </div>
-              {/* Twitter account link in network info */}
-              {((isOwnProfile && currentUser.twitterUsername) ||
-                (!isOwnProfile && externalUserProfile?.twitterUsername)) && (
-                  <a
-                    href={`https://x.com/${isOwnProfile ? currentUser.twitterUsername : externalUserProfile?.twitterUsername}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center space-x-1 text-xs text-blue-600 hover:text-blue-800 hover:underline transition-colors"
-                  >
-                    <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                    </svg>
-                    <span>@{isOwnProfile ? currentUser.twitterUsername : externalUserProfile?.twitterUsername}</span>
-                  </a>
-                )}
-            </div>
-          </div>
-        </div>
+
 
         {/* Portfolio Overview Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -308,11 +286,16 @@ export default function ProfilePage({ params }: ProfilePageProps) {
                     <p className="text-sm font-medium text-gray-600">Portfolio</p>
                   </div>
                   <p className="text-3xl font-bold text-gray-900">
-                    {portfolioLoading ? '...' : Math.floor(calculatedPortfolioValue || 0).toLocaleString()} PT
+                    {portfolioLoading ? '読み込み中...' : Math.floor(portfolioValue || 0).toLocaleString()} PT
                   </p>
                   <p className="text-sm text-gray-500 mt-1">
                     総資産価値（Cash + ポジション）
                   </p>
+                  {process.env.NODE_ENV === 'development' && (
+                    <p className="text-xs text-blue-500 mt-1">
+                      Debug: balance={tokenBalance}, positions={positionTokens.length}, total={totalPortfolioValue}
+                    </p>
+                  )}
                 </div>
                 <div className="h-16 w-16 bg-gray-100 rounded-lg flex items-center justify-center">
                   <TrophyIcon className="h-8 w-8 text-gray-600" />
@@ -330,11 +313,16 @@ export default function ProfilePage({ params }: ProfilePageProps) {
                     <p className="text-sm font-medium text-gray-600">Cash</p>
                   </div>
                   <p className="text-3xl font-bold text-gray-900">
-                    {tokenLoading || portfolioLoading ? '...' : Math.floor(displayBalance || 0).toLocaleString()} PT
+                    {tokenLoading || portfolioLoading ? '読み込み中...' : Math.floor(cashValue || 0).toLocaleString()} PT
                   </p>
                   <p className="text-sm text-gray-500 mt-1">
                     今すぐ使えるPlay Token残高
                   </p>
+                  {process.env.NODE_ENV === 'development' && (
+                    <p className="text-xs text-blue-500 mt-1">
+                      Debug: raw={tokenBalance}, network={currentNetworkKey}
+                    </p>
+                  )}
                 </div>
                 <div className="h-16 w-16 bg-gray-100 rounded-lg flex items-center justify-center">
                   <BanknotesIcon className="h-8 w-8 text-gray-600" />
@@ -358,7 +346,7 @@ export default function ProfilePage({ params }: ProfilePageProps) {
                 </button>
               )}
             </div>
-            
+
             {historyError && (
               <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <p className="text-sm text-yellow-800">
